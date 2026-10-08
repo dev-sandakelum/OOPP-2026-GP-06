@@ -1,3 +1,4 @@
+import UI.Pages.AdminPages;
 import database.Database;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -5,5 +6,7 @@ import database.Database;
 public class Main {
     public static void main(String[] args) {
         Database.getConnection();
+        AdminPages Apg = new AdminPages();
+
     }
 }
