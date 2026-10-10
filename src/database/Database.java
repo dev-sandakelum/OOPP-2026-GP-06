@@ -13,7 +13,7 @@ public class Database {
     private static final String USER = "root";
     private static final String PASSWORD = "";
 
-    public static Connection getConnection() {
+    public static Connection getConnection() throws Exception{
         try {
             Connection connection = DriverManager.getConnection(
                     URL,
@@ -29,6 +29,10 @@ public class Database {
             System.out.println("Database connection failed!");
             e.printStackTrace();
             return null;
+
+        } catch (Exception e) {
+            System.out.println("Error: "+e.getMessage());
         }
+        return null;
     }
 }
