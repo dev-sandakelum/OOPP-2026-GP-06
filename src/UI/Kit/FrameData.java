@@ -11,6 +11,15 @@ public interface FrameData {
 
     String[] adminTabs = {"Overview", "User Profiles", "Courses", "Notices", "Timetables", "My Profile"};
 
+    String[] lecturerTabs = {"Overview", "My Courses", "Marks", "Undergraduates",
+            "Attendance", "Grades & GPA", "Medicals", "Notices", "My Profile"};
+
+    String[] officerTabs  = {"Overview", "Attendance Register", "Medicals",
+            "Notices", "Timetables", "My Profile"};
+
+    String[] studentTabs  = {"Overview", "My Courses", "My Attendance", "Marks & GPA",
+            "Medicals", "Notices", "Timetables", "My Profile"};
+
     // ---------- Colors ----------
     Color PAGE_BG = new Color(202, 253, 235);
 
