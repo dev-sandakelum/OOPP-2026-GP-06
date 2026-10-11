@@ -1,6 +1,7 @@
 package UI.Pages.Components;
 
 import UI.Kit.FrameData;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -26,14 +27,15 @@ public class Sidebar extends JPanel implements FrameData {
     private static final Color DARK_DEEP  = new Color(8, 38, 25);
     private static final Color GREEN_GLOW = new Color(38, 144, 95);
 
+    private final User user;
     private final List<NavItem> items = new ArrayList<>();
     private int selectedIndex = -1;
     private IntConsumer onSelect = i -> { };
     private Runnable onLogout = () -> { };
 
-    public Sidebar(String roleLabel, String[] tabs, NavIcon[] icons,
-                   String userName, String userSub, Color pageBg) {
+    public Sidebar(User user, String roleLabel, String[] tabs, NavIcon[] icons, Color pageBg) {
         super(new BorderLayout());
+        this.user = user;
         setBackground(pageBg);
         setBorder(new EmptyBorder(12, 12, 12, 6));          // the invisible gaps
         setPreferredSize(new Dimension(sp_width + 18, 0));
@@ -41,7 +43,7 @@ public class Sidebar extends JPanel implements FrameData {
         RoundedCard card = new RoundedCard(new BorderLayout(), SIDEBAR_BG, pageBg, RADIUS);
         card.add(logoSection(), BorderLayout.NORTH);
         card.add(navSection(roleLabel, tabs, icons), BorderLayout.CENTER);
-        card.add(accountSection(userName, userSub), BorderLayout.SOUTH);
+        card.add(accountSection(roleLabel), BorderLayout.SOUTH);
         add(card, BorderLayout.CENTER);
 
         setSelectedIndex(0, false);
@@ -51,6 +53,8 @@ public class Sidebar extends JPanel implements FrameData {
 
     // index of the selected nav item (0-based, same order as the tabs array)
     public int getSelectedIndex() { return selectedIndex; }
+
+    public User getUser() { return user; }
 
     public void setSelectedIndex(int index) { setSelectedIndex(index, true); }
 
@@ -141,7 +145,11 @@ public class Sidebar extends JPanel implements FrameData {
     }
 
     // ---------- Account ----------
-    private JPanel accountSection(String name, String sub) {
+    private JPanel accountSection(String fallbackSub) {
+        String name = (user != null && user.getName() != null) ? user.getName() : "Unknown user";
+        String sub  = (user != null && user.getEmail() != null && !user.getEmail().isBlank())
+                ? user.getEmail() : fallbackSub;
+
         JPanel wrap = new JPanel(new BorderLayout());
         wrap.setBackground(SIDEBAR_BG);
         wrap.setBorder(new EmptyBorder(0, 14, 14, 14));

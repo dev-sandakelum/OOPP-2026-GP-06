@@ -1,15 +1,23 @@
 package UI.Pages;
 
 import UI.Kit.FrameData;
+import UI.Pages.Components.ContentCard;
 import UI.Pages.Components.NavIcon;
 import UI.Pages.Components.Sidebar;
+import UI.Pages.admin.Courses;
+import UI.Pages.admin.MyProfile;
+import UI.Pages.admin.Notices;
+import UI.Pages.admin.Overview;
+import UI.Pages.admin.Timetables;
+import UI.Pages.admin.UserProfiles;
+import model.User;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.Objects;
 
 public class AdminPages extends JFrame implements FrameData {
+
 
     // one icon per entry in adminTabs, same order
     private static final NavIcon[] ICONS = {
@@ -21,7 +29,7 @@ public class AdminPages extends JFrame implements FrameData {
     private final CardLayout cards = new CardLayout();
     private final JPanel cardHost = new JPanel(cards);
 
-    public AdminPages() {
+    public AdminPages(User user) {
         setSize(width, height);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -29,29 +37,29 @@ public class AdminPages extends JFrame implements FrameData {
         setIconImage(new ImageIcon(Objects.requireNonNull(
                 getClass().getResource("/assets/img.png"))).getImage());
 
-        sidebar = new Sidebar("ADMINISTRATOR", adminTabs, ICONS,
-                "Mrs. N. P. Jayasuriya", "Administration · admin", PAGE_BG);
+        sidebar = new Sidebar(user, "ADMINISTRATOR", adminTabs, ICONS, PAGE_BG);
         sidebar.setOnSelect(i -> cards.show(cardHost, adminTabs[i]));
-        sidebar.setOnLogout(() -> dispose());   // replace with your login flow
+        sidebar.setOnLogout(this::dispose);   // login flow comes later
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().setBackground(PAGE_BG);
         getContentPane().add(sidebar, BorderLayout.WEST);
-        getContentPane().add(container(), BorderLayout.CENTER);
+        getContentPane().add(container(user), BorderLayout.CENTER);
     }
 
-    private JPanel container() {
-        cardHost.setBackground(PAGE_BG);
-        for (String tab : adminTabs) {
-            JPanel page = new JPanel(new BorderLayout());
-            page.setOpaque(false);
-            JLabel title = new JLabel(tab);
-            title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-            title.setBorder(new EmptyBorder(24, 28, 0, 0));
-            page.add(title, BorderLayout.NORTH);   // replace with your real page for each tab
-            cardHost.add(page, tab);
-        }
-        return cardHost;
+    // rounded content card, same look as the sidebar
+    private JPanel container(User user) {
+        cardHost.setOpaque(false);   // so the card's fill shows through
+
+        // same order as adminTabs
+        cardHost.add(new Overview(user),  adminTabs[0]);
+        cardHost.add(new UserProfiles(),  adminTabs[1]);
+        cardHost.add(new Courses(),       adminTabs[2]);
+        cardHost.add(new Notices(),       adminTabs[3]);
+        cardHost.add(new Timetables(),    adminTabs[4]);
+        cardHost.add(new MyProfile(user), adminTabs[5]);
+
+        return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
     }
 
     // number of the selected card (0-based), straight from the sidebar
