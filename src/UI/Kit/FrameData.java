@@ -21,7 +21,7 @@ public interface FrameData {
             "Medicals", "Notices", "Timetables", "My Profile"};
 
     // ---------- Colors ----------
-    Color PAGE_BG = new Color(202, 253, 235);
+    Color PAGE_BG = new Color(255, 255, 255);
 
     Color SIDEBAR_BG = new Color(240, 244, 242);
     Color ACTIVE_BG  = new Color(224, 238, 229);   // selected pill (soft green)

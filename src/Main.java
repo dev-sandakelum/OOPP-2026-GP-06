@@ -1,12 +1,28 @@
 import UI.Pages.AdminPages;
+import data.UserData;
 import database.Database;
+import model.User;
 
 import javax.swing.*;
 
 public class Main {
     public static void main(String[] args) {
-        Database.getConnection();
-        SwingUtilities.invokeLater(() -> new AdminPages().setVisible(true));
-    }
+        try {
+            Database.getConnection();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        User u = new User();
+        u.setUser_id(1);
+        u.setName("Mrs. N. P. Jayasuriya");
+        u.setEmail("admin@fot.ruh.ac.lk");
 
+
+        UserData ud = new UserData();
+        User u2 = new User(ud.findById(7));
+
+
+        SwingUtilities.invokeLater(() -> new AdminPages(u2).setVisible(true));
+
+    }
 }
