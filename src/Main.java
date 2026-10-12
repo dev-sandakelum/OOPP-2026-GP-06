@@ -16,7 +16,13 @@ public class Main {
         u.setUser_id(1);
         u.setName("Mrs. N. P. Jayasuriya");
         u.setEmail("admin@fot.ruh.ac.lk");
-        SwingUtilities.invokeLater(() -> new AdminPages(u).setVisible(true));
+
+
+        UserData ud = new UserData();
+        User u2 = new User(ud.findById(7));
+
+
+        SwingUtilities.invokeLater(() -> new AdminPages(u2).setVisible(true));
 
     }
 }

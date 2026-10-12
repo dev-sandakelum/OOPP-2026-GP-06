@@ -1,6 +1,7 @@
 package model;
 
 import java.sql.Date;
+import java.util.Optional;
 
 public class User {
     private int user_id ;
@@ -11,8 +12,30 @@ public class User {
     private Date DOB;
     private String address ;
     private String gender ;
+    private String userType;
 
+    // No-arg constructor (needed by many frameworks)
     public User() {
+    }
+
+    // Full constructor
+    public User(int userId, String name, String email, String contactNumber,
+                String passwordHash, Date dob, String address, String gender) {
+        this.user_id = userId;
+        this.name = name;
+        this.email = email;
+        this.contact_number = contactNumber;
+        this.password = passwordHash;
+        this.DOB = dob;
+        this.address = address;
+        this.gender = gender;
+
+    }
+
+    // Copy constructor (replaces the Optional<User> one)
+    public User(User other) {
+        this(other.user_id, other.name, other.email, other.contact_number,
+                other.password, other.DOB, other.address, other.gender);
     }
 
     public int getUser_id() {
@@ -92,4 +115,7 @@ public class User {
                 ", gender='" + gender + '\'' +
                 '}';
     }
+
+    public String getUserType() { return userType; }
+    public void setUserType(String userType) { this.userType = userType; }
 }
