@@ -7,6 +7,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.Objects;
+import model.User;
 
 public class LecturerPage extends JFrame implements FrameData {
 
@@ -21,7 +22,7 @@ public class LecturerPage extends JFrame implements FrameData {
     private final CardLayout cards = new CardLayout();
     private final JPanel cardHost = new JPanel(cards);
 
-    public LecturerPage() {
+    public LecturerPage(User user) {
         setSize(width, height);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -29,8 +30,7 @@ public class LecturerPage extends JFrame implements FrameData {
         setIconImage(new ImageIcon(Objects.requireNonNull(
                 getClass().getResource("/assets/img.png"))).getImage());
 
-        sidebar = new Sidebar("Lecturer", lecturerTabs, ICONS,
-                "Mrs. N. P. Jayasuriya", "Administration · admin", PAGE_BG);
+        sidebar = new Sidebar(user, "LECTURER", lecturerTabs, ICONS, PAGE_BG);
         sidebar.setOnSelect(i -> cards.show(cardHost, lecturerTabs[i]));
         sidebar.setOnLogout(() -> dispose());   // replace with your login flow
 
