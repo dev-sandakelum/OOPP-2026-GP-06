@@ -30,7 +30,7 @@ public class LecturerPage extends JFrame implements FrameData {
         setIconImage(new ImageIcon(Objects.requireNonNull(
                 getClass().getResource("/assets/img.png"))).getImage());
 
-        sidebar = new Sidebar(user, "LECTURER", lecturerTabs, ICONS, PAGE_BG);
+        sidebar = new Sidebar(user, "ADMINISTRATOR", adminTabs, ICONS, PAGE_BG);
         sidebar.setOnSelect(i -> cards.show(cardHost, lecturerTabs[i]));
         sidebar.setOnLogout(() -> dispose());   // replace with your login flow
 
