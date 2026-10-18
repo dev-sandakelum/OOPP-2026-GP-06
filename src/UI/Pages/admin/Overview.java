@@ -52,6 +52,7 @@ public class Overview extends Page {
                 {"Active courses", "6", "This semester"},
                 {"Notices", "5", "Published"},
                 {"Pending medicals", "8", "Awaiting decision"}
+
         };
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
         row.setOpaque(false);
