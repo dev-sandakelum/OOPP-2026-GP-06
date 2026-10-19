@@ -4,6 +4,8 @@ import UI.Pages.Components.Avatar;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import model.TechnicalOfficer;
+import model.TechnicalOfficer;
 import model.User;
 
 import javax.swing.*;
@@ -17,15 +19,17 @@ import static UI.Pages.Components.Ui.*;
 // Admin "My Profile" tab: shows and edits the logged-in user (the User model is not changed).
 public class MyProfile extends Page {
 
-    private final User user;
+    private final TechnicalOfficer user;
     private final JTextField name = field(20);
     private final JTextField email = field(20);
     private final JTextField contact = field(20);
     private final JTextField dob = field(20);
     private final JTextField address = field(20);
     private final JTextField gender = field(20);
+    private final JTextField department = field(20);
 
-    public MyProfile(User user) {
+
+    public MyProfile(TechnicalOfficer user) {
         super("My Profile", "Your account details", null);
         this.user = user;
 
@@ -53,6 +57,7 @@ public class MyProfile extends Page {
         dob.setText(user.getDOB() == null ? "" : user.getDOB().toString());
         address.setText(nz(user.getAddress()));
         gender.setText(nz(user.getGender()));
+        department.setText(nz(String.valueOf(user.getDep_id())));
     }
 
     private static String nz(String s) {
@@ -61,12 +66,12 @@ public class MyProfile extends Page {
 
     private JComponent identityRow() {
         String shown = (user != null && user.getName() != null && !user.getName().isBlank())
-                ? user.getName() : "Administrator";
+                ? user.getName() : "Technical Officer";
 
         JLabel t = new JLabel(shown);
         t.setFont(font(Font.BOLD, 20));
         t.setForeground(INK);
-        JLabel s = new JLabel("Administrator");
+        JLabel s = new JLabel("Technical Officer");
         s.setFont(font(Font.PLAIN, 13));
         s.setForeground(INK_2);
 
@@ -94,6 +99,7 @@ public class MyProfile extends Page {
         addField(grid, "Date of birth (yyyy-mm-dd)", dob);
         addField(grid, "Address", address);
         addField(grid, "Gender", gender);
+        addField(grid, "Department", department);
         return grid;
     }
 

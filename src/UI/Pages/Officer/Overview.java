@@ -21,7 +21,7 @@ public class Overview extends Page {
                 null);
         JPanel body = new JPanel(new BorderLayout(0, 20));
         body.setOpaque(false);
-        body.add(new JLabel("Overview"));
+        body.add(new JLabel("Medicals awaiting approval"));
         body.add(kpiRow(), BorderLayout.NORTH);
         setScrollBody(body);
     }
@@ -29,10 +29,10 @@ public class Overview extends Page {
     // ---------- KPI cards ----------
     private JComponent kpiRow() {
         String[][] kpis = {
-                {"Total users", "6", "Across all roles"},
-                {"Active courses", "6", "This semester"},
-                {"Notices", "5", "Published"},
-                {"Pending medicals", "8", "Awaiting decision"}
+                {"Modules", "6", "6 modules * 15 sessions"},
+                {"Registers", "90", "theory & practical"},
+                {"Undergraduates", "5", "2 repeat . 2 batch_missed"},
+                {"Pending medicals", "3", "awaiting your decision"}
         };
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
         row.setOpaque(false);

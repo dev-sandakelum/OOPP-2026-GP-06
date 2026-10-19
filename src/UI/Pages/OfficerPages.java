@@ -5,6 +5,8 @@ import UI.Pages.Components.ContentCard;
 import UI.Pages.Components.NavIcon;
 import UI.Pages.Components.Sidebar;
 import UI.Pages.Officer.*;
+import model.TechnicalOfficer;
+import model.Undergraduate;
 import model.User;
 
 import javax.swing.*;
@@ -44,6 +46,7 @@ public class OfficerPages extends JFrame implements FrameData {
 
     // rounded content card, same look as the sidebar
     private JPanel container(User user) {
+        TechnicalOfficer to = new TechnicalOfficer(user);
         cardHost.setOpaque(false);   // so the card's fill shows through
 
         cardHost.add(new Overview(user), officerTabs[0]);
@@ -51,7 +54,7 @@ public class OfficerPages extends JFrame implements FrameData {
         cardHost.add(new Medicals(), officerTabs[2]);
         cardHost.add(new Notices(), officerTabs[3]);
         cardHost.add(new Timetables(), officerTabs[4]);
-        cardHost.add(new MyProfile(user), officerTabs[5]);
+        cardHost.add(new MyProfile(to), officerTabs[5]);
 
 
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
