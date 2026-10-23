@@ -14,6 +14,7 @@ public class User {
     private String gender ;
     private String userType;
 
+
     // No-arg constructor (needed by many frameworks)
     public User() {
     }
