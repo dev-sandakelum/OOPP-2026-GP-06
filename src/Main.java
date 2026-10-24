@@ -1,28 +1,19 @@
-import UI.Pages.AdminPages;
-import data.UserData;
+import UI.Pages.LoginPage;
 import database.Database;
-import model.User;
 
 import javax.swing.*;
 
 public class Main {
     public static void main(String[] args) {
+
+        // Connect to the database once at startup
         try {
             Database.getConnection();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        User u = new User();
-        u.setUser_id(1);
-        u.setName("Mrs. N. P. Jayasuriya");
-        u.setEmail("admin@fot.ruh.ac.lk");
 
-
-        UserData ud = new UserData();
-        User u2 = new User(ud.findById(7));
-
-
-        SwingUtilities.invokeLater(() -> new AdminPages(u2).setVisible(true));
-
+        // Open the login window — it handles routing to the right dashboard
+        SwingUtilities.invokeLater(() -> new LoginPage().setVisible(true));
     }
 }
