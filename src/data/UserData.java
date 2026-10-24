@@ -155,7 +155,24 @@ public class UserData {
         }
     }
 
-    // ---------- Helpers ----------
+    /** Returns the user matching email + password, or null if no match. */
+    public User login(String email, String password) {
+        String sql = "SELECT " + COLUMNS + " FROM " + TABLE
+                + " WHERE email = ? AND password = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setString(2, password);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? map(rs) : null;
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException("Login query failed", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
 
     private User map(ResultSet rs) throws SQLException {
         User u = new User();
