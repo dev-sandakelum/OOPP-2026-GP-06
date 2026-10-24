@@ -10,8 +10,6 @@ import model.User;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 import static UI.Kit.Palette.*;
 
@@ -33,10 +31,7 @@ public class Overview extends Page {
     private final UserData userData = new UserData();
 
     public Overview(User user) {
-        super("Overview",
-                "Welcome back, " + ((user != null && user.getName() != null) ? user.getName() : "Administrator")
-                        + "  ·  " + LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")),
-                null);
+        super("Overview","Hello",null);
 
         JPanel body = new JPanel(new BorderLayout(0, 20));
         body.setOpaque(false);
@@ -52,6 +47,7 @@ public class Overview extends Page {
                 {"Active courses", "6", "This semester"},
                 {"Notices", "5", "Published"},
                 {"Pending medicals", "8", "Awaiting decision"}
+
         };
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
         row.setOpaque(false);
