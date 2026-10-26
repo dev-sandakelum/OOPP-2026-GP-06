@@ -1,10 +1,10 @@
 -- AFMS mock data (MySQL 8.x)
 -- Run the schema script first, then this one.
--- All users share the password: Password@123 (bcrypt hash)
+-- All users share the password: Password@123 (plain text — bcrypt removed for dev)
 
 USE afms_db;
 
-SET @pw = '$2a$10$H3rmj4jPGNVOKlWaztcBseRweA/KUwzkDLm8xCR0kgte1KKVaptze';
+SET @pw = 'Password@123';
 
 -- users
 INSERT INTO users (user_id, name, email, password, phone, address, dob, user_type) VALUES
