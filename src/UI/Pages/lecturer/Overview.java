@@ -1,19 +1,28 @@
 package UI.Pages.lecturer;
+
 import UI.Pages.Components.Card;
-import UI.Pages.lecturer.LecturerUI;
 import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 import static UI.Kit.Palette.*;
-import static UI.Kit.Palette.font;
 
 public class Overview extends LecturerUI.Page {
+
+    private static final Color ROW_LINE = new Color(0xEEF2EF);
+    private static final Color PILL_BG  = new Color(0xE1EDE3);
+    private static final Color PILL_FG  = new Color(0x1F4D36);
+
+    private final JPanel scheduleRows = rowsPanel();
+    private final JPanel noticeRows   = rowsPanel();
+    private final JLabel scheduleCount = new JLabel();
 
     public Overview(User user) {
 
@@ -25,14 +34,24 @@ public class Overview extends LecturerUI.Page {
         JPanel body = new JPanel(new BorderLayout(0, 20));
         body.setOpaque(false);
         body.add(kpiRow(), BorderLayout.NORTH);
-        body.add(middleSection(), BorderLayout.CENTER);
-        body.add(bottomSection(), BorderLayout.SOUTH);
+        body.add(topAligned(bottomRow()), BorderLayout.CENTER);
         setScrollBody(body);
+
+        // TODO: Setup database here - replace loadMockData() with a method that loads
+        //       today's schedule and recent notices for this lecturer from MySQL
+        loadMockData();
     }
 
+    /* ===================== KPI ROW (unchanged) ===================== */
+
     private JComponent kpiRow() {
+        // TODO: Setup database here - retrieve these KPI values for the logged-in lecturer:
+        //       - My Modules:         count of modules assigned to the lecturer
+        //       - Undergraduates:     count of students enrolled in the lecturer's modules
+        //       - Average Attendance: average attendance % across the lecturer's modules
+        //       - Pending medicals:   count of medicals with status 'Pending' for the lecturer's modules
         String[][] kpis = {
-                {"My Modules","7", "Credits"},
+                {"My Modules", "7", "Credits"},
                 {"Undergraduates", "6", "This semester"},
                 {"Average Attendance", "5", "across my module"},
                 {"Pending medicals", "8", "Awaiting decision"}
@@ -69,189 +88,184 @@ public class Overview extends LecturerUI.Page {
         return c;
     }
 
-    // ==================== MIDDLE SECTION ====================
-    private JComponent middleSection() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
+    /* ===================== SCHEDULE + NOTICES ===================== */
 
-        // Today's Schedule (expanded full width)
-        panel.add(todaysSchedulePanel(), BorderLayout.CENTER);
+    private JComponent bottomRow() {
+        JPanel row = new JPanel(new GridBagLayout());
+        row.setOpaque(false);
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.fill = GridBagConstraints.BOTH;
+        gc.gridy = 0;
+        gc.weighty = 0;
 
-        return panel;
+        gc.gridx = 0; gc.weightx = 1.4; gc.insets = new Insets(0, 0, 0, 8);
+        row.add(scheduleCard(), gc);
+
+        gc.gridx = 1; gc.weightx = 1.0; gc.insets = new Insets(0, 8, 0, 0);
+        row.add(noticesCard(), gc);
+        return row;
     }
 
-    // ==================== TODAY'S SCHEDULE ====================
-    private JComponent todaysSchedulePanel() {
-        Card card = new Card(false);
-        card.setLayout(new BorderLayout(0, 0));
-        card.setBorder(new EmptyBorder(20, 20, 10, 20));
-
-        // Header
-        JLabel titleLabel = new JLabel("Today's schedule");
-        titleLabel.setFont(font(Font.BOLD, 14));
-        titleLabel.setForeground(INK);
-
-        card.add(titleLabel, BorderLayout.NORTH);
-
-        // Schedule Table
-        JPanel tablePanel = createScheduleTable();
-        card.add(tablePanel, BorderLayout.CENTER);
-
-        return card;
+    private JComponent scheduleCard() {
+        scheduleCount.setFont(font(Font.PLAIN, 12));
+        scheduleCount.setForeground(INK_2);
+        return listCard("Today's Schedule", scheduleCount, scheduleRows);
     }
 
-    private JPanel createScheduleTable() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
-
-        // TODO: Connect to MySQL database to fetch today's schedule
-        String[] columns = {"Time", "Course", "Hall"};
-        Object[][] data = {
-                {"08:30", "CS101 - Programming", "LH-2"},
-                {"10:30", "SE301 - Software Eng.", "Lab-1"},
-                {"14:00", "AM02 - Machine Learning", "LH-5"}
-        };
-
-        DefaultTableModel model = new DefaultTableModel(data, columns) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        JTable table = new JTable(model);
-        table.setFont(font(Font.PLAIN, 11));
-        table.setRowHeight(28);
-        table.setBackground(Color.WHITE);
-        table.setGridColor(new Color(240, 240, 240));
-        table.setShowGrid(true);
-        table.setShowHorizontalLines(true);
-        table.setShowVerticalLines(false);
-        table.setForeground(INK);
-
-        // Header styling
-        table.getTableHeader().setBackground(new Color(245, 245, 245));
-        table.getTableHeader().setFont(font(Font.BOLD, 11));
-        table.getTableHeader().setForeground(INK);
-        table.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
-
-        // Column widths
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);
-        table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        table.getColumnModel().getColumn(2).setPreferredWidth(60);
-
-        // Fit viewport height to rows (default is 400px, which leaves empty space)
-        table.setPreferredScrollableViewportSize(new Dimension(
-                table.getPreferredSize().width, table.getRowHeight() * table.getRowCount()));
-
-        JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(null);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-
-        panel.add(scrollPane, BorderLayout.CENTER);
-
-        return panel;
+    private JComponent noticesCard() {
+        JLabel viewAll = new JLabel("View all");
+        viewAll.setFont(font(Font.PLAIN, 12));
+        viewAll.setForeground(INK_2);
+        viewAll.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        // viewAll.addMouseListener(...) -> open the Notices page
+        return listCard("Recent Notices", viewAll, noticeRows);
     }
 
-    // ==================== BOTTOM SECTION ====================
-    private JComponent bottomSection() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
+    private JComponent listCard(String title, JComponent right, JPanel rows) {
+        Card c = new Card(false);
+        c.setLayout(new BorderLayout(0, 12));
+        c.setBorder(new EmptyBorder(18, 20, 18, 20));
 
-        // Recent Notices & Medical Requests
-        panel.add(recentNoticesPanel(), BorderLayout.CENTER);
+        JLabel t = new JLabel(title);
+        t.setFont(font(Font.BOLD, 15));
+        t.setForeground(INK);
+        JPanel head = new JPanel(new BorderLayout());
+        head.setOpaque(false);
+        head.add(t, BorderLayout.WEST);
+        head.add(right, BorderLayout.EAST);
 
-        return panel;
+        c.add(head, BorderLayout.NORTH);
+        c.add(topAligned(rows), BorderLayout.CENTER);
+        return c;
     }
 
-    // ==================== RECENT NOTICES & MEDICAL REQUESTS ====================
-    private JComponent recentNoticesPanel() {
-        Card card = new Card(false);
-        card.setLayout(new BorderLayout(0, 15));
-        card.setBorder(new EmptyBorder(20, 20, 20, 20));
+    /* ===================== PUBLIC API (use with MySQL data later) ===================== */
 
-        // Header
-        JLabel titleLabel = new JLabel("Recent notices & medical requests");
-        titleLabel.setFont(font(Font.BOLD, 14));
-        titleLabel.setForeground(INK);
-
-        card.add(titleLabel, BorderLayout.NORTH);
-
-        // Content Panel
-        JPanel contentPanel = createNoticesContentPanel();
-        card.add(contentPanel, BorderLayout.CENTER);
-
-        return card;
+    /** Each item: { time, title, details }  e.g. {"10:30", "Database Systems", "CS3012 · LT-2 · 86 students"} */
+    public void setSchedule(List<String[]> items) {
+        scheduleRows.removeAll();
+        for (int i = 0; i < items.size(); i++) {
+            String[] s = items.get(i);
+            scheduleRows.add(scheduleRow(s[0], s[1], s[2], i == items.size() - 1));
+        }
+        scheduleCount.setText(items.size() + (items.size() == 1 ? " session" : " sessions"));
+        scheduleRows.revalidate();
+        scheduleRows.repaint();
     }
 
-    private JPanel createNoticesContentPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setOpaque(false);
-
-        // TODO: Connect to MySQL database to fetch notices and medical requests
-
-        // Notice Item 1
-        JPanel notice1 = createNoticeItem(
-                "Mid exam timetable released",
-                "Posted 1 days ago | 23 notices"
-        );
-        panel.add(notice1);
-        panel.add(Box.createVerticalStrut(12));
-
-        // Notice Item 2
-        JPanel notice2 = createNoticeItem(
-                "Medical submitted - IT2O34 Nirmal R.",
-                "Awaiting review: 20 DU"
-        );
-        panel.add(notice2);
-        panel.add(Box.createVerticalStrut(12));
-
-        // Notice Item 3
-        JPanel notice3 = createNoticeItem(
-                "Assignment submission deadline extended",
-                "Posted 3 days ago | Updated today"
-        );
-        panel.add(notice3);
-
-        panel.add(Box.createVerticalGlue());
-
-        return panel;
+    /** Each item: { title, details }  e.g. {"Mid-term timetable released", "Posted 20 Oct · All courses"} */
+    public void setNotices(List<String[]> items) {
+        noticeRows.removeAll();
+        for (int i = 0; i < items.size(); i++) {
+            String[] n = items.get(i);
+            noticeRows.add(noticeRow(n[0], n[1], i == items.size() - 1));
+        }
+        noticeRows.revalidate();
+        noticeRows.repaint();
     }
 
-    private JPanel createNoticeItem(String title, String subtitle) {
-        JPanel panel = new JPanel(new BorderLayout(0, 3));
-        panel.setOpaque(false);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+    /* ===================== ROWS ===================== */
 
-        // Title
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(font(Font.BOLD, 12));
-        titleLabel.setForeground(INK);
+    private JComponent scheduleRow(String time, String title, String details, boolean last) {
+        JPanel row = new JPanel(new BorderLayout(12, 0));
+        row.setOpaque(false);
+        row.setBorder(rowBorder(last));
 
-        // Subtitle
-        JLabel subtitleLabel = new JLabel(subtitle);
-        subtitleLabel.setFont(font(Font.PLAIN, 11));
-        subtitleLabel.setForeground(INK_2);
+        JPanel pillWrap = new JPanel(new GridBagLayout());   // centres the pill vertically
+        pillWrap.setOpaque(false);
+        pillWrap.add(new TimePill(time));
 
-        // Text panel
-        JPanel textPanel = new JPanel();
-        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
-        textPanel.setOpaque(false);
-        textPanel.add(titleLabel);
-        textPanel.add(subtitleLabel);
+        row.add(pillWrap, BorderLayout.WEST);
+        row.add(twoLines(title, details), BorderLayout.CENTER);
+        return row;
+    }
 
-        // Divider
-        JPanel divider = new JPanel();
-        divider.setBackground(new Color(240, 240, 240));
-        divider.setPreferredSize(new Dimension(0, 1));
+    private JComponent noticeRow(String title, String details, boolean last) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setBorder(rowBorder(last));
+        row.add(twoLines(title, details), BorderLayout.CENTER);
+        return row;
+    }
 
-        panel.add(textPanel, BorderLayout.NORTH);
-        panel.add(divider, BorderLayout.SOUTH);
+    private static javax.swing.border.Border rowBorder(boolean last) {
+        EmptyBorder pad = new EmptyBorder(11, 0, 11, 0);
+        return last ? pad : BorderFactory.createCompoundBorder(new MatteBorder(0, 0, 1, 0, ROW_LINE), pad);
+    }
 
-        return panel;
+    private static JComponent twoLines(String title, String details) {
+        JLabel t = new JLabel(title);
+        t.setFont(font(Font.BOLD, 13));
+        t.setForeground(INK);
+        JLabel d = new JLabel(details);
+        d.setFont(font(Font.PLAIN, 12));
+        d.setForeground(INK_2);
+
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        t.setAlignmentX(Component.LEFT_ALIGNMENT);
+        d.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(t);
+        p.add(Box.createVerticalStrut(2));
+        p.add(d);
+        return p;
+    }
+
+    /* ===================== HELPERS ===================== */
+
+    private static JPanel rowsPanel() {
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        return p;
+    }
+
+    /** Keeps content at its natural height instead of stretching. */
+    private static JComponent topAligned(JComponent c) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        p.add(c, BorderLayout.NORTH);
+        return p;
+    }
+
+    /** Rounded green time label (10:30). */
+    private static class TimePill extends JLabel {
+        TimePill(String text) {
+            super(text, SwingConstants.CENTER);
+            setOpaque(false);
+            setFont(font(Font.BOLD, 12));
+            setForeground(PILL_FG);
+            setPreferredSize(new Dimension(66, 30));
+        }
+
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(PILL_BG);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    /* ===================== MOCK DATA (replace with DB calls) ===================== */
+
+    private void loadMockData() {
+        // TODO: Setup database here - retrieve today's timetable sessions for the lecturer
+        //       (time, module name, module code · hall · student count), ordered by time
+        List<String[]> schedule = new ArrayList<>();
+        schedule.add(new String[]{"10:30", "Software Engineering Principles", "CS3022 · Lab 3 · 92 students"});
+        schedule.add(new String[]{"13:00", "Data Structures & Algorithms",     "CS2042 · LT-1 · 104 students"});
+        schedule.add(new String[]{"15:30", "Project Consultation",             "CS4091 · Office 2.14 · by appointment"});
+        setSchedule(schedule);
+
+        // TODO: Setup database here - retrieve the latest notices for the lecturer's modules
+        //       (title, posted date · module code), newest first
+        List<String[]> notices = new ArrayList<>();
+        notices.add(new String[]{"CS3012 – Assignment 2 deadline extended", "Posted 25 Oct · CS3012"});
+        notices.add(new String[]{"Lab session rescheduled to Thursday",      "Posted 22 Oct · CS3022"});
+        notices.add(new String[]{"Mid-term exam timetable released",          "Posted 20 Oct · All courses"});
+        setNotices(notices);
     }
 }
