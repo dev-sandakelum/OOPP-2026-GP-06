@@ -1,27 +1,34 @@
 package UI.Pages.lecturer;
 
 import UI.Pages.Components.Card;
+import UI.Pages.Components.ChipRenderer;
+import UI.Pages.Components.ReadOnlyTableModel;
+import UI.Pages.Components.TextCellRenderer;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static UI.Kit.Palette.*;
+import static UI.Pages.Components.Ui.field;
+import static UI.Pages.Components.Ui.table;
 
 public class Medicals extends LecturerUI.Page {
 
-    private static final Color HEADER_BG = new Color(0xF3F6F3);
-    private static final Color ROW_LINE  = new Color(0xEEF2EF);
-    private static final Color BORDER    = new Color(0xE0E8E2);
+    // hairline under every row
+    private static final MatteBorder ROW_LINE = new MatteBorder(0, 0, 1, 0, LINE);
+
+    // status chip colors (same palette as the admin tables)
+    private static final Map<String, Color> STATUS_COLORS =
+            Map.of("Pending", WARN, "Approved", OK, "Rejected", BAD);
 
     // table columns
     private static final String[] COLUMNS =
@@ -31,7 +38,7 @@ public class Medicals extends LecturerUI.Page {
     private final DefaultTableModel model;
     private final JTable table;
     private final TableRowSorter<DefaultTableModel> sorter;
-    private final JTextField searchField = new JTextField();
+    private final JTextField searchField = field(20);
     private final JComboBox<String> statusFilter =
             new JComboBox<>(new String[]{"All statuses", "Pending", "Approved", "Rejected"});
     private final JLabel footer = new JLabel();
@@ -40,9 +47,7 @@ public class Medicals extends LecturerUI.Page {
         super("Medicals", "Review medical submissions", null);
 
         // read-only model: no cell can be edited
-        model = new DefaultTableModel(COLUMNS, 0) {
-            @Override public boolean isCellEditable(int row, int col) { return false; }
-        };
+        model = new ReadOnlyTableModel(COLUMNS);
         table = buildTable();
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
@@ -106,9 +111,7 @@ public class Medicals extends LecturerUI.Page {
         JPanel bar = new JPanel(new BorderLayout(10, 0));
         bar.setOpaque(false);
 
-        searchField.setFont(font(Font.PLAIN, 12));
-        searchField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER), new EmptyBorder(8, 12, 8, 12)));
+        searchField.setFont(font(Font.PLAIN, 13));
         searchField.putClientProperty("JTextField.placeholderText", "Search by student, reg. no or ref");  // shows with FlatLaf
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e)  { applyFilter(); }
@@ -116,8 +119,10 @@ public class Medicals extends LecturerUI.Page {
             public void changedUpdate(DocumentEvent e) { applyFilter(); }
         });
 
-        statusFilter.setFont(font(Font.PLAIN, 12));
-        statusFilter.setPreferredSize(new Dimension(160, 36));
+        statusFilter.setFont(font(Font.PLAIN, 13));
+        statusFilter.setForeground(INK);
+        statusFilter.setBackground(SURFACE);
+        statusFilter.setPreferredSize(new Dimension(170, 38));
         statusFilter.addActionListener(e -> applyFilter());
 
         bar.add(searchField, BorderLayout.CENTER);
@@ -126,49 +131,30 @@ public class Medicals extends LecturerUI.Page {
     }
 
     private JTable buildTable() {
-        JTable t = new JTable(model);
+        // shared flat table: soft header, 44px rows, tinted selection, status chips
+        JTable t = table(model, STATUS_COLORS, STATUS_COL);
         t.setFont(font(Font.PLAIN, 13));
-        t.setForeground(INK);
-        t.setRowHeight(46);
-        t.setShowGrid(false);
-        t.setIntercellSpacing(new Dimension(0, 0));
-        t.setFillsViewportHeight(true);
-        t.setRowSelectionAllowed(false);      // view only
-        t.setCellSelectionEnabled(false);
         t.setFocusable(false);
-        t.getTableHeader().setReorderingAllowed(false);
+        t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        // cells
-        DefaultTableCellRenderer cell = new DefaultTableCellRenderer() {
+        // text cells: Ref + Student in bold ink, the rest muted, hairline between rows
+        t.setDefaultRenderer(Object.class, new TextCellRenderer() {
             @Override public Component getTableCellRendererComponent(JTable tb, Object v, boolean sel, boolean foc, int r, int c) {
-                super.getTableCellRendererComponent(tb, v, false, false, r, c);
-                setBorder(BorderFactory.createCompoundBorder(
-                        new MatteBorder(0, 0, 1, 0, ROW_LINE), new EmptyBorder(0, 14, 0, 14)));
-                setForeground(c == 1 ? INK : INK_2);
-                setFont(font(c == 0 || c == 1 ? Font.BOLD : Font.PLAIN, 13));
-                setBackground(Color.WHITE);
-                return this;
-            }
-        };
-        t.setDefaultRenderer(Object.class, cell);
-        t.getColumnModel().getColumn(STATUS_COL).setCellRenderer(new StatusRenderer());
-
-        // header
-        JTableHeader h = t.getTableHeader();
-        h.setPreferredSize(new Dimension(0, 40));
-        h.setDefaultRenderer(new DefaultTableCellRenderer() {
-            @Override public Component getTableCellRendererComponent(JTable tb, Object v, boolean s, boolean f, int r, int c) {
-                JLabel l = (JLabel) super.getTableCellRendererComponent(tb, v, false, false, r, c);
-                l.setText(String.valueOf(v).toUpperCase());
-                l.setFont(font(Font.BOLD, 11));
-                l.setForeground(INK_2);
-                l.setBackground(HEADER_BG);
-                l.setOpaque(true);
-                l.setBorder(BorderFactory.createCompoundBorder(
-                        new MatteBorder(0, 0, 1, 0, BORDER), new EmptyBorder(0, 14, 0, 14)));
+                JLabel l = (JLabel) super.getTableCellRendererComponent(tb, v, sel, foc, r, c);
+                l.setFont(font(c <= 1 ? Font.BOLD : Font.PLAIN, 13));
+                l.setForeground(c <= 1 ? INK : INK_2);
+                l.setBorder(BorderFactory.createCompoundBorder(ROW_LINE, l.getBorder()));
                 return l;
             }
         });
+
+        // status chips also get the row hairline
+        ChipRenderer chips = new ChipRenderer(STATUS_COLORS);
+        chips.setBorder(ROW_LINE);
+        t.getColumnModel().getColumn(STATUS_COL).setCellRenderer(chips);
+
+        // header bottom line
+        t.getTableHeader().setBorder(new MatteBorder(0, 0, 1, 0, LINE));
 
         // column widths
         int[] w = {90, 190, 120, 150, 190, 100, 110};
@@ -179,18 +165,19 @@ public class Medicals extends LecturerUI.Page {
     private JComponent buildTableCard() {
         Card card = new Card(false);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(0, 0, 0, 0));
+        card.setBorder(new EmptyBorder(8, 8, 4, 8));   // keeps header/rows inside the rounded corners
 
         footer.setFont(font(Font.PLAIN, 12));
         footer.setForeground(INK_2);
-        footer.setBorder(new EmptyBorder(11, 14, 11, 14));
-        JPanel foot = new JPanel(new BorderLayout());
-        foot.setBackground(HEADER_BG);
-        foot.add(footer, BorderLayout.WEST);
+        footer.setBorder(new EmptyBorder(10, 16, 6, 16));
 
-        card.add(table.getTableHeader(), BorderLayout.NORTH);
-        card.add(table, BorderLayout.CENTER);
-        card.add(foot, BorderLayout.SOUTH);
+        JPanel grid = new JPanel(new BorderLayout());
+        grid.setOpaque(false);
+        grid.add(table.getTableHeader(), BorderLayout.NORTH);
+        grid.add(table, BorderLayout.CENTER);
+
+        card.add(grid, BorderLayout.CENTER);
+        card.add(footer, BorderLayout.SOUTH);
         return card;
     }
 
@@ -215,54 +202,6 @@ public class Medicals extends LecturerUI.Page {
 
     private void updateFooter() {
         footer.setText(table.getRowCount() + " of " + model.getRowCount() + " medical submissions");
-    }
-
-    /* ===================================================================== */
-    /*  STATUS TAG                                                            */
-    /* ===================================================================== */
-
-    private static class StatusRenderer extends DefaultTableCellRenderer {
-        @Override public Component getTableCellRendererComponent(JTable tb, Object v, boolean s, boolean f, int r, int c) {
-            JPanel wrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0)) {
-                @Override public Dimension getPreferredSize() { return new Dimension(0, 46); }
-            };
-            wrap.setBackground(Color.WHITE);
-            wrap.setBorder(new MatteBorder(0, 0, 1, 0, ROW_LINE));
-
-            JPanel center = new JPanel(new GridBagLayout());   // vertically centre the pill
-            center.setOpaque(false);
-            center.setPreferredSize(new Dimension(90, 46));
-            center.add(new Pill(String.valueOf(v)));
-            wrap.add(center);
-            return wrap;
-        }
-    }
-
-    private static class Pill extends JLabel {
-        private final Color bg;
-
-        Pill(String status) {
-            super(status, SwingConstants.CENTER);
-            Color fg;
-            switch (status) {
-                case "Approved" -> { bg = new Color(0xE1F1E8); fg = new Color(0x2E7D5B); }
-                case "Rejected" -> { bg = new Color(0xFBE6E3); fg = new Color(0xC0453A); }
-                default         -> { bg = new Color(0xFBF1DC); fg = new Color(0xB97A14); }   // Pending
-            }
-            setOpaque(false);
-            setForeground(fg);
-            setFont(font(Font.BOLD, 11));
-            setBorder(new EmptyBorder(4, 12, 4, 12));
-        }
-
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(bg);
-            g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
-            g2.dispose();
-            super.paintComponent(g);
-        }
     }
 
     /* ===================================================================== */
