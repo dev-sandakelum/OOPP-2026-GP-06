@@ -1,21 +1,17 @@
 package UI.Pages.Student;
 
-import UI.Pages.Components.*;
-import UI.Pages.Components.Chip;
-import javax.swing.table.DefaultTableModel;
 import UI.Pages.Components.Card;
+import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.RoundedButton;
 import data.UserData;
 import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 import static UI.Kit.Palette.*;
 
@@ -41,17 +37,14 @@ public class Overview extends Page {
         kpis.setAlignmentX(Component.LEFT_ALIGNMENT);
         body.add(kpis);
 
-        body.add(Box.createVerticalStrut(24));
+        body.add(Box.createVerticalStrut(30));
 
         // Eligibility section
         JPanel eligibility = createEligibilitySection();
         eligibility.setAlignmentX(Component.LEFT_ALIGNMENT);
-        eligibility.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 380)
-        );
         body.add(eligibility);
 
-        body.add(Box.createVerticalStrut(24));
+        body.add(Box.createVerticalStrut(30));
 
         // Notices Board
         JPanel noticesBoard = createNoticesBoard();
@@ -60,7 +53,6 @@ public class Overview extends Page {
 
         setScrollBody(body);
     }
-
 
     // ---------- KPI cards ----------
     private JComponent kpiRow() {
@@ -73,6 +65,7 @@ public class Overview extends Page {
         };
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
         row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 124));
         for (int i = 0; i < kpis.length; i++) {
             row.add(kpiCard(kpis[i][0], kpis[i][1], kpis[i][2], i == 0));
         }
@@ -83,7 +76,6 @@ public class Overview extends Page {
         Card c = new Card(dark);
         c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
         c.setBorder(new EmptyBorder(18, 20, 18, 20));
-        c.setPreferredSize(new Dimension(0, 124));
         Color muted = dark ? new Color(190, 215, 200) : INK_2;
 
         JLabel l = new JLabel(label);
@@ -108,240 +100,276 @@ public class Overview extends Page {
         JPanel section = new JPanel(new BorderLayout(0, 15));
         section.setOpaque(false);
 
-        // Header: Title + Subtitle
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
 
-        JPanel titles = new JPanel(new GridLayout(2, 1));
-        titles.setOpaque(false);
+        JPanel titlePanel = new JPanel();
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+        titlePanel.setOpaque(false);
+
         JLabel title = new JLabel("Final exam eligibility");
-        title.setFont(font(Font.BOLD, 20));
+        title.setFont(font(Font.BOLD, 18));
         title.setForeground(INK);
 
         JLabel subtitle = new JLabel("Attendance ≥ 80% combined · CA ≥ 40% per module");
         subtitle.setFont(font(Font.PLAIN, 13));
         subtitle.setForeground(INK_2);
 
-        titles.add(title);
-        titles.add(subtitle);
+        titlePanel.add(title);
+        titlePanel.add(subtitle);
 
-        header.add(titles, BorderLayout.WEST);
+        JPanel legend = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        legend.setOpaque(false);
+        legend.add(legendItem("present", new Color(46, 125, 50)));
+        legend.add(legendItem("medical leave", new Color(245, 176, 65)));
+        legend.add(legendItem("absent", new Color(245, 200, 200)));
 
-        // Sample Data
-        String[] columns = {"MODULE", "COMBINED", "CA / 100", "ATTENDANCE", "CA", "VERDICT"};
+        header.add(titlePanel, BorderLayout.WEST);
+        header.add(legend, BorderLayout.EAST);
 
-        Color fgGreen = new Color(46, 125, 50);
+        Card tableCard = new Card(false);
+        tableCard.setLayout(new BoxLayout(tableCard, BoxLayout.Y_AXIS));
+        tableCard.setBorder(new EmptyBorder(10, 20, 20, 20));
 
-        Object[][] data = {
-                {"ICT2131 Programming with Java", 90, "76", new Chip("Eligible", fgGreen), new Chip("CA ≥ 40", fgGreen), new Chip("Eligible", fgGreen)},
-                {"ICT2132 Object Oriented Programming Practicum", 93, "82", new Chip("Eligible", fgGreen), new Chip("CA ≥ 40", fgGreen), new Chip("Eligible", fgGreen)},
-                {"ICT2133 Database Management Systems", 93, "75", new Chip("Eligible", fgGreen), new Chip("CA ≥ 40", fgGreen), new Chip("Eligible", fgGreen)},
-                {"ICT2134 Data Structures & Algorithms", 93, "75", new Chip("Eligible", fgGreen), new Chip("CA ≥ 40", fgGreen), new Chip("Eligible", fgGreen)},
-                {"ICT2135 Software Engineering", 90, "73", new Chip("Eligible", fgGreen), new Chip("CA ≥ 40", fgGreen), new Chip("Eligible", fgGreen)},
-                {"ICT2136 Computer Networks", 90, "73", new Chip("Eligible", fgGreen), new Chip("CA ≥ 40", fgGreen), new Chip("Eligible", fgGreen)}
-        };
+        // Table Header with Perfectly Balanced Column Widths
+        JPanel headerRow = new JPanel();
+        headerRow.setLayout(new BoxLayout(headerRow, BoxLayout.X_AXIS));
+        headerRow.setOpaque(false);
+        headerRow.setBorder(new EmptyBorder(10, 0, 15, 0));
 
-        DefaultTableModel model = new DefaultTableModel(data, columns) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+        String[] cols = {"MODULE", "COMBINED", "CA / 100", "ATTENDANCE", "CA", "VERDICT"};
+        // Module column width increased to 360 so names don't cut off; others balanced nicely
+        int[] widths = {330, 130, 80, 110, 100, 110};
 
-        JTable table = new JTable(model);
+        for (int i = 0; i < cols.length; i++) {
+            JLabel l = new JLabel(cols[i]);
+            l.setFont(font(Font.BOLD, 11));
+            l.setForeground(INK_2);
+            headerRow.add(wrapCell(l, widths[i]));
+        }
 
-        table.setRowHeight(40);
-        table.setShowGrid(false);
-        table.setFillsViewportHeight(true);
+        tableCard.add(headerRow);
+        tableCard.add(new JSeparator(SwingConstants.HORIZONTAL));
 
-        TableColumnModel colModel = table.getColumnModel();
-
-
-        ChipRenderer chipRenderer = new ChipRenderer(new java.util.HashMap<>());
-        colModel.getColumn(3).setCellRenderer(chipRenderer);
-        colModel.getColumn(4).setCellRenderer(chipRenderer);
-        colModel.getColumn(5).setCellRenderer(chipRenderer);
-
-       //Create combined progress bar
-        colModel.getColumn(1).setCellRenderer((t, value, isSelected, hasFocus, row, column) -> {
-            JPanel p = new JPanel(new BorderLayout());
-            p.setOpaque(true);
-            p.setBackground(isSelected ? t.getSelectionBackground() : t.getBackground());
-            p.setBorder(new EmptyBorder(8, 5, 8, 20));
-
-            if (value instanceof Number) {
-                int val = ((Number) value).intValue();
-                JLabel lbl = new JLabel(val + "%");
-                lbl.setFont(font(Font.BOLD, 13));
-                lbl.setForeground(INK);
-
-                JProgressBar bar = new JProgressBar(0, 100);
-                bar.setValue(val);
-                bar.setForeground(new Color(27, 94, 32)); // Dark green
-                bar.setBackground(new Color(224, 224, 224));
-                bar.setBorderPainted(false);
-                bar.setPreferredSize(new Dimension(80, 6));
-
-                p.add(lbl, BorderLayout.NORTH);
-                p.add(bar, BorderLayout.SOUTH);
-            }
-            return p;
-        });
-
-        colModel.getColumn(0).setPreferredWidth(250);
-
-
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setPreferredSize(new Dimension(0, 320));
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
+        addEligibilityRow(tableCard, "ICT2131", "Programming with Java", 90, "76", widths);
+        addEligibilityRow(tableCard, "ICT2132", "Object Oriented Programming Practicum", 93, "82", widths);
+        addEligibilityRow(tableCard, "ICT2133", "Database Management Systems", 93, "75", widths);
+        addEligibilityRow(tableCard, "ICT2134", "Data Structures & Algorithms", 93, "75", widths);
+        addEligibilityRow(tableCard, "ICT2135", "Software Engineering", 90, "73", widths);
+        addEligibilityRow(tableCard, "ICT2136", "Computer Networks", 90, "73", widths);
 
         section.add(header, BorderLayout.NORTH);
-        section.add(scroll, BorderLayout.CENTER);
+        section.add(tableCard, BorderLayout.CENTER);
 
         return section;
     }
 
+    private void addEligibilityRow(JPanel container, String code, String name, int combined, String caScore, int[] widths) {
+        JPanel row = new JPanel();
+        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+        row.setOpaque(false);
+        row.setBorder(new EmptyBorder(12, 0, 12, 0));
 
-    private final java.util.List<String[]> notices = new ArrayList<>(List.of(
-            new String[]{ "Examination\n",
-                    "Mid-semester examinations",
-                    "Mid-semester exams begin next Monday. Check the timetable for your venue"
-                            + "\n"
-                             +"posted by Administration · 24 Sep 2026"},
+        // 1. Module
+        JPanel modPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        modPanel.setOpaque(false);
+        JLabel codeLbl = new JLabel(code + " ");
+        codeLbl.setFont(font(Font.BOLD, 13));
+        codeLbl.setForeground(INK);
+        JLabel nameLbl = new JLabel(name);
+        nameLbl.setFont(font(Font.PLAIN, 12));
+        nameLbl.setForeground(INK_2);
+        modPanel.add(codeLbl);
+        modPanel.add(nameLbl);
+        row.add(wrapCell(modPanel, widths[0]));
 
-            new String[]{"Attendance\n",
-                    "Attendance eligibility list published for all modules",
-                    "Session-by-session attendance for all 15 theory and practical sessions is now finalised. View the batch summary or your individual register to verify eligibility"
-                            +"\n"
-                            + "\nposted by Administration · 24 Sep 2026"},
+        // 2. Combined
+        JPanel combinedPanel = new JPanel();
+        combinedPanel.setLayout(new BoxLayout(combinedPanel, BoxLayout.Y_AXIS));
+        combinedPanel.setOpaque(false);
+        JLabel pctLbl = new JLabel(combined + (combined == 93 ? ".3%" : "%"));
+        pctLbl.setFont(font(Font.BOLD, 12));
+        pctLbl.setForeground(INK);
+        JProgressBar bar = new JProgressBar(0, 100);
+        bar.setValue(combined);
+        bar.setPreferredSize(new Dimension(95, 6));
+        bar.setMaximumSize(new Dimension(95, 6));
+        bar.setForeground(new Color(20, 80, 50));
+        bar.setBackground(new Color(230, 240, 230));
+        bar.setBorderPainted(false);
+        combinedPanel.add(pctLbl);
+        combinedPanel.add(Box.createVerticalStrut(3));
+        combinedPanel.add(bar);
+        row.add(wrapCell(combinedPanel, widths[1]));
 
-            new String[]{"Medicals\n", "Medical submission deadline — 30 September 2026", "Undergraduates are reminded that medicals for the semester must reach the Technical Officer on duty before 30 September. Late or unsealed submissions will be rejected.\n" +
-                    "\n" +
-                    "\nposted by Administration · 20 Sep 2026","2026.10.26"}
-    ));
-    // ---------- end placeholder data ----------
+        // 3. CA / 100
+        JLabel caLbl = new JLabel(caScore);
+        caLbl.setFont(font(Font.PLAIN, 13));
+        caLbl.setForeground(INK);
+        row.add(wrapCell(caLbl, widths[2]));
 
-    private final JPanel list = new JPanel();
+        // 4. Attendance
+        JPanel attPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        attPanel.setOpaque(false);
+        attPanel.add(new Chip("● Eligible", new Color(46, 125, 50)));
+        row.add(wrapCell(attPanel, widths[3]));
 
+        // 5. CA
+        JPanel caChipPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        caChipPanel.setOpaque(false);
+        caChipPanel.add(new Chip("● CA ≥ 40", new Color(46, 125, 50)));
+        row.add(wrapCell(caChipPanel, widths[4]));
 
+        // 6. Verdict
+        JPanel verdictPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        verdictPanel.setOpaque(false);
+        verdictPanel.add(new Chip("● Eligible", new Color(46, 125, 50)));
+        row.add(wrapCell(verdictPanel, widths[5]));
+
+        container.add(row);
+        container.add(new JSeparator(SwingConstants.HORIZONTAL));
+    }
+
+    // Helper method to lock column widths
+    private JComponent wrapCell(JComponent content, int width) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        p.add(content, BorderLayout.WEST);
+        Dimension d = new Dimension(width, 40);
+        p.setPreferredSize(d);
+        p.setMinimumSize(d);
+        p.setMaximumSize(new Dimension(width, Integer.MAX_VALUE));
+        return p;
+    }
+
+    private JComponent legendItem(String text, Color color) {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        p.setOpaque(false);
+        JLabel dot = new JLabel("■");
+        dot.setForeground(color);
+        dot.setFont(font(Font.PLAIN, 10));
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(font(Font.PLAIN, 12));
+        lbl.setForeground(INK_2);
+        p.add(dot);
+        p.add(lbl);
+        return p;
+    }
+
+    // ---------- Notice Board Section ----------
     private JPanel createNoticesBoard() {
-
         JPanel section = new JPanel(new BorderLayout(0, 16));
         section.setOpaque(false);
-        section.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Heading
-        JLabel title = new JLabel("Notices Board");
-        title.setFont(font(Font.BOLD, 22));
+        JPanel titlePanel = new JPanel();
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+        titlePanel.setOpaque(false);
+        JLabel title = new JLabel("Notice board");
+        title.setFont(font(Font.BOLD, 18));
         title.setForeground(INK);
-
         JLabel subtitle = new JLabel("Latest faculty announcements");
         subtitle.setFont(font(Font.PLAIN, 13));
         subtitle.setForeground(INK_2);
-
-        RoundedButton viewButton = new RoundedButton("View all", false);
-
-        JPanel titlePanel = new JPanel(new GridLayout(2, 1, 0, 5));
-        titlePanel.setOpaque(false);
         titlePanel.add(title);
         titlePanel.add(subtitle);
+
+        RoundedButton viewButton = new RoundedButton("View all", false);
 
         JPanel heading = new JPanel(new BorderLayout());
         heading.setOpaque(false);
         heading.add(titlePanel, BorderLayout.WEST);
         heading.add(viewButton, BorderLayout.EAST);
 
-        // Notices list
+        JPanel list = new JPanel();
         list.setOpaque(false);
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+
+        String[][] notices = {
+                {"28", "SEP", "EXAMINATION", "Final examination timetable — Level II Semester I",
+                        "The final examination timetable has been published. Examinations begin on 26 October 2026. Check your eligibility (attendance ≥ 80% and CA ≥ 40%) before the exam. Hall tickets will be issued from 20 October.",
+                        "posted by Administration · 28 Sep 2026"},
+
+                {"24", "SEP", "ATTENDANCE", "Attendance eligibility list published for all modules",
+                        "Session-by-session attendance for all 15 theory and practical sessions is now finalised. View the batch summary or your individual register to verify eligibility.",
+                        "posted by Administration · 24 Sep 2026"},
+
+                {"20", "SEP", "MEDICALS", "Medical submission deadline — 30 September 2026",
+                        "Undergraduates are reminded that medicals for the semester must reach the Technical Officer on duty before 30 September. Late or unsealed submissions will be rejected.",
+                        "posted by Administration · 20 Sep 2026"}
+        };
+
+        for (String[] n : notices) {
+            list.add(noticeCard(n[0], n[1], n[2], n[3], n[4], n[5]));
+            list.add(Box.createVerticalStrut(12));
+        }
 
         section.add(heading, BorderLayout.NORTH);
         section.add(list, BorderLayout.CENTER);
 
-        refresh();
-
-        viewButton.addActionListener(e -> {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "All faculty notices",
-                    "Notices Board",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-        });
-
         return section;
     }
 
-    private void refresh() {
+    private JComponent noticeCard(String day, String month, String tag, String title, String desc, String footer) {
+        Card card = new Card(false);
+        card.setLayout(new BorderLayout(20, 0));
+        card.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        list.removeAll();
+        JPanel dateBlock = new JPanel(new GridLayout(2, 1));
+        dateBlock.setOpaque(false);
+        JLabel dayLbl = new JLabel(day, SwingConstants.CENTER);
+        dayLbl.setFont(font(Font.BOLD, 22));
+        dayLbl.setForeground(new Color(2, 48, 71));
+        JLabel monthLbl = new JLabel(month, SwingConstants.CENTER);
+        monthLbl.setFont(font(Font.PLAIN, 11));
+        monthLbl.setForeground(Color.GRAY);
+        dateBlock.add(dayLbl);
+        dateBlock.add(monthLbl);
 
-        for (String[] notice : notices) {
-            list.add(noticeCard(notice));
-            list.add(Box.createVerticalStrut(12));
-        }
+        JPanel dateContainer = new JPanel(new BorderLayout());
+        dateContainer.setOpaque(false);
+        dateContainer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(235, 235, 235)),
+                new EmptyBorder(0, 5, 0, 20)
+        ));
+        dateContainer.add(dateBlock, BorderLayout.NORTH);
 
-        list.revalidate();
-        list.repaint();
-    }
+        JPanel contentBlock = new JPanel();
+        contentBlock.setLayout(new BoxLayout(contentBlock, BoxLayout.Y_AXIS));
+        contentBlock.setOpaque(false);
 
-    private JComponent noticeCard(String[] notice) {
+        JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        topRow.setOpaque(false);
+        topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        topRow.add(new Chip(tag, new Color(46, 125, 50)));
 
-        JPanel card = new Card(false);
-        card.setLayout(new BorderLayout(15, 0));
-        card.setBorder(new EmptyBorder(16, 18, 16, 18));
-        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel titleLbl = new JLabel(title);
+        titleLbl.setFont(font(Font.BOLD, 15));
+        titleLbl.setForeground(INK);
+        topRow.add(titleLbl);
 
-        // Date - currently stored inside the notice description
-        JLabel date = new JLabel(
-                "<html><center>24 Sep<br>2026</center></html>"
-        );
-        date.setFont(font(Font.BOLD, 13));
-        date.setForeground(BRAND);
-        date.setHorizontalAlignment(SwingConstants.CENTER);
+        JTextArea descArea = new JTextArea(desc);
+        descArea.setFont(font(Font.PLAIN, 13));
+        descArea.setForeground(INK_2);
+        descArea.setOpaque(false);
+        descArea.setEditable(false);
+        descArea.setFocusable(false);
+        descArea.setLineWrap(true);
+        descArea.setWrapStyleWord(true);
+        descArea.setBorder(new EmptyBorder(10, 0, 10, 0));
+        descArea.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel datePanel = new JPanel(new BorderLayout());
-        datePanel.setOpaque(false);
-        datePanel.setPreferredSize(new Dimension(65, 55));
-        datePanel.add(date, BorderLayout.CENTER);
+        JLabel footerLbl = new JLabel(footer);
+        footerLbl.setFont(font(Font.PLAIN, 11));
+        footerLbl.setForeground(Color.GRAY);
+        footerLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Notice title
-        JLabel noticeTitle = new JLabel(notice[1]);
-        noticeTitle.setFont(font(Font.BOLD, 15));
-        noticeTitle.setForeground(INK);
+        contentBlock.add(topRow);
+        contentBlock.add(descArea);
+        contentBlock.add(footerLbl);
 
-        // Notice description
-        JTextArea description = new JTextArea(notice[2]);
-        description.setFont(font(Font.PLAIN, 13));
-        description.setForeground(INK_2);
-        description.setOpaque(false);
-        description.setEditable(false);
-        description.setFocusable(false);
-        description.setLineWrap(true);
-        description.setWrapStyleWord(true);
-        description.setBorder(null);
-
-        // Notice category
-        Chip category = new Chip(notice[0], BRAND);
-
-        JPanel heading = new JPanel(new BorderLayout(10, 0));
-        heading.setOpaque(false);
-        heading.add(category, BorderLayout.WEST);
-        heading.add(noticeTitle, BorderLayout.CENTER);
-
-        JPanel content = new JPanel(new BorderLayout(0, 9));
-        content.setOpaque(false);
-        content.add(heading, BorderLayout.NORTH);
-        content.add(description, BorderLayout.CENTER);
-
-        card.add(datePanel, BorderLayout.WEST);
-        card.add(content, BorderLayout.CENTER);
+        card.add(dateContainer, BorderLayout.WEST);
+        card.add(contentBlock, BorderLayout.CENTER);
 
         return card;
     }
-
-
 }
-
