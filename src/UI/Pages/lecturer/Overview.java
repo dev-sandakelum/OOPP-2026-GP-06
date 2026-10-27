@@ -71,70 +71,11 @@ public class Overview extends LecturerUI.Page {
 
     // ==================== MIDDLE SECTION ====================
     private JComponent middleSection() {
-        JPanel panel = new JPanel(new GridLayout(1, 2, 16, 0));
+        JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
 
-        // Left: Average Marks per Course
-        panel.add(averageMarksPanel());
-
-        // Right: Today's Schedule
-        panel.add(todaysSchedulePanel());
-
-        return panel;
-    }
-
-    // ==================== AVERAGE MARKS CHART ====================
-    private JComponent averageMarksPanel() {
-        Card card = new Card(false);
-        card.setLayout(new BorderLayout(0, 15));
-        card.setBorder(new EmptyBorder(20, 20, 20, 20));
-
-        // Header
-        JLabel titleLabel = new JLabel("Average marks per course");
-        titleLabel.setFont(font(Font.BOLD, 14));
-        titleLabel.setForeground(INK);
-
-        // Chart Panel
-        JPanel chartContent = createBarChartPanel();
-
-        card.add(titleLabel, BorderLayout.NORTH);
-        card.add(chartContent, BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private JPanel createBarChartPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
-        panel.setOpaque(false);
-
-        // TODO: Connect to MySQL database to fetch average marks per course
-        String[] courses = {"CS101", "CS201", "SE301", "CS202", "AM01"};
-        int[] averages = {75, 82, 88, 76, 85}; // Sample data - replace with DB queries
-
-        int maxHeight = 120;
-
-        for (int i = 0; i < courses.length; i++) {
-            JPanel barContainer = new JPanel(new BorderLayout(0, 8));
-            barContainer.setOpaque(false);
-            barContainer.setPreferredSize(new Dimension(50, 160));
-
-            // Bar
-            JPanel bar = new JPanel();
-            bar.setBackground(new Color(80, 140, 100));
-            int barHeight = (averages[i] * maxHeight) / 100;
-            bar.setPreferredSize(new Dimension(40, barHeight));
-
-            // Label
-            JLabel courseLabel = new JLabel(courses[i]);
-            courseLabel.setFont(font(Font.PLAIN, 10));
-            courseLabel.setForeground(INK_2);
-            courseLabel.setHorizontalAlignment(JLabel.CENTER);
-
-            barContainer.add(bar, BorderLayout.CENTER);
-            barContainer.add(courseLabel, BorderLayout.SOUTH);
-
-            panel.add(barContainer);
-        }
+        // Today's Schedule (expanded full width)
+        panel.add(todaysSchedulePanel(), BorderLayout.CENTER);
 
         return panel;
     }
@@ -143,7 +84,7 @@ public class Overview extends LecturerUI.Page {
     private JComponent todaysSchedulePanel() {
         Card card = new Card(false);
         card.setLayout(new BorderLayout(0, 0));
-        card.setBorder(new EmptyBorder(20, 20, 20, 20));
+        card.setBorder(new EmptyBorder(20, 20, 10, 20));
 
         // Header
         JLabel titleLabel = new JLabel("Today's schedule");
@@ -198,6 +139,10 @@ public class Overview extends LecturerUI.Page {
         table.getColumnModel().getColumn(0).setPreferredWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
         table.getColumnModel().getColumn(2).setPreferredWidth(60);
+
+        // Fit viewport height to rows (default is 400px, which leaves empty space)
+        table.setPreferredScrollableViewportSize(new Dimension(
+                table.getPreferredSize().width, table.getRowHeight() * table.getRowCount()));
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(null);

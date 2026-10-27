@@ -1,10 +1,7 @@
 package UI.Pages.lecturer;
 
-import javax.swing.*;
-
-public class Undergraduates {
-    Undergraduates(){
-        JFrame frame = new JFrame();
-        frame.setVisible(true);
+public class Undergraduates extends LecturerUI.Page {
+    public Undergraduates() {
+        super("Undergraduates", "Students in your modules", null);
     }
 }
