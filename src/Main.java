@@ -1,4 +1,5 @@
 import UI.Pages.AdminPages;
+import UI.Pages.StudentPages;
 import data.UserData;
 import database.Database;
 import model.User;
@@ -22,7 +23,7 @@ public class Main {
         User u2 = new User(ud.findById(7));
 
 
-        SwingUtilities.invokeLater(() -> new AdminPages(u2).setVisible(true));
+        SwingUtilities.invokeLater(() -> new StudentPages(u2).setVisible(true));
 
     }
 }
