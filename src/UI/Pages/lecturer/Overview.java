@@ -243,7 +243,8 @@ public class Overview extends LecturerUI.Page {
     }
 
     private JPanel createNoticesContentPanel() {
-        JPanel panel = new JPanel(new BoxLayout(new JPanel(), BoxLayout.Y_AXIS));
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setOpaque(false);
 
         // TODO: Connect to MySQL database to fetch notices and medical requests
@@ -292,7 +293,8 @@ public class Overview extends LecturerUI.Page {
         subtitleLabel.setForeground(INK_2);
 
         // Text panel
-        JPanel textPanel = new JPanel(new BoxLayout(new JPanel(), BoxLayout.Y_AXIS));
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
         textPanel.add(titleLabel);
         textPanel.add(subtitleLabel);
