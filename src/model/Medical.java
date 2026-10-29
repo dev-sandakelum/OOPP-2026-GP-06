@@ -3,41 +3,51 @@ package model;
 import java.sql.Date;
 
 public class Medical {
-
-    private int medical_id;
-    private int student_id;
-    private Date medical_date;
+    private int medicalId;
+    private int studentId;
+    private Date medicalDate;
     private String reason;
-    private String certificate_path;
-    private String status;
-    private String reviewer_note;
-    private Date reviewed_date;
+    private String certificatePath;
+    private String status; // PENDING, APPROVED, REJECTED
+    private String reviewerNote;
+    private Date reviewedDate;
 
-    public Medical() {
+    public Medical() {}
+
+    public Medical(int medicalId, int studentId, Date medicalDate, String reason,
+                   String certificatePath, String status, String reviewerNote, Date reviewedDate) {
+        this.medicalId = medicalId;
+        this.studentId = studentId;
+        this.medicalDate = medicalDate;
+        this.reason = reason;
+        this.certificatePath = certificatePath;
+        this.status = status;
+        this.reviewerNote = reviewerNote;
+        this.reviewedDate = reviewedDate;
     }
 
-    public int getMedical_id() {
-        return medical_id;
+    public int getMedicalId() {
+        return medicalId;
     }
 
-    public void setMedical_id(int medical_id) {
-        this.medical_id = medical_id;
+    public void setMedicalId(int medicalId) {
+        this.medicalId = medicalId;
     }
 
-    public int getStudent_id() {
-        return student_id;
+    public int getStudentId() {
+        return studentId;
     }
 
-    public void setStudent_id(int student_id) {
-        this.student_id = student_id;
+    public void setStudentId(int studentId) {
+        this.studentId = studentId;
     }
 
-    public Date getMedical_date() {
-        return medical_date;
+    public Date getMedicalDate() {
+        return medicalDate;
     }
 
-    public void setMedical_date(Date medical_date) {
-        this.medical_date = medical_date;
+    public void setMedicalDate(Date medicalDate) {
+        this.medicalDate = medicalDate;
     }
 
     public String getReason() {
@@ -48,12 +58,12 @@ public class Medical {
         this.reason = reason;
     }
 
-    public String getCertificate_path() {
-        return certificate_path;
+    public String getCertificatePath() {
+        return certificatePath;
     }
 
-    public void setCertificate_path(String certificate_path) {
-        this.certificate_path = certificate_path;
+    public void setCertificatePath(String certificatePath) {
+        this.certificatePath = certificatePath;
     }
 
     public String getStatus() {
@@ -64,33 +74,19 @@ public class Medical {
         this.status = status;
     }
 
-    public String getReviewer_note() {
-        return reviewer_note;
+    public String getReviewerNote() {
+        return reviewerNote;
     }
 
-    public void setReviewer_note(String reviewer_note) {
-        this.reviewer_note = reviewer_note;
+    public void setReviewerNote(String reviewerNote) {
+        this.reviewerNote = reviewerNote;
     }
 
-    public Date getReviewed_date() {
-        return reviewed_date;
+    public Date getReviewedDate() {
+        return reviewedDate;
     }
 
-    public void setReviewed_date(Date reviewed_date) {
-        this.reviewed_date = reviewed_date;
-    }
-
-    @Override
-    public String toString() {
-        return "Medical{" +
-                "medical_id=" + medical_id +
-                ", student_id=" + student_id +
-                ", medical_date=" + medical_date +
-                ", reason='" + reason + '\'' +
-                ", certificate_path='" + certificate_path + '\'' +
-                ", status='" + status + '\'' +
-                ", reviewer_note='" + reviewer_note + '\'' +
-                ", reviewed_date=" + reviewed_date +
-                '}';
+    public void setReviewedDate(Date reviewedDate) {
+        this.reviewedDate = reviewedDate;
     }
 }
