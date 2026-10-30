@@ -74,7 +74,7 @@ public class Notices extends Page {
 
         JLabel date = new JLabel(n[3]);
         date.setFont(font(Font.PLAIN, 12));
-        date.setForeground(INK_2);
+      date.setForeground(INK_2);
 
         JPanel meta = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         meta.setOpaque(false);
@@ -84,7 +84,7 @@ public class Notices extends Page {
         JPanel head = new JPanel(new BorderLayout(0, 6));
         head.setOpaque(false);
         head.add(title, BorderLayout.NORTH);
-        head.add(meta, BorderLayout.CENTER);
+      head.add(meta, BorderLayout.CENTER);
 
         JTextArea message = new JTextArea(n[1]);
         message.setFont(font(Font.PLAIN, 14));

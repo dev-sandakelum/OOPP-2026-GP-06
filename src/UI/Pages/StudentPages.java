@@ -1,8 +1,10 @@
 package UI.Pages;
 
 import UI.Kit.FrameData;
+import UI.Pages.Components.ContentCard;
 import UI.Pages.Components.NavIcon;
 import UI.Pages.Components.Sidebar;
+import UI.Pages.Student.*;
 import model.User;
 
 import javax.swing.*;
@@ -37,21 +39,23 @@ public class StudentPages extends JFrame implements FrameData {
         getContentPane().setLayout(new BorderLayout());
         getContentPane().setBackground(PAGE_BG);
         getContentPane().add(sidebar, BorderLayout.WEST);
-        getContentPane().add(container(), BorderLayout.CENTER);
+        getContentPane().add(container(user), BorderLayout.CENTER);
     }
 
-    private JPanel container() {
+    private JPanel container(User user) {
         cardHost.setBackground(PAGE_BG);
-        for (String tab : studentTabs) {
-            JPanel page = new JPanel(new BorderLayout());
-            page.setOpaque(false);
-            JLabel title = new JLabel(tab);
-            title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-            title.setBorder(new EmptyBorder(24, 28, 0, 0));
-            page.add(title, BorderLayout.NORTH);   // replace with your real page for each tab
-            cardHost.add(page, tab);
-        }
-        return cardHost;
+        cardHost.add(new Overview(user), studentTabs[0]);
+        cardHost.add(new MyCourses(user), studentTabs[1]);
+        cardHost.add(new MyAttendance(user), studentTabs[2]);
+        cardHost.add(new MarksGPA(user), studentTabs[3]);
+        cardHost.add(new Medicals(user), studentTabs[4]);
+        cardHost.add(new Notices(user), studentTabs[5]);
+        cardHost.add(new Timetable(), studentTabs[6]);
+        cardHost.add(new MyProfile(user), studentTabs[7]);
+        
+
+
+        return new ContentCard(cardHost,PAGE_BG).withGaps(PAGE_BG);
     }
 
     // number of the selected card (0-based), straight from the sidebar
