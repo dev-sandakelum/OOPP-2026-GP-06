@@ -3,6 +3,9 @@ package UI.Pages.lecturer;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Chip;
 import UI.Pages.Components.ReadOnlyTableModel;
+import data.LecturerOverviewData;
+import data.NoticeData;
+import model.Notice;
 import model.User;
 
 import javax.swing.*;
@@ -12,6 +15,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.table;
@@ -21,19 +25,22 @@ import static UI.Pages.Components.Ui.table;
  * - 4 summary cards on top
  * - Today's schedule (left) and recent notices & medical requests (right)
  *
- * Every place marked "NEED TO ADD DATA FROM DATABASE" must be connected to MySQL.
- * The sample values in the code are only dummy data so the screen is not empty.
+ * All numbers and lists come from the database (LecturerOverviewData, NoticeData).
  */
 public class Overview extends LecturerUI.Page {
 
     DefaultTableModel scheduleModel = new ReadOnlyTableModel(new String[]{"Time", "Module", "Hall"});
     JPanel activityList = new JPanel();
 
+    private final LecturerOverviewData lecturerData = new LecturerOverviewData();
+    private final int lecturerId;
+
     public Overview(User user) {
         super("Overview",
                 "Welcome back, " + ((user != null && user.getName() != null) ? user.getName() : "Lecturer")
                         + "  ·  " + LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")),
                 null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
         // ----- Bottom row: schedule on the left, notices on the right -----
         JPanel bottom = new JPanel(new GridLayout(1, 2, 16, 0));
@@ -56,18 +63,11 @@ public class Overview extends LecturerUI.Page {
     // KPI CARDS
     // =====================================================================
     private JComponent kpiRow() {
-        // NEED TO ADD DATA FROM DATABASE:
-        // - My Modules:         SELECT COUNT(*) FROM courses WHERE lecturer_id = ?
-        // - Undergraduates:     number of students enrolled in the lecturer's modules
-        // - Average Attendance: average attendance % across the lecturer's modules
-        // - Pending Medicals:   SELECT COUNT(*) FROM medicals ... WHERE status = 'Pending'
-
-        // ---- dummy data ----  {label, value, small text}
         String[][] kpis = {
-                {"My Modules", "4", "This semester"},
-                {"Undergraduates", "312", "Across my modules"},
-                {"Average Attendance", "86%", "Across my modules"},
-                {"Pending Medicals", "3", "Awaiting decision"}
+                {"My Modules", String.valueOf(lecturerData.countModules(lecturerId)), "This semester"},
+                {"Undergraduates", String.valueOf(lecturerData.countStudents(lecturerId)), "Across my modules"},
+                {"Average Attendance", lecturerData.averageAttendance(lecturerId) + "%", "Across my modules"},
+                {"Pending Medicals", String.valueOf(lecturerData.countPendingMedicals(lecturerId)), "Awaiting decision"}
         };
 
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
@@ -122,38 +122,33 @@ public class Overview extends LecturerUI.Page {
     }
 
     private void loadSchedule() {
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT t.start_time, c.course_code, c.course_name, t.hall
-        // FROM timetable t JOIN courses c ON c.course_id = t.course_id
-        // WHERE c.lecturer_id = ? AND t.day = <today>
-        // ORDER BY t.start_time
-        // Call scheduleModel.addRow(...) for each row.
-
-        // ---- dummy data ----
         scheduleModel.setRowCount(0);
-        scheduleModel.addRow(new Object[]{"08:30", "CS101 - Programming", "LH-2"});
-        scheduleModel.addRow(new Object[]{"10:30", "SE301 - Software Engineering", "Lab-1"});
-        scheduleModel.addRow(new Object[]{"14:00", "AM02 - Machine Learning", "LH-5"});
+        String today = LocalDate.now().getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+        for (String[] row : lecturerData.todaySchedule(lecturerId, today)) {
+            scheduleModel.addRow(row);
+        }
     }
 
     // =====================================================================
     // RECENT NOTICES & MEDICAL REQUESTS
     // =====================================================================
     private void loadActivity() {
-        // NEED TO ADD DATA FROM DATABASE:
-        // - latest notices:  SELECT title, posted_date FROM notices WHERE lecturer_id = ? ORDER BY posted_date DESC LIMIT 3
-        // - latest medicals: SELECT s.name, s.reg_no, m.submitted_date FROM medicals m JOIN students s ...
-        //                    WHERE m.status = 'Pending' ORDER BY m.submitted_date DESC LIMIT 3
-        // Call addActivityRow(type, title, details) for each row.
-
         activityList.setOpaque(false);
         activityList.setLayout(new BoxLayout(activityList, BoxLayout.Y_AXIS));
         activityList.removeAll();
 
-        // ---- dummy data ----
-        addActivityRow("Notice", "Mid exam timetable released", "Posted 1 day ago");
-        addActivityRow("Medical", "Medical submitted - IT2034 Nirmal R.", "Awaiting review");
-        addActivityRow("Notice", "Assignment submission deadline extended", "Posted 3 days ago");
+        // latest 3 notices for lecturers
+        List<Notice> notices = new NoticeData().findByAudience("LECTURER");
+        for (int i = 0; i < Math.min(3, notices.size()); i++) {
+            Notice n = notices.get(i);
+            String posted = n.getCreated_date() == null ? "" : "Posted " + n.getCreated_date().toString().substring(0, 10);
+            addActivityRow("Notice", n.getTitle(), posted);
+        }
+
+        // latest 3 pending medicals of my students
+        for (String[] m : lecturerData.pendingMedicals(lecturerId, 3)) {
+            addActivityRow("Medical", "Medical submitted - " + m[0], "Dated " + m[1] + " · Awaiting review");
+        }
     }
 
     // One row: colored chip (Notice / Medical) + title + small details text

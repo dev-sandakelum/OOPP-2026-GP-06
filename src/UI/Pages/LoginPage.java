@@ -137,10 +137,20 @@ public class LoginPage extends JFrame implements FrameData {
         }
     }
 
-    /** Opens the correct frame based on userType stored in the DB. */
+
+    /** Opens the correct dashboard based on userType stored in the DB. */
     private void openDashboard(User user) {
         String type = user.getUserType();
-        if (type == null) type = "admin";       // safe default for old records
+
+        if (type == null || type.isBlank()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "User role is missing. Please check the database.",
+                    "Login Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
 
         JFrame dashboard;
         // users.user_type is an ENUM: ADMIN, LECTURER, TECHNICAL_OFFICER, UNDERGRADUATE
@@ -161,8 +171,10 @@ public class LoginPage extends JFrame implements FrameData {
                 return;
             }
         }
+
         dashboard.setVisible(true);
     }
+
 
     // ── helpers ───────────────────────────────────────────────────────────────
     private static JLabel fieldLabel(String text) {

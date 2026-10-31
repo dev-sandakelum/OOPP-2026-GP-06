@@ -3,6 +3,18 @@ package UI.Pages.lecturer;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.SimpleDocListener;
+import data.CourseData;
+import data.CourseOfferingData;
+import data.EnrollmentData;
+import data.ExamData;
+import data.ResultData;
+import data.UserData;
+import model.Course;
+import model.CourseOffering;
+import model.Enrollment;
+import model.Exam;
+import model.Result;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -10,6 +22,8 @@ import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -24,8 +38,8 @@ import static UI.Pages.Components.Ui.table;
  * - Lecturer selects a course and sees every student's marks, grade and grade point for that course.
  * - Lecturer can search students by name or student ID.
  *
- * Every place marked "NEED TO ADD DATA FROM DATABASE" must be connected to MySQL.
- * The sample rows are only dummy data so the screen is not empty.
+ * Courses and marks come from the database (CourseOfferingData, CourseData, EnrollmentData,
+ * ExamData, ResultData and UserData).
  */
 public class Grades_GPA extends LecturerUI.Page {
 
@@ -56,8 +70,19 @@ public class Grades_GPA extends LecturerUI.Page {
     // The sorter is used to hide rows that do not match the search text
     TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
 
-    public Grades_GPA() {
+    // ---------- Data layers ----------
+    private final CourseOfferingData offeringData = new CourseOfferingData();
+    private final CourseData courseData = new CourseData();
+    private final EnrollmentData enrollmentData = new EnrollmentData();
+    private final ExamData examData = new ExamData();
+    private final ResultData resultData = new ResultData();
+    private final UserData userData = new UserData();
+    private final int lecturerId;
+    private List<CourseOffering> offerings = new ArrayList<>();
+
+    public Grades_GPA(User user) {
         super("Grades & GPA", "Grades and GPA for your modules", null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
         table.setRowSorter(sorter);
         table.setFocusable(false);
@@ -135,13 +160,12 @@ public class Grades_GPA extends LecturerUI.Page {
     // LOAD COURSES
     // =====================================================================
     private void loadCourses() {
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT course_id, course_name FROM courses WHERE lecturer_id = ?
-        // (use the logged-in lecturer's id)
-
-        // ---- dummy data (delete when database is connected) ----
-        courseBox.addItem("IT1010 - Introduction to Programming");
-        courseBox.addItem("IT2020 - Database Systems");
+        offerings = offeringData.findByLecturer(lecturerId);
+        for (CourseOffering o : offerings) {
+            Course c = courseData.findById(o.getCourse_id());
+            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
+                    : c.getCourse_code() + " - " + c.getCourse_name());
+        }
     }
 
     // =====================================================================
@@ -154,30 +178,33 @@ public class Grades_GPA extends LecturerUI.Page {
         String course = (String) courseBox.getSelectedItem();
         if (course == null) return;
 
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT s.student_id, s.name, SUM(r.marks), SUM(q.total_marks)
-        // FROM students s
-        // JOIN quiz_results r ON r.student_id = s.student_id
-        // JOIN quizzes q      ON q.quiz_id = r.quiz_id
-        // JOIN modules m      ON m.module_id = q.module_id
-        // WHERE m.course_id = ?
-        // GROUP BY s.student_id, s.name
-        // Loop through the result set and call addRow(id, name, marks, total) for each row.
+        // total mark (out of 100) comes from the student's result in this course's exams
+        int index = courseBox.getSelectedIndex();
+        if (index >= 0) {
+            int offeringId = offerings.get(index).getOffering_id();
+            List<Exam> exams = examData.findByOffering(offeringId);
 
-        // ---- dummy data (delete when database is connected) ----
-        addRow("S001", "Nimal Perera", 78, 100);
-        addRow("S002", "Kamal Silva", 45, 100);
-        addRow("S003", "Sunil Fernando", 62, 100);
-        addRow("S004", "Amali Jayasinghe", 91, 100);
-        addRow("S005", "Nadeesha Kumari", 55, 100);
+            for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
+                Result r = null;
+                for (Exam exam : exams) {
+                    r = resultData.find(en.getStudent_id(), exam.getExamId());
+                    if (r != null) break;
+                }
+                if (r == null || r.getTotalMark() == null) continue;   // no marks entered yet
+
+                User student = userData.findById(en.getStudent_id());
+                addRow(String.valueOf(en.getStudent_id()), student == null ? "" : student.getName(),
+                        r.getTotalMark().doubleValue(), 100);
+            }
+        }
 
         updateFooter();
     }
 
-    private void addRow(String id, String name, int marks, int total) {
+    private void addRow(String id, String name, double marks, int total) {
         double percent = marks * 100.0 / total;
         String grade = Marks.gradeOf(percent)[0];
-        model.addRow(new Object[]{id, name, marks, total,
+        model.addRow(new Object[]{id, name, Marks.fmt(marks), total,
                 String.format("%.1f%%", percent), grade, String.format("%.2f", pointOf(grade))});
     }
 
