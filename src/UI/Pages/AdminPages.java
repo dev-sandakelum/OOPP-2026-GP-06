@@ -30,6 +30,7 @@ public class AdminPages extends JFrame implements FrameData {
     private final JPanel cardHost = new JPanel(cards);
 
     public AdminPages(User user) {
+        setTitle("AFMS — Admin · " + adminTabs[0]);
         setSize(width, height);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -38,8 +39,14 @@ public class AdminPages extends JFrame implements FrameData {
                 getClass().getResource("/assets/img.png"))).getImage());
 
         sidebar = new Sidebar(user, "ADMINISTRATOR", adminTabs, ICONS, PAGE_BG);
-        sidebar.setOnSelect(i -> cards.show(cardHost, adminTabs[i]));
-        sidebar.setOnLogout(this::dispose);   // login flow comes later
+        sidebar.setOnSelect(i -> {
+            cards.show(cardHost, adminTabs[i]);
+            setTitle("AFMS — Admin · " + adminTabs[i]);
+        });
+        sidebar.setOnLogout(() -> {
+            dispose();
+            SwingUtilities.invokeLater(() -> new LoginPage().setVisible(true));
+        });   // login flow comes later
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().setBackground(PAGE_BG);

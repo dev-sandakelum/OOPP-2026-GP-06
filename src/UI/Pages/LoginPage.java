@@ -26,7 +26,7 @@ public class LoginPage extends JFrame implements FrameData {
     private final JLabel errorLabel        = new JLabel(" ");
 
     public LoginPage() {
-        setTitle("FOTIMS — Login");
+        setTitle("AFMS — Login");
         setSize(860, 520);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -40,8 +40,8 @@ public class LoginPage extends JFrame implements FrameData {
         // left: cropped faculty photo with the brand caption (falls back to a blue panel without the image)
         PhotoPanel photo = new PhotoPanel(Assets.SIDEBAR_PHOTO, 0.30f, 0.66f, Palette.RADIUS_CARD);
         photo.setPreferredSize(new Dimension(380, 0));
-        photo.add(PhotoPanel.caption("FOTIMS", "FACULTY OF TECHNOLOGY  ·  UoR",
-                "Information Management System"), BorderLayout.SOUTH);
+        photo.add(PhotoPanel.caption("AFMS", "FACULTY OF TECHNOLOGY  ·  UoR",
+                "Academic & Faculty Management System"), BorderLayout.SOUTH);
         getContentPane().add(photo, BorderLayout.WEST);
         getContentPane().add(buildForm(), BorderLayout.CENTER);
     }
@@ -53,14 +53,14 @@ public class LoginPage extends JFrame implements FrameData {
         panel.setBorder(new EmptyBorder(44, 40, 36, 40));
 
         // Title
-        JLabel title = new JLabel("Sign in to FOTIMS");
+        JLabel title = new JLabel("Sign in to AFMS");
         title.setFont(new Font("Segoe UI", Font.BOLD, 24));
         title.setForeground(Palette.INK);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(title);
         panel.add(Box.createVerticalStrut(6));
 
-        JLabel subtitle = new JLabel("Faculty of Technology Information Management System");
+        JLabel subtitle = new JLabel("Academic & Faculty Management System");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         subtitle.setForeground(Palette.INK_2);
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
