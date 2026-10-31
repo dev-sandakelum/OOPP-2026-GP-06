@@ -153,7 +153,7 @@ public class LoginPage extends JFrame implements FrameData {
             case "lecturer" ->
                     dashboard = new LecturerPage(user);
 
-            case "officer", "technical officer" ->
+            case "officer", "technical officer", "technical_officer" ->
                     dashboard = new OfficerPages(user);
 
             case "student", "undergraduate" ->
