@@ -11,7 +11,7 @@ public class Database {
     private static final String DB = "afms_db";
     private static final String URL = "jdbc:mysql://" + HOST + ":" + PORT + "/" + DB;
     private static final String USER = "root";
-    private static final String PASSWORD = "1234";
+    private static final String PASSWORD = "";
 
     public static Connection getConnection() throws Exception{
         try {

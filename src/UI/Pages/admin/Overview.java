@@ -4,35 +4,89 @@ import UI.Pages.Components.BarMeter;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Dot;
 import UI.Pages.Components.Page;
-import data.UserData;
+import data.AdminData;
 import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.List;
 
 import static UI.Kit.Palette.*;
 
-// Admin "Overview" tab: 4 KPI cards, users by role, requires attention.
+/**
+ * Admin "Overview" tab.
+ *
+ * All numbers come from AdminData — no hard-coded placeholder data.
+ * The layout mirrors the original mock-up:
+ *   - top row  : 4 KPI cards (total users, active courses, notices, pending medicals)
+ *   - bottom row: "Users by role" bar chart  |  "Requires attention" alert list
+ */
 public class Overview extends Page {
 
-    // ---------- Placeholder data (swap for services later) ----------
-    private static final Object[][] ROLES = {
-            {"Undergraduates", 20}, {"Lecturers", 5}, {"Technical Officers", 4}, {"Administrators", 1}
-    };
-    private static final Object[][] ATTENTION = {
-            {"8 medicals pending", "Technical Officers need to decide", WARN},
-            {"3 undergraduates below 80% attendance", "Not eligible for final exam", BAD},
-            {"1 timetable slot unassigned", "Thursday, slot 3", WARN},
-            {"2 notices expire this week", "Review or renew", INK_2}
-    };
-    // ---------- end placeholder data ----------
+    private final AdminData adminData = new AdminData();
 
-    private final UserData userData = new UserData();
+    // KPI values fetched once on construction
+    private final int totalUsers;
+    private final int activeCourses;
+    private final int publishedNotices;
+    private final int pendingMedicals;
+
+    // Role counts fetched once on construction — List of {label, count}
+    private final List<String[]> roleCounts;
+
+    // Attention items built from live counts
+    private final Object[][] attention;
 
     public Overview(User user) {
-        super("Overview","Hello",null);
+        super("Overview",
+              "Hello, " + (user != null && user.getName() != null ? user.getName() : "Administrator"),
+              null);
 
+        // --- fetch from DB (all in one try so a DB failure shows a clear error) ---
+        int tu = 0, ac = 0, pn = 0, pm = 0;
+        List<String[]> rc = List.of();
+        try {
+            tu = adminData.countByRole("ADMIN")
+               + adminData.countByRole("UNDERGRADUATE")
+               + adminData.countByRole("LECTURER")
+               + adminData.countByRole("TECHNICAL_OFFICER");
+            ac = adminData.countActiveCourses();
+            pn = adminData.countPublishedNotices();
+            pm = adminData.countPendingMedicals();
+            rc = adminData.userCountsByRole();
+        } catch (Exception ex) {
+            // DB not reachable yet — values stay at 0, UI still renders
+            ex.printStackTrace();
+        }
+        totalUsers       = tu;
+        activeCourses    = ac;
+        publishedNotices = pn;
+        pendingMedicals  = pm;
+        roleCounts       = rc;
+
+        // Build attention rows from the same live counts
+        int lowAtt = 0, unassigned = 0, expiring = 0;
+        try {
+            lowAtt     = adminData.countLowAttendance(80);
+            unassigned = adminData.countUnassignedSlots();
+            expiring   = adminData.countExpiringNotices();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        attention = new Object[][]{
+            {pm + " medical" + (pm == 1 ? "" : "s") + " pending",
+                "Require review and decision", WARN},
+            {lowAtt + " student" + (lowAtt == 1 ? "" : "s") + " below 80% attendance",
+                "May not be eligible for the final exam", BAD},
+            {unassigned + " timetable slot" + (unassigned == 1 ? "" : "s") + " unassigned",
+                "Open the Timetables tab to assign courses", WARN},
+            {expiring + " notice" + (expiring == 1 ? "" : "s") + " expire this week",
+                "Review or renew before the deadline", INK_2}
+        };
+
+        // --- layout ---
         JPanel body = new JPanel(new BorderLayout(0, 20));
         body.setOpaque(false);
         body.add(kpiRow(), BorderLayout.NORTH);
@@ -40,14 +94,16 @@ public class Overview extends Page {
         setScrollBody(body);
     }
 
-    // ---------- KPI cards ----------
+    // -------------------------------------------------------------------------
+    //  KPI cards
+    // -------------------------------------------------------------------------
+
     private JComponent kpiRow() {
         String[][] kpis = {
-                {"Total users", String.valueOf(userData.count()), "Across all roles"},
-                {"Active courses", "6", "This semester"},
-                {"Notices", "5", "Published"},
-                {"Pending medicals", "8", "Awaiting decision"}
-
+            {"Total users",      String.valueOf(totalUsers),       "Across all roles"},
+            {"Active courses",   String.valueOf(activeCourses),    "This semester"},
+            {"Notices",          String.valueOf(publishedNotices), "Published"},
+            {"Pending medicals", String.valueOf(pendingMedicals),  "Awaiting decision"}
         };
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
         row.setOpaque(false);
@@ -67,9 +123,11 @@ public class Overview extends Page {
         JLabel l = new JLabel(label);
         l.setFont(font(Font.BOLD, 13));
         l.setForeground(muted);
+
         JLabel v = new JLabel(value);
         v.setFont(font(Font.BOLD, 34));
         v.setForeground(dark ? Color.WHITE : INK);
+
         JLabel s = new JLabel(sub);
         s.setFont(font(Font.PLAIN, 12));
         s.setForeground(muted);
@@ -81,11 +139,14 @@ public class Overview extends Page {
         return c;
     }
 
-    // ---------- Lower cards ----------
+    // -------------------------------------------------------------------------
+    //  Lower row
+    // -------------------------------------------------------------------------
+
     private JComponent lowerRow() {
         JPanel row = new JPanel(new GridLayout(1, 2, 16, 0));
         row.setOpaque(false);
-        row.add(infoCard("Users by role", rolesBody()));
+        row.add(infoCard("Users by role",      rolesBody()));
         row.add(infoCard("Requires attention", attentionBody()));
         return row;
     }
@@ -99,24 +160,35 @@ public class Overview extends Page {
         t.setFont(font(Font.BOLD, 16));
         t.setForeground(INK);
 
-        JPanel top = new JPanel(new BorderLayout());
-        top.setOpaque(false);
-        top.add(content, BorderLayout.NORTH);
+        // wrap content so it stays at the top of the card
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setOpaque(false);
+        wrap.add(content, BorderLayout.NORTH);
 
         c.add(t, BorderLayout.NORTH);
-        c.add(top, BorderLayout.CENTER);
+        c.add(wrap, BorderLayout.CENTER);
         return c;
     }
 
+    // -------------------------------------------------------------------------
+    //  "Users by role" bar chart
+    // -------------------------------------------------------------------------
+
     private JComponent rolesBody() {
         int total = 0;
-        for (Object[] r : ROLES) total += (Integer) r[1];
+        for (String[] r : roleCounts) {
+            try { total += Integer.parseInt(r[1]); } catch (NumberFormatException ignored) {}
+        }
+        final int grand = total;
 
         JPanel p = new JPanel();
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        for (Object[] r : ROLES) {
-            p.add(roleRow((String) r[0], (Integer) r[1], total));
+
+        for (String[] r : roleCounts) {
+            int count = 0;
+            try { count = Integer.parseInt(r[1]); } catch (NumberFormatException ignored) {}
+            p.add(roleRow(r[0], count, grand));
             p.add(Box.createVerticalStrut(10));
         }
         return p;
@@ -143,13 +215,21 @@ public class Overview extends Page {
         return row;
     }
 
+    // -------------------------------------------------------------------------
+    //  "Requires attention" list
+    // -------------------------------------------------------------------------
+
     private JComponent attentionBody() {
         JPanel p = new JPanel();
         p.setOpaque(false);
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        for (int i = 0; i < ATTENTION.length; i++) {
-            p.add(attentionRow((String) ATTENTION[i][0], (String) ATTENTION[i][1], (Color) ATTENTION[i][2]));
-            if (i < ATTENTION.length - 1) {
+
+        for (int i = 0; i < attention.length; i++) {
+            p.add(attentionRow(
+                    (String) attention[i][0],
+                    (String) attention[i][1],
+                    (Color)  attention[i][2]));
+            if (i < attention.length - 1) {
                 JSeparator sep = new JSeparator();
                 sep.setForeground(LINE);
                 sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
@@ -163,6 +243,7 @@ public class Overview extends Page {
         JLabel t = new JLabel(title);
         t.setFont(font(Font.BOLD, 14));
         t.setForeground(INK);
+
         JLabel s = new JLabel(sub);
         s.setFont(font(Font.PLAIN, 12));
         s.setForeground(INK_2);
