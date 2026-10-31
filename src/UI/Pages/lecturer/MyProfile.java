@@ -4,6 +4,7 @@ import UI.Pages.Components.Avatar;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import data.UserData;
 import model.User;
 
 import javax.swing.*;
@@ -14,7 +15,7 @@ import java.sql.Date;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Admin "My Profile" tab: shows and edits the logged-in user (the User model is not changed).
+// Lecturer "My Profile" tab: shows and edits the logged-in user (saved with UserData).
 public class MyProfile extends Page {
 
     private final User user;
@@ -61,12 +62,12 @@ public class MyProfile extends Page {
 
     private JComponent identityRow() {
         String shown = (user != null && user.getName() != null && !user.getName().isBlank())
-                ? user.getName() : "Administrator";
+                ? user.getName() : "Lecturer";
 
         JLabel t = new JLabel(shown);
         t.setFont(font(Font.BOLD, 20));
         t.setForeground(INK);
-        JLabel s = new JLabel("Administrator");
+        JLabel s = new JLabel("Lecturer");
         s.setFont(font(Font.PLAIN, 13));
         s.setForeground(INK_2);
 
@@ -138,7 +139,12 @@ public class MyProfile extends Page {
         user.setContact_number(contact.getText().trim());
         user.setDOB(d);
         user.setAddress(address.getText().trim());
-        user.setGender(gender.getText().trim());
-        info(this, "Profile saved.");
+        user.setGender(gender.getText().trim());   // gender is not stored in the database
+        try {
+            new UserData().update(user);
+            info(this, "Profile saved.");
+        } catch (Exception ex) {
+            info(this, "Could not save the profile: " + ex.getMessage());
+        }
     }
 }
