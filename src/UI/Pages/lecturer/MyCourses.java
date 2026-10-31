@@ -83,7 +83,11 @@ public class MyCourses extends LecturerUI.Page {
     JTextField quizTitleField = field(15);
     JTextField quizDateField = field(12);
     DefaultTableModel quizModel =
-            new ReadOnlyTableModel(new String[]{"Quiz Title", "Date"});
+            new ReadOnlyTableModel(new String[]{"Quiz Title", "Date", "File"});
+    JTable quizTable;
+    JLabel quizFileLabel = new JLabel("No quiz file uploaded");
+    private String uploadedQuizPath = null;   // .md file chosen with "Upload Quiz"; needed to schedule
+    private List<Assessment> quizzes = new ArrayList<>();   // same order as the rows of quizModel
 
     // ---------- Tab 3: Marks ----------
     JLabel summaryLabel = new JLabel(" ");
@@ -224,23 +228,102 @@ public class MyCourses extends LecturerUI.Page {
     private JPanel buildQuizTab() {
         RoundedButton scheduleBtn = new RoundedButton("Schedule Quiz", true);
         scheduleBtn.addActionListener(e -> scheduleQuiz());
+        RoundedButton uploadBtn = new RoundedButton("Upload Quiz (.md)", false);
+        uploadBtn.addActionListener(e -> uploadQuiz());
+        RoundedButton removeBtn = new RoundedButton("Remove Quiz", false);
+        removeBtn.addActionListener(e -> removeQuiz());
 
-        // form: labels on the first row, inputs on the second row
-        JPanel form = new JPanel(new GridLayout(2, 3, 12, 6));
+        // inputs: labels on the first row, fields on the second row
+        JPanel inputs = new JPanel(new GridLayout(2, 2, 12, 6));
+        inputs.setOpaque(false);
+        inputs.add(label("QUIZ TITLE"));
+        inputs.add(label("DATE (yyyy-MM-dd)"));
+        inputs.add(quizTitleField);
+        inputs.add(quizDateField);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        buttons.setOpaque(false);
+        buttons.add(scheduleBtn);
+        buttons.add(uploadBtn);
+        buttons.add(removeBtn);
+        quizFileLabel.setFont(font(Font.PLAIN, 12));
+        quizFileLabel.setForeground(INK_2);
+        buttons.add(quizFileLabel);
+
+        JPanel form = new JPanel(new BorderLayout(0, 12));
         form.setOpaque(false);
-        form.add(label("QUIZ TITLE"));
-        form.add(label("DATE (yyyy-MM-dd)"));
-        form.add(new JLabel());
-        form.add(quizTitleField);
-        form.add(quizDateField);
-        form.add(scheduleBtn);
+        form.add(inputs, BorderLayout.NORTH);
+        form.add(buttons, BorderLayout.SOUTH);
 
-        return tabPanel(formCard("Schedule a new quiz", form), table(quizModel, null, -1));
+        quizTable = table(quizModel, null, -1);
+        return tabPanel(formCard("Schedule a new quiz", form), quizTable);
     }
 
+    // Schedule works only after a .md quiz file has been uploaded
     private void scheduleQuiz() {
-        int index = courseBox.getSelectedIndex();
+        if (uploadedQuizPath == null) {
+            JOptionPane.showMessageDialog(this, "Please upload the quiz (.md file) before scheduling it.");
+            return;
+        }
+
+        // no title typed -> use the file name without ".md"
         String title = quizTitleField.getText().trim();
+        if (title.isEmpty()) {
+            String name = Paths.get(uploadedQuizPath).getFileName().toString();
+            title = name.substring(0, name.length() - 3);
+        }
+        saveQuiz(title, uploadedQuizPath);
+    }
+
+    // Choose a quiz saved as a .md file; it is copied to uploads/quizzes and used by "Schedule Quiz"
+    private void uploadQuiz() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Markdown quiz (*.md)", "md"));
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+        File chosen = chooser.getSelectedFile();
+
+        if (!chosen.getName().toLowerCase().endsWith(".md")) {
+            JOptionPane.showMessageDialog(this, "Only .md files can be uploaded.");
+            return;
+        }
+
+        try {
+            Path folder = Paths.get("uploads", "quizzes");
+            Files.createDirectories(folder);
+            Path saved = folder.resolve(chosen.getName());
+            Files.copy(chosen.toPath(), saved, StandardCopyOption.REPLACE_EXISTING);
+
+            uploadedQuizPath = saved.toString();
+            quizFileLabel.setText("Uploaded: " + chosen.getName());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Upload failed: " + ex.getMessage());
+        }
+    }
+
+    // Delete the quiz selected in the table
+    private void removeQuiz() {
+        int row = quizTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Please select a quiz in the table first.");
+            return;
+        }
+        Assessment quiz = quizzes.get(quizTable.convertRowIndexToModel(row));
+
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Remove the quiz \"" + quiz.getAssessmentName() + "\"?", "Remove Quiz", JOptionPane.YES_NO_OPTION);
+        if (answer != JOptionPane.YES_OPTION) return;
+
+        try {
+            assessmentData.delete(quiz.getAssessmentId());
+            loadQuizzes();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Could not remove the quiz: " + ex.getMessage());
+        }
+    }
+
+    // Saves a quiz in the assessment table (filePath is the uploaded .md file, or null)
+    private void saveQuiz(String title, String filePath) {
+        int index = courseBox.getSelectedIndex();
 
         if (index < 0 || title.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please select a course and enter a quiz title.");
@@ -259,16 +342,19 @@ public class MyCourses extends LecturerUI.Page {
             a.setAssessmentName(title);
             a.setAssessmentType("Quiz");
             a.setAssessmentDate(when);
+            a.setReferenceNumber(filePath);   // path of the uploaded .md file
             assessmentData.insert(a);
 
             quizTitleField.setText("");
+            uploadedQuizPath = null;   // the next quiz needs its own file
+            quizFileLabel.setText("No quiz file uploaded");
             loadQuizzes();
             JOptionPane.showMessageDialog(this, "Quiz scheduled.");
 
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, "The date must look like 2026-11-10.");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Could not schedule the quiz: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "Could not save the quiz: " + ex.getMessage());
         }
     }
 
@@ -398,13 +484,16 @@ public class MyCourses extends LecturerUI.Page {
 
     private void loadQuizzes() {
         quizModel.setRowCount(0);
+        quizzes = new ArrayList<>();
         int index = courseBox.getSelectedIndex();
         if (index < 0) return;
 
         for (Assessment a : assessmentData.findByOffering(offerings.get(index).getOffering_id())) {
             if (!"Quiz".equals(a.getAssessmentType())) continue;
+            quizzes.add(a);
+            String file = a.getReferenceNumber() == null ? "" : Paths.get(a.getReferenceNumber()).getFileName().toString();
             quizModel.addRow(new Object[]{a.getAssessmentName(),
-                    a.getAssessmentDate() == null ? "" : a.getAssessmentDate().toString()});
+                    a.getAssessmentDate() == null ? "" : a.getAssessmentDate().toString(), file});
         }
     }
 }

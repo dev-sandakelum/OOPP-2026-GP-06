@@ -29,10 +29,14 @@ public class Notices extends LecturerUI.Page {
 
     /** One notice (matches the columns of the notices table). */
     public static final class Notice {
-        public final String title, course, date, category, status, body;
-        public Notice(String title, String course, String date, String category, String status, String body) {
+        public final int id;               // notice_id in the database
+        public final Integer createdBy;    // user who wrote it (null if unknown)
+        public final String title, course, date, category, status, body, expiry;
+        public Notice(int id, Integer createdBy, String title, String course, String date, String category,
+                      String status, String body, String expiry) {
+            this.id = id; this.createdBy = createdBy;
             this.title = title; this.course = course; this.date = date;
-            this.category = category; this.status = status; this.body = body;
+            this.category = category; this.status = status; this.body = body; this.expiry = expiry;
         }
     }
 
@@ -50,6 +54,10 @@ public class Notices extends LecturerUI.Page {
     private final JComboBox<String> courseBox = new JComboBox<>();
     private final JComboBox<String> categoryBox =
             new JComboBox<>(new String[]{"General", "Lecture", "Assignment", "Exam"});
+    // expiry date picker: starts one week from today, disabled while "No expiry date" is ticked
+    private final JSpinner expiryPicker = new JSpinner(new SpinnerDateModel(
+            java.sql.Date.valueOf(LocalDate.now().plusDays(7)), null, null, java.util.Calendar.DAY_OF_MONTH));
+    private final JCheckBox noExpiry = new JCheckBox("No expiry date", true);
     private final JTextArea messageArea = new JTextArea(7, 20);
 
     private final CourseOfferingData offeringData = new CourseOfferingData();
@@ -127,7 +135,8 @@ public class Notices extends LecturerUI.Page {
                     : n.getCreated_date().toLocalDateTime().toLocalDate()
                         .format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH));
             String body = n.getDescription() == null ? "" : n.getDescription();
-            list.add(new Notice(n.getTitle(), course, date, "General", statusLabel(n.getStatus()), body));
+            list.add(new Notice(n.getNotice_id(), n.getCreated_by(), n.getTitle(), course, date, "General", statusLabel(n.getStatus()), body,
+                    n.getExpiry_date() == null ? "" : n.getExpiry_date().toString()));
         }
         setNotices(list);
     }
@@ -149,15 +158,25 @@ public class Notices extends LecturerUI.Page {
             return;
         }
 
+        // expiry date is optional: "No expiry date" ticked = the notice never expires
+        java.sql.Date expiry = null;
+        String expiryText = "";
+        if (!noExpiry.isSelected()) {
+            expiry = new java.sql.Date(((java.util.Date) expiryPicker.getValue()).getTime());
+            if (expiry.toLocalDate().isBefore(LocalDate.now())) {
+                JOptionPane.showMessageDialog(this, "The expiry date must be today or later.",
+                        "Invalid date", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            expiryText = expiry.toString();
+        }
+
         String course = (String) courseBox.getSelectedItem();
         if (course != null && course.startsWith("All")) course = "All modules";
-        String date = status.equals("Draft") ? "—"
-                : LocalDate.now().format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH));
 
-        Notice n = new Notice(title, course, date, (String) categoryBox.getSelectedItem(), status, message);
-
-        // created_by stays empty: the notice table only allows admin ids there
         model.Notice row = new model.Notice();
+        row.setCreated_by(lecturerId > 0 ? lecturerId : null);   // the logged-in lecturer
+        row.setExpiry_date(expiry);
         row.setTitle(title);
         row.setDescription(message);
         row.setAudience(course);
@@ -169,9 +188,10 @@ public class Notices extends LecturerUI.Page {
             return;
         }
 
-        all.add(0, n);
-        refreshList();
+        loadNotices();   // reload the list from the database
         titleField.setText("");
+        noExpiry.setSelected(true);
+        expiryPicker.setEnabled(false);
         messageArea.setText("");
     }
 
@@ -270,7 +290,8 @@ public class Notices extends LecturerUI.Page {
         msg.setForeground(INK_2);
 
         // category + course · date
-        JLabel meta = new JLabel(n.course + "  ·  " + n.date);
+        JLabel meta = new JLabel(n.course + "  ·  " + n.date
+                + (n.expiry.isEmpty() ? "" : "  ·  Expires " + n.expiry));
         meta.setFont(font(Font.PLAIN, 11));
         meta.setForeground(INK_2);
         JPanel foot = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -316,6 +337,19 @@ public class Notices extends LecturerUI.Page {
         two.add(field("Category", categoryBox));
         two.setAlignmentX(Component.LEFT_ALIGNMENT);
         card.add(two);
+
+        expiryPicker.setEditor(new JSpinner.DateEditor(expiryPicker, "yyyy-MM-dd"));
+        expiryPicker.setFont(font(Font.PLAIN, 12));
+        expiryPicker.setEnabled(false);
+        noExpiry.setOpaque(false);
+        noExpiry.setFont(font(Font.PLAIN, 12));
+        noExpiry.addActionListener(e -> expiryPicker.setEnabled(!noExpiry.isSelected()));
+
+        JPanel expiryRow = new JPanel(new GridLayout(1, 2, 12, 0));
+        expiryRow.setOpaque(false);
+        expiryRow.add(expiryPicker);
+        expiryRow.add(noExpiry);
+        card.add(field("Expiry date", expiryRow));
 
         messageArea.setFont(font(Font.PLAIN, 12));
         messageArea.setLineWrap(true);

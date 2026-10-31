@@ -80,12 +80,10 @@ public class Attendance extends LecturerUI.Page {
     private JComponent buildControls() {
         courseBox = new JComboBox<>();
         styleInput(courseBox, 280);
-        courseBox.addActionListener(e -> onCourseOrDateChanged());
 
         dateSpinner = new JSpinner(new SpinnerDateModel(new Date(), null, null, java.util.Calendar.DAY_OF_MONTH));
         dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd"));
         styleInput(dateSpinner, 150);
-        dateSpinner.addChangeListener(e -> onCourseOrDateChanged());
 
         sessionBox = new JComboBox<>();
         styleInput(sessionBox, 170);
@@ -98,6 +96,12 @@ public class Attendance extends LecturerUI.Page {
         filters.add(labelled("Date", dateSpinner));
         filters.add(Box.createHorizontalStrut(12));
         filters.add(labelled("Session", sessionBox));
+        filters.add(Box.createHorizontalStrut(12));
+
+        // sessions are only looked up when the lecturer presses Search
+        LecturerUI.Btn search = new LecturerUI.Btn("Search sessions", true);
+        search.addActionListener(e -> searchSessions());
+        filters.add(labelled(" ", search));   // blank caption keeps the button level with the inputs
 
         LecturerUI.Btn markAll = new LecturerUI.Btn("Mark all present", false);
         markAll.addActionListener(e -> markAllPresent());
@@ -205,16 +209,22 @@ public class Attendance extends LecturerUI.Page {
         }
     }
 
-    /** Called when the course or date changes: reload the session list. */
-    private void onCourseOrDateChanged() {
-        if (courseBox == null || sessionBox == null || dateSpinner == null) return;
+    /** Called by the "Search sessions" button: finds the sessions of the chosen course and date. */
+    private void searchSessions() {
+        if (courseBox.getSelectedIndex() < 0) {
+            JOptionPane.showMessageDialog(this, "Please select a course first.");
+            return;
+        }
         loadSessions();
+        if (sessions.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No sessions found for this course on the selected date.");
+        }
     }
 
     /** Fills the session dropdown with the sessions of the selected course on the selected date. */
     private void loadSessions() {
-        sessions.clear();
-        sessionBox.removeAllItems();
+       sessions.clear();
+       sessionBox.removeAllItems();
 
         int index = courseBox.getSelectedIndex();
         if (index >= 0) {
@@ -279,12 +289,14 @@ public class Attendance extends LecturerUI.Page {
             return;
         }
 
-        int sessionId = sessions.get(sessionIndex).getSessionId();
-        java.sql.Date today = new java.sql.Date(System.currentTimeMillis());
+        // record the date of the session itself, so editing a past session keeps its date
+        Session session = sessions.get(sessionIndex);
+        int sessionId = session.getSessionId();
+        java.sql.Date sessionDate = session.getSessionDate();
         try {
             for (StudentRow r : studentRows) {
                 String status = r.isPresent() ? "PRESENT" : "ABSENT";
-                attendanceData.save(new model.Attendance(Integer.parseInt(r.regNo), sessionId, status, today));
+                attendanceData.save(new model.Attendance(Integer.parseInt(r.regNo), sessionId, status, sessionDate));
             }
             JOptionPane.showMessageDialog(this, "Attendance submitted successfully.");
         } catch (Exception ex) {

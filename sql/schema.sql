@@ -291,8 +291,8 @@ CREATE TABLE notice (
                         audience     VARCHAR(100),
                         expiry_date  DATE,
                         status       VARCHAR(30),
-                        CONSTRAINT fk_notice_admin FOREIGN KEY (created_by)
-                            REFERENCES admin(user_id) ON UPDATE CASCADE ON DELETE SET NULL
+                        CONSTRAINT fk_notice_creator FOREIGN KEY (created_by)
+                            REFERENCES users(user_id) ON UPDATE CASCADE ON DELETE SET NULL
 ) ;
 
 -- =========================================================
