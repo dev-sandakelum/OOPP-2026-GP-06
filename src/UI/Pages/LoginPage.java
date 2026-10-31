@@ -148,7 +148,18 @@ public class LoginPage extends JFrame implements FrameData {
             case "lecturer"                      -> dashboard = new LecturerPage(user);
             case "technical_officer", "officer"  -> dashboard = new OfficerPages(user);
             case "undergraduate", "student"      -> dashboard = new StudentPages(user);
-            default                              -> dashboard = new AdminPages(user);   // "admin"
+            case "admin", "administrator" ->
+                    dashboard = new AdminPages(user);
+
+            default -> {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Unknown user role: " + type,
+                        "Login Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
         }
         dashboard.setVisible(true);
     }
