@@ -3,74 +3,40 @@ package model;
 import java.math.BigDecimal;
 
 public class Eligibility {
+    private int eligibilityId;
+    private int studentId;
+    private int offeringId;
+    private BigDecimal caAverage;
+    private BigDecimal attendancePercentage;
+    private String eligibilityStatus; // ELIGIBLE, NOT_ELIGIBLE, PENDING
 
-    private int eligibility_id;
-    private int student_id;
-    private int offering_id;
-    private BigDecimal ca_average;             // DECIMAL(5,2) – nullable
-    private BigDecimal attendance_percentage;  // DECIMAL(5,2) – 0–100, nullable
-    private String eligibility_status;
+    public Eligibility() {}
 
-    public Eligibility() {
+    public Eligibility(int eligibilityId, int studentId, int offeringId,
+                       BigDecimal caAverage, BigDecimal attendancePercentage, String eligibilityStatus) {
+        this.eligibilityId = eligibilityId;
+        this.studentId = studentId;
+        this.offeringId = offeringId;
+        this.caAverage = caAverage;
+        this.attendancePercentage = attendancePercentage;
+        this.eligibilityStatus = eligibilityStatus;
     }
 
-    public int getEligibility_id() {
-        return eligibility_id;
-    }
+    public int getEligibilityId() { return eligibilityId; }
+    public void setEligibilityId(int eligibilityId) { this.eligibilityId = eligibilityId; }
 
-    public void setEligibility_id(int eligibility_id) {
-        this.eligibility_id = eligibility_id;
-    }
+    public int getStudentId() { return studentId; }
+    public void setStudentId(int studentId) { this.studentId = studentId; }
 
-    public int getStudent_id() {
-        return student_id;
-    }
+    public int getOfferingId() { return offeringId; }
+    public void setOfferingId(int offeringId) { this.offeringId = offeringId; }
 
-    public void setStudent_id(int student_id) {
-        this.student_id = student_id;
-    }
+    public BigDecimal getCaAverage() { return caAverage; }
+    public void setCaAverage(BigDecimal caAverage) { this.caAverage = caAverage; }
 
-    public int getOffering_id() {
-        return offering_id;
-    }
+    public BigDecimal getAttendancePercentage() { return attendancePercentage; }
+    public void setAttendancePercentage(BigDecimal attendancePercentage) { this.attendancePercentage = attendancePercentage; }
 
-    public void setOffering_id(int offering_id) {
-        this.offering_id = offering_id;
-    }
-
-    public BigDecimal getCa_average() {
-        return ca_average;
-    }
-
-    public void setCa_average(BigDecimal ca_average) {
-        this.ca_average = ca_average;
-    }
-
-    public BigDecimal getAttendance_percentage() {
-        return attendance_percentage;
-    }
-
-    public void setAttendance_percentage(BigDecimal attendance_percentage) {
-        this.attendance_percentage = attendance_percentage;
-    }
-
-    public String getEligibility_status() {
-        return eligibility_status;
-    }
-
-    public void setEligibility_status(String eligibility_status) {
-        this.eligibility_status = eligibility_status;
-    }
-
-    @Override
-    public String toString() {
-        return "Eligibility{" +
-                "eligibility_id=" + eligibility_id +
-                ", student_id=" + student_id +
-                ", offering_id=" + offering_id +
-                ", ca_average=" + ca_average +
-                ", attendance_percentage=" + attendance_percentage +
-                ", eligibility_status='" + eligibility_status + '\'' +
-                '}';
-    }
+    public String getEligibilityStatus() { return eligibilityStatus; }
+    public void setEligibilityStatus(String eligibilityStatus) { this.eligibilityStatus = eligibilityStatus; }
 }

@@ -1,44 +1,24 @@
 package model;
 
 public class Exam {
+    private int examId;
+    private int offeringId;
+    private String type; // MID, FINAL
 
-    private int exam_id;
-    private int offering_id;
-    private String type;
+    public Exam() {}
 
-    public Exam() {
-    }
-
-    public int getExam_id() {
-        return exam_id;
-    }
-
-    public void setExam_id(int exam_id) {
-        this.exam_id = exam_id;
-    }
-
-    public int getOffering_id() {
-        return offering_id;
-    }
-
-    public void setOffering_id(int offering_id) {
-        this.offering_id = offering_id;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
+    public Exam(int examId, int offeringId, String type) {
+        this.examId = examId;
+        this.offeringId = offeringId;
         this.type = type;
     }
 
-    @Override
-    public String toString() {
-        return "Exam{" +
-                "exam_id=" + exam_id +
-                ", offering_id=" + offering_id +
-                ", type='" + type + '\'' +
-                '}';
-    }
+    public int getExamId() { return examId; }
+    public void setExamId(int examId) { this.examId = examId; }
+
+    public int getOfferingId() { return offeringId; }
+    public void setOfferingId(int offeringId) { this.offeringId = offeringId; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 }
