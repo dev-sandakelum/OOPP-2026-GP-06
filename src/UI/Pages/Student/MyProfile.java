@@ -134,7 +134,7 @@ public class MyProfile extends Page {
 
             f.setEditable(false);
             f.setFocusable(false);
-            f.setBackground(new Color(245, 245, 245));
+            f.setBackground(SURFACE_2);
             f.setForeground(Color.DARK_GRAY);
         }
 
@@ -153,7 +153,7 @@ public class MyProfile extends Page {
         info.setForeground(Color.GRAY);
 
         RoundedButton saveBtn = new RoundedButton("Save changes", true);
-        saveBtn.setBackground(new Color(20, 60, 50));
+        saveBtn.setBackground(BRAND);
         saveBtn.addActionListener(e -> save());
 
         footer.add(info, BorderLayout.WEST);

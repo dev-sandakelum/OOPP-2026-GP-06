@@ -94,12 +94,10 @@ public class AdminData {
 
     // =====================================================================
     //  ROLES TABLE  (Overview "Users by role" card)
-    //  Returns rows of {label, count} already formatted as String[].
     // =====================================================================
 
     /** Columns: {role label, count} */
     public List<String[]> userCountsByRole() {
-        // Fixed labels that match the UI — note user_type values from the schema ENUM.
         String[][] mapping = {
                 {"Undergraduates",     "UNDERGRADUATE"},
                 {"Lecturers",          "LECTURER"},

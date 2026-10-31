@@ -16,6 +16,8 @@ public final class Ui {
         JTextField f = new JTextField(columns);
         f.setFont(font(Font.PLAIN, 14));
         f.setForeground(INK);
+        f.setBackground(SURFACE);
+        f.setCaretColor(BRAND);
         f.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(LINE_2, 1, true), new EmptyBorder(8, 12, 8, 12)));
         return f;
@@ -54,16 +56,19 @@ public final class Ui {
         return t;
     }
 
-    // Table inside a rounded white card
+    // Table inside a rounded glass card
     public static JComponent tableCard(JTable table) {
         Card c = new Card(false);
         c.setLayout(new BorderLayout());
-        c.setBorder(new EmptyBorder(8, 8, 8, 8));
+        c.setBorder(new EmptyBorder(10, 10, 14, 10));
         JScrollPane sp = new JScrollPane(table);
         sp.setColumnHeaderView(table.getTableHeader());   // so the header shows even before the window is displayed
-        sp.setBorder(null);
+        // a non-UIResource empty border stops JTable from re-applying the LAF's "Table.scrollPaneBorder"
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.setViewportBorder(null);
         sp.setOpaque(false);
         sp.getViewport().setOpaque(false);
+        GlassScrollBarUI.install(sp);
         c.add(sp, BorderLayout.CENTER);
         return c;
     }

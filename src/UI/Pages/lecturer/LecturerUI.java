@@ -13,22 +13,22 @@ import java.util.Map;
 final class LecturerUI {
     private LecturerUI() { }
 
-    // ---------- Colors ----------
-    static final Color INK       = new Color(13, 31, 22);
-    static final Color INK_2     = new Color(122, 135, 128);
-    static final Color LINE      = new Color(229, 235, 231);
-    static final Color LINE_2    = new Color(211, 220, 215);
-    static final Color SURFACE   = Color.WHITE;
-    static final Color SURFACE_2 = new Color(245, 248, 246);
-    static final Color BRAND     = new Color(15, 61, 42);
-    static final Color BRAND_LT  = new Color(38, 144, 95);
-    static final Color BRAND_DK  = new Color(8, 38, 25);
-    static final Color BRAND_SOFT = new Color(223, 237, 229);
-    static final Color OK  = new Color(31, 122, 74);
-    static final Color WARN = new Color(154, 106, 12);
-    static final Color BAD  = new Color(192, 58, 43);
+    // ---------- Colors (aliases of the shared theme in UI.Kit.Palette) ----------
+    static final Color INK       = UI.Kit.Palette.INK;
+    static final Color INK_2     = UI.Kit.Palette.INK_2;
+    static final Color LINE      = UI.Kit.Palette.LINE;
+    static final Color LINE_2    = UI.Kit.Palette.LINE_2;
+    static final Color SURFACE   = UI.Kit.Palette.SURFACE;
+    static final Color SURFACE_2 = UI.Kit.Palette.SURFACE_2;
+    static final Color BRAND     = UI.Kit.Palette.BRAND;
+    static final Color BRAND_LT  = UI.Kit.Palette.BRAND_LT;
+    static final Color BRAND_DK  = UI.Kit.Palette.BRAND_DK;
+    static final Color BRAND_SOFT = UI.Kit.Palette.BRAND_SOFT;
+    static final Color OK  = UI.Kit.Palette.OK;
+    static final Color WARN = UI.Kit.Palette.WARN;
+    static final Color BAD  = UI.Kit.Palette.BAD;
 
-    static Font font(int style, float size) { return new Font("Segoe UI", style, Math.round(size)); }
+    static Font font(int style, float size) { return UI.Kit.Palette.font(style, size); }
 
     // ---------- Page frame: header on top, body below ----------
     static class Page extends JPanel {
@@ -37,22 +37,26 @@ final class LecturerUI {
             setOpaque(false);
 
             JLabel t = new JLabel(title);
-            t.setFont(font(Font.BOLD, 28));
+            t.setFont(font(Font.BOLD, 30));
             t.setForeground(INK);
+            t.setAlignmentX(Component.LEFT_ALIGNMENT);
             JLabel s = new JLabel(sub);
-            s.setFont(font(Font.PLAIN, 14));
+            s.setFont(font(Font.PLAIN, 15));
             s.setForeground(INK_2);
+            s.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             JPanel text = new JPanel();
             text.setOpaque(false);
             text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
             text.add(t);
-            text.add(Box.createVerticalStrut(4));
+            text.add(Box.createVerticalStrut(8));
+            text.add(new UI.Pages.Components.AccentBar(56, 4));
+            text.add(Box.createVerticalStrut(10));
             text.add(s);
 
             JPanel head = new JPanel(new BorderLayout());
             head.setOpaque(false);
-            head.setBorder(new EmptyBorder(24, 24, 16, 24));
+            head.setBorder(new EmptyBorder(26, 24, 18, 24));
             head.add(text, BorderLayout.WEST);
             if (action != null) {
                 JPanel a = new JPanel(new GridBagLayout());
@@ -83,7 +87,7 @@ final class LecturerUI {
             sp.setBorder(null);
             sp.setOpaque(false);
             sp.getViewport().setOpaque(false);
-            sp.getVerticalScrollBar().setUnitIncrement(16);
+            UI.Pages.Components.GlassScrollBarUI.install(sp);
             sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
             add(sp, BorderLayout.CENTER);
         }
@@ -98,63 +102,14 @@ final class LecturerUI {
         @Override public boolean getScrollableTracksViewportHeight() { return false; }
     }
 
-    // ---------- Card ----------
-    static class Card extends JPanel {
-        private final boolean dark;
-        Card(boolean dark) { this.dark = dark; setOpaque(false); }
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            Shape s = new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 36, 36);
-            if (dark) {
-                g2.setPaint(new GradientPaint(0, 0, BRAND_LT.darker(), getWidth(), getHeight(), BRAND_DK));
-                g2.fill(s);
-            } else {
-                g2.setColor(SURFACE);
-                g2.fill(s);
-                g2.setColor(LINE);
-                g2.draw(s);
-            }
-            g2.dispose();
-        }
+    // ---------- Card (glass card from the shared components) ----------
+    static class Card extends UI.Pages.Components.Card {
+        Card(boolean dark) { super(dark); }
     }
 
-    // ---------- Button ----------
-    static class Btn extends JButton {
-        private final boolean primary;
-        private boolean hover;
-        Btn(String text, boolean primary) {
-            super(text);
-            this.primary = primary;
-            setFont(font(Font.BOLD, 13));
-            setForeground(primary ? Color.WHITE : INK);
-            setContentAreaFilled(false);
-            setBorderPainted(false);
-            setFocusPainted(false);
-            setOpaque(false);
-            setBorder(new EmptyBorder(10, 18, 10, 18));
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            addMouseListener(new MouseAdapter() {
-                @Override public void mouseEntered(MouseEvent e) { hover = true; repaint(); }
-                @Override public void mouseExited(MouseEvent e) { hover = false; repaint(); }
-            });
-        }
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            Shape s = new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 20, 20);
-            if (primary) {
-                g2.setColor(hover ? BRAND_DK : BRAND);
-                g2.fill(s);
-            } else {
-                g2.setColor(hover ? SURFACE_2 : SURFACE);
-                g2.fill(s);
-                g2.setColor(LINE_2);
-                g2.draw(s);
-            }
-            g2.dispose();
-            super.paintComponent(g);
-        }
+    // ---------- Button (rounded button from the shared components) ----------
+    static class Btn extends UI.Pages.Components.RoundedButton {
+        Btn(String text, boolean primary) { super(text, primary); }
     }
 
     // ---------- Text field ----------
@@ -255,7 +210,8 @@ final class LecturerUI {
         c.setBorder(new EmptyBorder(8, 8, 8, 8));
         JScrollPane sp = new JScrollPane(t);
         sp.setColumnHeaderView(t.getTableHeader());   // explicit, so the header shows even before the window is displayed
-        sp.setBorder(null);
+        sp.setBorder(BorderFactory.createEmptyBorder());   // non-UIResource: JTable will not re-apply the LAF border
+        UI.Pages.Components.GlassScrollBarUI.install(sp);
         sp.setOpaque(false);
         sp.getViewport().setOpaque(false);
         c.add(sp, BorderLayout.CENTER);
