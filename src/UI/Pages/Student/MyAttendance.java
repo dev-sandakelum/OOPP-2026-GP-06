@@ -55,7 +55,7 @@ public class MyAttendance extends Page {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(18, 20, 18, 20));
 
-        Color muted = dark ? new Color(190, 215, 200) : INK_2;
+        Color muted = dark ? ON_BRAND_2 : INK_2;
 
         JLabel titleLabel = new JLabel(label);
         titleLabel.setFont(font(Font.BOLD, 13));
@@ -101,8 +101,8 @@ public class MyAttendance extends Page {
 
         JPanel legend = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         legend.setOpaque(false);
-        legend.add(legendItem("present", new Color(46, 125, 50)));
-        legend.add(legendItem("medical leave", new Color(245, 176, 65)));
+        legend.add(legendItem("present", OK));
+        legend.add(legendItem("medical leave", WARN));
         legend.add(legendItem("absent", new Color(245, 200, 200)));
 
         header.add(titlePanel, BorderLayout.WEST);
@@ -194,13 +194,13 @@ public class MyAttendance extends Page {
         combinedPanel.setOpaque(false);
         JLabel pctLbl = new JLabel(combined + "%");
         pctLbl.setFont(font(Font.BOLD, 13));
-        pctLbl.setForeground(new Color(46, 125, 50));
+        pctLbl.setForeground(OK);
         JProgressBar bar = new JProgressBar(0, 100);
         bar.setValue(combined);
         bar.setPreferredSize(new Dimension(80, 6));
         bar.setMaximumSize(new Dimension(80, 6));
-        bar.setForeground(new Color(20, 80, 50));
-        bar.setBackground(new Color(230, 240, 230));
+        bar.setForeground(OK);
+        bar.setBackground(BRAND_SOFT);
         bar.setBorderPainted(false);
         combinedPanel.add(Box.createVerticalStrut(5));
         combinedPanel.add(pctLbl);
@@ -211,7 +211,7 @@ public class MyAttendance extends Page {
         // 5. Status
         JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 10));
         statusPanel.setOpaque(false);
-        statusPanel.add(new Chip("● " + status, new Color(46, 125, 50)));
+        statusPanel.add(new Chip("● " + status, OK));
         row.add(wrapCell(statusPanel, widths[4]));
 
         container.add(row);
@@ -282,8 +282,8 @@ public class MyAttendance extends Page {
 
             int x = 0;
             for (char c : pattern.toCharArray()) {
-                if (c == 'P') g2.setColor(new Color(46, 125, 50));
-                else if (c == 'M') g2.setColor(new Color(245, 176, 65));
+                if (c == 'P') g2.setColor(OK);
+                else if (c == 'M') g2.setColor(WARN);
                 else if (c == 'A') g2.setColor(new Color(245, 200, 200));
                 else continue;
 

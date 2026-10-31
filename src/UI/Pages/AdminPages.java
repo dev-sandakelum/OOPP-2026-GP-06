@@ -30,6 +30,7 @@ public class AdminPages extends JFrame implements FrameData {
     private final JPanel cardHost = new JPanel(cards);
 
     public AdminPages(User user) {
+        setTitle("AFMS — Admin · " + adminTabs[0]);
         setSize(width, height);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -38,8 +39,14 @@ public class AdminPages extends JFrame implements FrameData {
                 getClass().getResource("/assets/img.png"))).getImage());
 
         sidebar = new Sidebar(user, "ADMINISTRATOR", adminTabs, ICONS, PAGE_BG);
-        sidebar.setOnSelect(i -> cards.show(cardHost, adminTabs[i]));
-        sidebar.setOnLogout(this::dispose);   // login flow comes later
+        sidebar.setOnSelect(i -> {
+            cards.show(cardHost, adminTabs[i]);
+            setTitle("AFMS — Admin · " + adminTabs[i]);
+        });
+        sidebar.setOnLogout(() -> {
+            dispose();
+            SwingUtilities.invokeLater(() -> new LoginPage().setVisible(true));
+        });   // login flow comes later
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().setBackground(PAGE_BG);
@@ -52,12 +59,12 @@ public class AdminPages extends JFrame implements FrameData {
         cardHost.setOpaque(false);   // so the card's fill shows through
 
         // same order as adminTabs
-        cardHost.add(new Overview(user),  adminTabs[0]);
-        cardHost.add(new UserProfiles(),  adminTabs[1]);
-        cardHost.add(new Courses(),       adminTabs[2]);
-        cardHost.add(new Notices(),       adminTabs[3]);
-        cardHost.add(new Timetables(),    adminTabs[4]);
-        cardHost.add(new MyProfile(user), adminTabs[5]);
+        cardHost.add(new Overview(user),       adminTabs[0]);
+        cardHost.add(new UserProfiles(),       adminTabs[1]);
+        cardHost.add(new Courses(),            adminTabs[2]);
+        cardHost.add(new Notices(user),        adminTabs[3]);
+        cardHost.add(new Timetables(),         adminTabs[4]);
+        cardHost.add(new MyProfile(user),      adminTabs[5]);
 
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
     }

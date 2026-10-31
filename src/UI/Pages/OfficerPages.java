@@ -27,6 +27,7 @@ public class OfficerPages extends JFrame implements FrameData {
     private final JPanel cardHost = new JPanel(cards);
 
     public OfficerPages(User user) {
+        setTitle("AFMS — Officer · " + officerTabs[0]);
         setSize(width, height);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -35,8 +36,14 @@ public class OfficerPages extends JFrame implements FrameData {
                 getClass().getResource("/assets/img.png"))).getImage());
 
         sidebar = new Sidebar(user, "TECHNICAL OFFICER", officerTabs, ICONS, PAGE_BG);
-        sidebar.setOnSelect(i -> cards.show(cardHost, officerTabs[i]));
-        sidebar.setOnLogout(this::dispose);   // login flow comes later
+        sidebar.setOnSelect(i -> {
+            cards.show(cardHost, officerTabs[i]);
+            setTitle("AFMS — Officer · " + officerTabs[i]);
+        });
+        sidebar.setOnLogout(() -> {
+            dispose();
+            SwingUtilities.invokeLater(() -> new LoginPage().setVisible(true));
+        });   // login flow comes later
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().setBackground(PAGE_BG);

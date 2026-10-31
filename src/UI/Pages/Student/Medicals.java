@@ -70,7 +70,7 @@ public class Medicals extends Page {
 
         JLabel dayLbl = new JLabel(day, SwingConstants.CENTER);
         dayLbl.setFont(font(Font.BOLD, 22));
-        dayLbl.setForeground(new Color(2, 48, 71));
+        dayLbl.setForeground(INK);
 
         JLabel monthLbl = new JLabel(month, SwingConstants.CENTER);
         monthLbl.setFont(font(Font.PLAIN, 11));
@@ -82,7 +82,7 @@ public class Medicals extends Page {
         JPanel dateContainer = new JPanel(new BorderLayout());
         dateContainer.setOpaque(false);
         dateContainer.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(235, 235, 235)),
+                BorderFactory.createMatteBorder(0, 0, 0, 1, LINE),
                 new EmptyBorder(0, 5, 0, 25)
         ));
         dateContainer.add(dateBlock, BorderLayout.NORTH);
@@ -98,7 +98,7 @@ public class Medicals extends Page {
         titleRow.setOpaque(false);
         titleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        Color approvedColor = new Color(46, 125, 50); // Green
+        Color approvedColor = OK; // Green
         titleRow.add(new Chip("● " + m[1], approvedColor)); // Dot added to match design
 
         JLabel titleLbl = new JLabel(m[2]);

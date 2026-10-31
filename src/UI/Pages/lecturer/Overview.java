@@ -83,7 +83,7 @@ public class Overview extends LecturerUI.Page {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(18, 20, 18, 20));
         card.setPreferredSize(new Dimension(0, 124));
-        Color muted = dark ? new Color(190, 215, 200) : INK_2;
+        Color muted = dark ? ON_BRAND_2 : INK_2;
 
         JLabel l = new JLabel(label);
         l.setFont(font(Font.BOLD, 13));

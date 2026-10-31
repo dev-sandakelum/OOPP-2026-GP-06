@@ -102,8 +102,8 @@ public class Timetable extends Page {
 
             boolean isToday = (d == 4); // සිකුරාදා 'TODAY' ලෙස Highlight කිරීම
             JPanel headerCell = new JPanel(new BorderLayout());
-            headerCell.setBackground(isToday ? new Color(27, 94, 32) : Color.WHITE);
-            headerCell.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 230, 230)));
+            headerCell.setBackground(isToday ? BRAND : Color.WHITE);
+            headerCell.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, LINE));
             headerCell.setPreferredSize(new Dimension(100, 45));
 
             JLabel l = new JLabel(isToday ? DAYS[d] + " · TODAY" : DAYS[d], SwingConstants.CENTER);
@@ -120,7 +120,7 @@ public class Timetable extends Page {
 
             JPanel timeCell = new JPanel(new BorderLayout());
             timeCell.setBackground(Color.WHITE);
-            timeCell.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(230, 230, 230)));
+            timeCell.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, LINE));
 
             JLabel l = new JLabel(SLOTS[s], SwingConstants.CENTER);
             l.setFont(font(Font.PLAIN, 12));
@@ -140,7 +140,7 @@ public class Timetable extends Page {
     private JPanel createCourseCell(String[] data) {
         JPanel p = new JPanel(new BorderLayout(5, 5));
         p.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(235, 235, 235)),
+                BorderFactory.createMatteBorder(0, 0, 1, 1, LINE),
                 new EmptyBorder(12, 15, 12, 15)
         ));
 
@@ -151,7 +151,7 @@ public class Timetable extends Page {
 
         boolean isPractical = "P".equals(data[1]);
         // Practical නම් ලා කොළ පාට, නැත්නම් සුදු පාට
-        p.setBackground(isPractical ? new Color(232, 245, 233) : Color.WHITE);
+        p.setBackground(isPractical ? BRAND_SOFT : Color.WHITE);
 
         // Course Code සහ Badge
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -168,7 +168,7 @@ public class Timetable extends Page {
         badge.setOpaque(true);
 
         if (isPractical) {
-            badge.setBackground(new Color(27, 94, 32));
+            badge.setBackground(BRAND);
             badge.setForeground(Color.WHITE);
         } else {
             badge.setBackground(Color.WHITE);
@@ -202,7 +202,7 @@ public class Timetable extends Page {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             if (filled) {
-                g2.setColor(new Color(27, 94, 32));
+                g2.setColor(BRAND);
                 g2.fillRoundRect(x, y + 2, 12, 12, 4, 4);
             } else {
                 g2.setColor(Color.WHITE);

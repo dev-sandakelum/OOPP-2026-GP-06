@@ -1,6 +1,9 @@
 package UI.Pages.Components;
 
+import UI.Kit.Assets;
+import UI.Kit.Backdrop;
 import UI.Kit.FrameData;
+import UI.Kit.Glass;
 import model.User;
 
 import javax.swing.*;
@@ -9,23 +12,22 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.font.TextAttribute;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntConsumer;
 
-// Reusable rounded sidebar: logo + role label + nav items + account card.
+import static UI.Kit.Palette.*;
+
+// Reusable frosted-glass sidebar: logo + role label + nav items + (optional photo) + account card.
 // Drop it into BorderLayout.WEST of any page.
 public class Sidebar extends JPanel implements FrameData {
 
-    private static final int RADIUS = 28;
-    private static final Color DARK       = new Color(15, 61, 42);
-    private static final Color DARK_DEEP  = new Color(8, 38, 25);
-    private static final Color GREEN_GLOW = new Color(38, 144, 95);
+    private static final int RADIUS = RADIUS_PANEL;
+    private static final Insets GAP = new Insets(12, 12, 12, 6);   // gaps around the glass card
 
     private final User user;
     private final List<NavItem> items = new ArrayList<>();
@@ -36,11 +38,12 @@ public class Sidebar extends JPanel implements FrameData {
     public Sidebar(User user, String roleLabel, String[] tabs, NavIcon[] icons, Color pageBg) {
         super(new BorderLayout());
         this.user = user;
+        setOpaque(true);
         setBackground(pageBg);
-        setBorder(new EmptyBorder(12, 12, 12, 6));          // the invisible gaps
+        setBorder(new EmptyBorder(GAP));
         setPreferredSize(new Dimension(sp_width + 18, 0));
 
-        RoundedCard card = new RoundedCard(new BorderLayout(), SIDEBAR_BG, pageBg, RADIUS);
+        GlassCard card = new GlassCard(items);
         card.add(logoSection(), BorderLayout.NORTH);
         card.add(navSection(roleLabel, tabs, icons), BorderLayout.CENTER);
         card.add(accountSection(roleLabel), BorderLayout.SOUTH);
@@ -71,34 +74,61 @@ public class Sidebar extends JPanel implements FrameData {
         if (notify) onSelect.accept(index);
     }
 
+    // ---------- Painting ----------
+    @Override
+    protected void paintComponent(Graphics g) {
+        Backdrop.paint(g, this);
+        Graphics2D g2 = Glass.aa(g);
+        Insets in = getInsets();
+        Glass.shadow(g2, in.left, in.top,
+                getWidth() - in.left - in.right, getHeight() - in.top - in.bottom, RADIUS);
+        g2.dispose();
+    }
+
     // ---------- Logo ----------
     private JPanel logoSection() {
-        JPanel p = new JPanel(new BorderLayout(12, 0));
-        p.setBackground(SIDEBAR_BG);
-        p.setBorder(new EmptyBorder(18, 18, 6, 14));
-        p.setPreferredSize(new Dimension(sp_width, 78));
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBorder(new EmptyBorder(22, 22, 6, 18));
 
         JComponent badge = new JComponent() {
             @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-                g2.setColor(DARK);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 14, 14));
-                g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                FontMetrics fm = g2.getFontMetrics();
-                String s = "UoR";
-                g2.drawString(s, (getWidth() - fm.stringWidth(s)) / 2,
-                        (getHeight() - fm.getHeight()) / 2 + fm.getAscent());
+                Graphics2D g2 = Glass.aa(g);
+                int s = Math.min(getWidth(), getHeight());
+                BufferedImage logo = Assets.image(Assets.APP_ICON);
+                if (logo != null) {
+                    // app logo on a white rounded tile (the PNG has an off-white background)
+                    RoundRectangle2D tile = new RoundRectangle2D.Float(0, 0, s, s, 16, 16);
+                    g2.setColor(SURFACE);
+                    g2.fill(tile);
+                    Shape old = g2.getClip();
+                    g2.clip(tile);
+                    int inset = Math.round(s * 0.08f);
+                    g2.drawImage(logo, inset, inset, s - inset * 2, s - inset * 2, null);
+                    g2.setClip(old);
+                    g2.setColor(LINE_2);
+                    g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, s - 1, s - 1, 16, 16));
+                } else {
+                    Glass.brand(g2, 0, 0, s, s, 8);
+                    g2.setColor(ON_BRAND);
+                    g2.setFont(font(Font.BOLD, 15));
+                    FontMetrics fm = g2.getFontMetrics();
+                    String txt = "UoR";
+                    g2.drawString(txt, (s - fm.stringWidth(txt)) / 2,
+                            (s - fm.getHeight()) / 2 + fm.getAscent());
+                }
                 g2.dispose();
             }
         };
-        badge.setPreferredSize(new Dimension(44, 44));
+        badge.setPreferredSize(new Dimension(54, 54));
+        badge.setMinimumSize(badge.getPreferredSize());
+        badge.setMaximumSize(badge.getPreferredSize());
 
-        JLabel title = new JLabel("FOTIMS");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        title.setForeground(DARK);
+        JLabel title = new JLabel("AFMS");
+        title.setFont(font(Font.BOLD, 22));
+        title.setForeground(INK);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel sub = tracked("FACULTY OF TECH.", 10f, LABEL_COL);
 
         JPanel text = new JPanel();
@@ -109,12 +139,16 @@ public class Sidebar extends JPanel implements FrameData {
         text.add(sub);
         text.add(Box.createVerticalGlue());
 
-        JPanel badgeWrap = new JPanel(new GridBagLayout());   // keeps the badge 44x44
-        badgeWrap.setOpaque(false);
-        badgeWrap.add(badge);
+        JPanel row = new JPanel(new BorderLayout(14, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 54));
+        row.add(badge, BorderLayout.WEST);
+        row.add(text, BorderLayout.CENTER);
 
-        p.add(badgeWrap, BorderLayout.WEST);
-        p.add(text, BorderLayout.CENTER);
+        p.add(row);
+        p.add(Box.createVerticalStrut(10));
+        p.add(new AccentBar(64, 3));
         return p;
     }
 
@@ -122,13 +156,13 @@ public class Sidebar extends JPanel implements FrameData {
     private JPanel navSection(String roleLabel, String[] tabs, NavIcon[] icons) {
         JPanel np = new JPanel();
         np.setLayout(new BoxLayout(np, BoxLayout.Y_AXIS));
-        np.setBackground(SIDEBAR_BG);
-        np.setBorder(new EmptyBorder(10, 14, 14, 14));
+        np.setOpaque(false);
+        np.setBorder(new EmptyBorder(10, 16, 14, 16));
 
         JLabel role = tracked(roleLabel, 11f, LABEL_COL);
-        role.setBorder(new EmptyBorder(8, 14, 0, 0));          // lines up with the icons
+        role.setBorder(new EmptyBorder(8, 8, 0, 0));
         np.add(role);
-        np.add(Box.createVerticalStrut(8));
+        np.add(Box.createVerticalStrut(10));
 
         for (int i = 0; i < tabs.length; i++) {
             final int index = i;
@@ -151,28 +185,28 @@ public class Sidebar extends JPanel implements FrameData {
                 ? user.getEmail() : fallbackSub;
 
         JPanel wrap = new JPanel(new BorderLayout());
-        wrap.setBackground(SIDEBAR_BG);
+        wrap.setOpaque(false);
         wrap.setBorder(new EmptyBorder(0, 14, 14, 14));
 
         JPanel card = new JPanel(new BorderLayout(12, 0)) {
             @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setPaint(new GradientPaint(0, 0, GREEN_GLOW.darker(), getWidth(), getHeight(), DARK_DEEP));
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 22, 22));
+                Graphics2D g2 = Glass.aa(g);
+                float w = getWidth() - 4, h = getHeight() - 6;
+                Glass.shadow(g2, 2, 1, w, h, 20);
+                Glass.panel(g2, 2, 1, w, h, 20, GLASS_STRONG);
                 g2.dispose();
             }
         };
         card.setOpaque(false);
-        card.setBorder(new EmptyBorder(10, 12, 10, 12));
-        card.setPreferredSize(new Dimension(0, 78));
+        card.setBorder(new EmptyBorder(12, 14, 14, 14));
+        card.setPreferredSize(new Dimension(0, 84));
 
         JLabel nameLbl = new JLabel(name);
-        nameLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        nameLbl.setForeground(Color.WHITE);
+        nameLbl.setFont(font(Font.BOLD, 14));
+        nameLbl.setForeground(INK);
         JLabel subLbl = new JLabel(sub);
-        subLbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        subLbl.setForeground(new Color(190, 215, 200));
+        subLbl.setFont(font(Font.PLAIN, 12));
+        subLbl.setForeground(INK_2);
 
         JPanel text = new JPanel();
         text.setOpaque(false);
@@ -182,9 +216,17 @@ public class Sidebar extends JPanel implements FrameData {
         text.add(subLbl);
         text.add(Box.createVerticalGlue());
 
-        card.add(new Avatar(initials(name)), BorderLayout.WEST);
+        JPanel avatarWrap = new JPanel(new GridBagLayout());
+        avatarWrap.setOpaque(false);
+        avatarWrap.add(new Avatar(name, 46));
+
+        JPanel logoutWrap = new JPanel(new GridBagLayout());
+        logoutWrap.setOpaque(false);
+        logoutWrap.add(new LogoutButton(() -> onLogout.run()));
+
+        card.add(avatarWrap, BorderLayout.WEST);
         card.add(text, BorderLayout.CENTER);
-        card.add(new LogoutButton(() -> onLogout.run()), BorderLayout.EAST);
+        card.add(logoutWrap, BorderLayout.EAST);
 
         wrap.add(card, BorderLayout.CENTER);
         return wrap;
@@ -197,52 +239,20 @@ public class Sidebar extends JPanel implements FrameData {
         a.put(TextAttribute.FAMILY, "Segoe UI");
         a.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD);
         a.put(TextAttribute.SIZE, size);
-        a.put(TextAttribute.TRACKING, 0.12f);
+        a.put(TextAttribute.TRACKING, 0.14f);
         l.setFont(new Font(a));
         l.setForeground(color);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }
 
-    private static String initials(String name) {
-        String[] parts = name.trim().split("\\s+");
-        if (parts.length == 0 || parts[0].isEmpty()) return "?";
-        String s = parts[0].substring(0, 1);
-        if (parts.length > 1) s += parts[parts.length - 1].substring(0, 1);
-        return s.toUpperCase();
-    }
-
     // ---------- Inner components ----------
-    private static class Avatar extends JComponent {
-        private final String text;
-        Avatar(String text) {
-            this.text = text;
-            setPreferredSize(new Dimension(44, 44));
-        }
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            int d = Math.min(getWidth(), getHeight()) - 2;
-            int y = (getHeight() - d) / 2;
-            g2.setColor(new Color(120, 175, 145));
-            g2.fill(new Ellipse2D.Float(1, y, d, d));
-            g2.setColor(new Color(255, 255, 255, 110));
-            g2.setStroke(new BasicStroke(2f));
-            g2.draw(new Ellipse2D.Float(1, y, d, d));
-            g2.setColor(Color.WHITE);
-            g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            FontMetrics fm = g2.getFontMetrics();
-            g2.drawString(text, (getWidth() - fm.stringWidth(text)) / 2,
-                    (getHeight() - fm.getHeight()) / 2 + fm.getAscent());
-            g2.dispose();
-        }
-    }
 
+    // White rounded box with a blue logout icon.
     private static class LogoutButton extends JComponent {
         private boolean hover;
         LogoutButton(Runnable action) {
-            setPreferredSize(new Dimension(36, 36));
+            setPreferredSize(new Dimension(38, 38));
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setToolTipText("Log out");
             addMouseListener(new MouseAdapter() {
@@ -253,48 +263,90 @@ public class Sidebar extends JPanel implements FrameData {
         }
         @Override public Dimension getMaximumSize() { return getPreferredSize(); }
         @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            Graphics2D g2 = Glass.aa(g);
             int s = Math.min(getWidth(), getHeight());
             int y = (getHeight() - s) / 2;
-            g2.setColor(new Color(255, 255, 255, hover ? 55 : 28));
+            g2.setColor(hover ? BRAND_SOFT : SURFACE);
             g2.fill(new RoundRectangle2D.Float(0, y, s, s, 12, 12));
-            NavIcon.LOGOUT.draw(g2, (s - NavIcon.SIZE) / 2, y + (s - NavIcon.SIZE) / 2, Color.WHITE);
+            g2.setColor(LINE_2);
+            g2.draw(new RoundRectangle2D.Float(0.5f, y + 0.5f, s - 1, s - 1, 12, 12));
+            NavIcon.LOGOUT.draw(g2, (s - NavIcon.SIZE) / 2, y + (s - NavIcon.SIZE) / 2, BRAND);
             g2.dispose();
         }
     }
 
-    // Rounded card that hides its children's square corners
-    private static class RoundedCard extends JPanel {
-        private final Color fill, mask;
-        private final int radius;
+    // Frosted glass card. Paints the faculty photo (if present) in the free space below the nav,
+    // fading in from transparent so it never sits behind the nav labels.
+    private static class GlassCard extends JPanel {
+        private static final int FADE_ABOVE = 50;   // fade starts this far above the last nav item
+        private static final int FADE_LEN   = 110;  // and is fully opaque this far below the start
 
-        RoundedCard(LayoutManager lm, Color fill, Color mask, int radius) {
-            super(lm);
-            this.fill = fill;
-            this.mask = mask;
-            this.radius = radius;
+        private final List<NavItem> navItems;
+        private BufferedImage layer;        // photo with the alpha mask applied, cached per size
+        private int layerW, layerH, layerFade;
+
+        GlassCard(List<NavItem> navItems) {
+            super(new BorderLayout());
+            this.navItems = navItems;
             setOpaque(false);
         }
 
         @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(fill);
-            g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), radius * 2, radius * 2));
+            Graphics2D g2 = Glass.aa(g);
+            int w = getWidth(), h = getHeight();
+            Glass.panel(g2, 0, 0, w, h, RADIUS, GLASS);
+            g2.clip(new RoundRectangle2D.Float(0, 0, w, h, RADIUS * 2, RADIUS * 2));
+
+            BufferedImage photo = Assets.image(Assets.SIDEBAR_PHOTO);
+            if (photo != null) {
+                BufferedImage img = maskedPhoto(photo, w, h, navBottom());
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.92f));
+                g2.drawImage(img, 0, h - img.getHeight(), null);
+                g2.setComposite(AlphaComposite.SrcOver);
+                g2.setColor(GLASS_LINE);
+                g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, w - 1, h - 1, RADIUS * 2, RADIUS * 2));
+            } else {
+                // fallback: soft blue wash at the bottom (replace by adding assets/sidebar_building.png)
+                int top = Math.round(h * 0.50f);
+                g2.setPaint(new GradientPaint(0, top, Glass.alpha(BRAND_LT, 0),
+                                              0, h, Glass.alpha(BRAND_LT, 55)));
+                g2.fillRect(0, top, w, h - top);
+            }
             g2.dispose();
         }
 
-        @Override protected void paintChildren(Graphics g) {
-            super.paintChildren(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            Area corners = new Area(new Rectangle(0, 0, getWidth(), getHeight()));
-            corners.subtract(new Area(new RoundRectangle2D.Float(
-                    0, 0, getWidth(), getHeight(), radius * 2, radius * 2)));
-            g2.setColor(mask);
-            g2.fill(corners);
-            g2.dispose();
+        // bottom edge of the lowest nav item, in this card's coordinates
+        private int navBottom() {
+            int bottom = 0;
+            for (NavItem it : navItems) {
+                if (!it.isShowing()) continue;
+                bottom = Math.max(bottom, SwingUtilities.convertPoint(it, 0, it.getHeight(), this).y);
+            }
+            return bottom;
+        }
+
+        // Photo fitted to the card width, anchored at the bottom, with its top faded out.
+        private BufferedImage maskedPhoto(BufferedImage photo, int w, int h, int navBottom) {
+            float scale = w / (float) photo.getWidth();
+            int dw = w, dh = Math.min(h, Math.round(photo.getHeight() * scale));
+            int imgTop = h - dh;
+            int fadeStart = Math.max(0, navBottom - FADE_ABOVE - imgTop);
+            if (layer != null && layerW == w && layerH == dh && layerFade == fadeStart) return layer;
+
+            BufferedImage out = new BufferedImage(dw, dh, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D lg = Glass.aa(out.getGraphics());
+            lg.drawImage(photo, 0, 0, dw, dh, null);
+            lg.setComposite(AlphaComposite.DstIn);
+            lg.setPaint(new GradientPaint(0, fadeStart, new Color(0, 0, 0, 0),
+                                          0, fadeStart + FADE_LEN, new Color(0, 0, 0, 255)));
+            lg.fillRect(0, 0, dw, dh);
+            lg.dispose();
+
+            layer = out;
+            layerW = w;
+            layerH = dh;
+            layerFade = fadeStart;
+            return out;
         }
     }
 }

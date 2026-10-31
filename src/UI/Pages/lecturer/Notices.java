@@ -23,9 +23,9 @@ import static UI.Kit.Palette.*;
 
 public class Notices extends LecturerUI.Page {
 
-    private static final Color PRIMARY = new Color(0x1F4D36);
-    private static final Color BORDER  = new Color(0xE0E8E2);
-    private static final Color SOFT    = new Color(0xE1EDE3);
+    private static final Color PRIMARY = UI.Kit.Palette.BRAND;
+    private static final Color BORDER  = UI.Kit.Palette.LINE_2;
+    private static final Color SOFT    = UI.Kit.Palette.BRAND_SOFT;
 
     /** One notice (matches the columns of the notices table). */
     public static final class Notice {
@@ -261,8 +261,8 @@ public class Notices extends LecturerUI.Page {
         JPanel head = new JPanel(new BorderLayout(10, 0));
         head.setOpaque(false);
         head.add(title, BorderLayout.CENTER);
-        head.add(new Pill(n.status, n.status.equals("Published") ? new Color(0xE1F1E8) : new Color(0xF3F6F3),
-                n.status.equals("Published") ? new Color(0x2E7D5B) : new Color(0x6B7C72)), BorderLayout.EAST);
+        head.add(new Pill(n.status, n.status.equals("Published") ? SOFT : UI.Kit.Palette.SURFACE_2,
+                n.status.equals("Published") ? PRIMARY : INK_2), BorderLayout.EAST);
 
         // message (fixed width so the HTML wraps correctly)
         JLabel msg = new JLabel("<html><div style='width:330px'>" + escape(n.body) + "</div></html>");
@@ -361,19 +361,7 @@ public class Notices extends LecturerUI.Page {
     }
 
     private JButton button(String text, boolean primary) {
-        JButton b = new JButton(text);
-        b.setFont(font(Font.BOLD, 12));
-        b.setFocusPainted(false);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setBorder(new EmptyBorder(9, 18, 9, 18));
-        b.setOpaque(true);
-        if (primary) { b.setBackground(PRIMARY); b.setForeground(Color.WHITE); b.setBorderPainted(false); }
-        else {
-            b.setBackground(Color.WHITE); b.setForeground(INK);
-            b.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(BORDER), new EmptyBorder(8, 17, 8, 17)));
-        }
-        return b;
+        return new LecturerUI.Btn(text, primary);   // shared rounded button (blue / glass)
     }
 
     /* ===================================================================== */
