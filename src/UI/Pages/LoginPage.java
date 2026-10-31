@@ -129,14 +129,14 @@ public class LoginPage extends JFrame implements FrameData {
     /** Opens the correct frame based on userType stored in the DB. */
     private void openDashboard(User user) {
         String type = user.getUserType();
-        if (type == null) type = "admin";       // safe default for old records
+        if (type == null) type = "ADMIN";       // safe default for old records
 
         JFrame dashboard;
-        switch (type.toLowerCase()) {
-            case "lecturer"  -> dashboard = new LecturerPage(user);
-            case "officer"   -> dashboard = new OfficerPages(user);
-            case "student"   -> dashboard = new StudentPages(user);
-            default          -> dashboard = new AdminPages(user);   // "admin"
+        switch (type.toUpperCase()) {
+            case "LECTURER"          -> dashboard = new LecturerPages(user);
+            case "TECHNICAL_OFFICER" -> dashboard = new OfficerPages(user);
+            case "UNDERGRADUATE"     -> dashboard = new StudentPages(user);
+            default                  -> dashboard = new AdminPages(user);   // "ADMIN"
         }
         dashboard.setVisible(true);
     }

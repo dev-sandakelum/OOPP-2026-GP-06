@@ -52,12 +52,12 @@ public class AdminPages extends JFrame implements FrameData {
         cardHost.setOpaque(false);   // so the card's fill shows through
 
         // same order as adminTabs
-        cardHost.add(new Overview(user),  adminTabs[0]);
-        cardHost.add(new UserProfiles(),  adminTabs[1]);
-        cardHost.add(new Courses(),       adminTabs[2]);
-        cardHost.add(new Notices(),       adminTabs[3]);
-        cardHost.add(new Timetables(),    adminTabs[4]);
-        cardHost.add(new MyProfile(user), adminTabs[5]);
+        cardHost.add(new Overview(user),       adminTabs[0]);
+        cardHost.add(new UserProfiles(),       adminTabs[1]);
+        cardHost.add(new Courses(),            adminTabs[2]);
+        cardHost.add(new Notices(user),        adminTabs[3]);
+        cardHost.add(new Timetables(),         adminTabs[4]);
+        cardHost.add(new MyProfile(user),      adminTabs[5]);
 
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
     }
