@@ -22,6 +22,7 @@ CREATE TABLE users (
                        phone     VARCHAR(30),                     -- shared by all user types
                        address   VARCHAR(255),
                        dob       DATE,
+                       gender    ENUM('MALE','FEMALE','OTHER') DEFAULT NULL,
                        user_type ENUM('ADMIN','UNDERGRADUATE','LECTURER','TECHNICAL_OFFICER') NOT NULL
 ) ;
 

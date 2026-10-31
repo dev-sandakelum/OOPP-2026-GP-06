@@ -43,7 +43,7 @@ public class Database {
         }
     }
 
-    private static final String HOST = "afms-db.mysql.database.azure.com";
+    private static final String HOST = "afms-db-2.mysql.database.azure.com";
     private static final String PORT = "3306";
     private static final String DB = "afms_db";
     private static final String URL = "jdbc:mysql://" + HOST + ":" + PORT + "/" + DB 
