@@ -8,6 +8,7 @@ import UI.Pages.Components.Card;
 import UI.Pages.Components.PhotoPanel;
 import UI.Pages.Components.RoundedButton;
 import data.UserData;
+import database.Database;
 import model.User;
 
 import javax.swing.*;
@@ -26,6 +27,7 @@ public class LoginPage extends JFrame implements FrameData {
     private final JLabel errorLabel        = new JLabel(" ");
 
     public LoginPage() {
+        Database.useLoginRole();    // logout lands here too: drop back to the login-only DB account
         setTitle("AFMS — Login");
         setSize(860, 520);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -121,6 +123,9 @@ public class LoginPage extends JFrame implements FrameData {
                 passField.setText("");
                 return;
             }
+
+            // From here on, DB access uses the account for this user's role
+            Database.useRoleFor(user.getUserType());
 
             // Open the right dashboard based on user_type
             openDashboard(user);
