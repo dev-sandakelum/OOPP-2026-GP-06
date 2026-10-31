@@ -75,7 +75,7 @@
 //        card.setPreferredSize(new Dimension(0, 124));
 //
 //        Color muted = dark
-//                ? new Color(190, 215, 200)
+//                ? ON_BRAND_2
 //                : INK_2;
 //
 //        JLabel titleLabel = new JLabel(label);
@@ -274,7 +274,7 @@ public class MarksGPA extends Page {
         );
 
         Color muted = dark
-                ? new Color(190, 215, 200)
+                ? ON_BRAND_2
                 : INK_2;
 
         JLabel titleLabel = new JLabel(label);

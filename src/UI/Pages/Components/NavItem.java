@@ -1,6 +1,7 @@
 package UI.Pages.Components;
 
 import UI.Kit.FrameData;
+import UI.Kit.Glass;
 
 import javax.swing.*;
 import java.awt.*;
@@ -8,10 +9,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 
+import static UI.Kit.Palette.*;
+
+// One row of the sidebar nav: icon + label inside a soft blue pill when selected.
 public class NavItem extends JComponent implements FrameData {
 
-    private static final int ITEM_HEIGHT = 44;
-    private static final int PAD_LEFT    = 14;   // pill edge -> icon
+    private static final int ITEM_HEIGHT = 46;
+    private static final int PAD_LEFT    = 18;   // pill edge -> icon
     private static final int GAP         = 14;   // icon -> label
 
     private final String text;
@@ -46,24 +50,25 @@ public class NavItem extends JComponent implements FrameData {
 
     @Override
     protected void paintComponent(Graphics g) {
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        Graphics2D g2 = Glass.aa(g);
 
         int w = getWidth(), h = getHeight();
         Color fg = selected ? TEXT_ON : TEXT_OFF;
 
         // pill
         if (selected || hover) {
+            RoundRectangle2D pill = new RoundRectangle2D.Float(0, 0, w, h, RADIUS_PILL * 2, RADIUS_PILL * 2);
             g2.setColor(selected ? ACTIVE_BG : HOVER_BG);
-            g2.fill(new RoundRectangle2D.Float(0, 0, w, h, 18, 18));
+            g2.fill(pill);
+            g2.setColor(GLASS_LINE);
+            g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, w - 1, h - 1, RADIUS_PILL * 2, RADIUS_PILL * 2));
         }
 
         // icon
         icon.draw(g2, PAD_LEFT, (h - NavIcon.SIZE) / 2, fg);
 
         // label
-        g2.setFont(new Font("Segoe UI", selected ? Font.BOLD : Font.PLAIN, 15));
+        g2.setFont(font(selected ? Font.BOLD : Font.PLAIN, 15));
         g2.setColor(fg);
         FontMetrics fm = g2.getFontMetrics();
         int tx = PAD_LEFT + NavIcon.SIZE + GAP;

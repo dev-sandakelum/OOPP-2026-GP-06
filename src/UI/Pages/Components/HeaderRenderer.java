@@ -7,7 +7,7 @@ import java.awt.*;
 
 import static UI.Kit.Palette.*;
 
-// Table header cell: small bold muted text on a soft background.
+// Table header cell: small bold muted text on a soft blue background.
 public class HeaderRenderer extends DefaultTableCellRenderer {
 
     @Override

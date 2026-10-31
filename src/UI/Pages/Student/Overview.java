@@ -76,7 +76,7 @@ public class Overview extends Page {
         Card c = new Card(dark);
         c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
         c.setBorder(new EmptyBorder(18, 20, 18, 20));
-        Color muted = dark ? new Color(190, 215, 200) : INK_2;
+        Color muted = dark ? ON_BRAND_2 : INK_2;
 
         JLabel l = new JLabel(label);
         l.setFont(font(Font.BOLD, 13));
@@ -120,8 +120,8 @@ public class Overview extends Page {
 
         JPanel legend = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         legend.setOpaque(false);
-        legend.add(legendItem("present", new Color(46, 125, 50)));
-        legend.add(legendItem("medical leave", new Color(245, 176, 65)));
+        legend.add(legendItem("present", OK));
+        legend.add(legendItem("medical leave", WARN));
         legend.add(legendItem("absent", new Color(245, 200, 200)));
 
         header.add(titlePanel, BorderLayout.WEST);
@@ -194,8 +194,8 @@ public class Overview extends Page {
         bar.setValue(combined);
         bar.setPreferredSize(new Dimension(95, 6));
         bar.setMaximumSize(new Dimension(95, 6));
-        bar.setForeground(new Color(20, 80, 50));
-        bar.setBackground(new Color(230, 240, 230));
+        bar.setForeground(OK);
+        bar.setBackground(BRAND_SOFT);
         bar.setBorderPainted(false);
         combinedPanel.add(pctLbl);
         combinedPanel.add(Box.createVerticalStrut(3));
@@ -211,19 +211,19 @@ public class Overview extends Page {
         // 4. Attendance
         JPanel attPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         attPanel.setOpaque(false);
-        attPanel.add(new Chip("● Eligible", new Color(46, 125, 50)));
+        attPanel.add(new Chip("● Eligible", OK));
         row.add(wrapCell(attPanel, widths[3]));
 
         // 5. CA
         JPanel caChipPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         caChipPanel.setOpaque(false);
-        caChipPanel.add(new Chip("● CA ≥ 40", new Color(46, 125, 50)));
+        caChipPanel.add(new Chip("● CA ≥ 40", OK));
         row.add(wrapCell(caChipPanel, widths[4]));
 
         // 6. Verdict
         JPanel verdictPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         verdictPanel.setOpaque(false);
-        verdictPanel.add(new Chip("● Eligible", new Color(46, 125, 50)));
+        verdictPanel.add(new Chip("● Eligible", OK));
         row.add(wrapCell(verdictPanel, widths[5]));
 
         container.add(row);
@@ -318,7 +318,7 @@ public class Overview extends Page {
         dateBlock.setOpaque(false);
         JLabel dayLbl = new JLabel(day, SwingConstants.CENTER);
         dayLbl.setFont(font(Font.BOLD, 22));
-        dayLbl.setForeground(new Color(2, 48, 71));
+        dayLbl.setForeground(INK);
         JLabel monthLbl = new JLabel(month, SwingConstants.CENTER);
         monthLbl.setFont(font(Font.PLAIN, 11));
         monthLbl.setForeground(Color.GRAY);
@@ -328,7 +328,7 @@ public class Overview extends Page {
         JPanel dateContainer = new JPanel(new BorderLayout());
         dateContainer.setOpaque(false);
         dateContainer.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(235, 235, 235)),
+                BorderFactory.createMatteBorder(0, 0, 0, 1, LINE),
                 new EmptyBorder(0, 5, 0, 20)
         ));
         dateContainer.add(dateBlock, BorderLayout.NORTH);
@@ -340,7 +340,7 @@ public class Overview extends Page {
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         topRow.setOpaque(false);
         topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        topRow.add(new Chip(tag, new Color(46, 125, 50)));
+        topRow.add(new Chip(tag, OK));
 
         JLabel titleLbl = new JLabel(title);
         titleLbl.setFont(font(Font.BOLD, 15));
