@@ -15,6 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -51,8 +52,10 @@ public class LecturerData {
             ps.setInt(3, l.getDep_id());
             ps.executeUpdate();
             return l;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not insert lecturer", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -65,8 +68,10 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? mapLecturer(rs) : null;
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load lecturer " + id, e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -82,8 +87,10 @@ public class LecturerData {
                 list.add(mapLecturer(rs));
             }
             return list;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load lecturers", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -97,8 +104,10 @@ public class LecturerData {
             ps.setInt(2, l.getDep_id());
             ps.setInt(3, l.getUser_id());
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not update lecturer " + l.getUser_id(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -130,8 +139,10 @@ public class LecturerData {
                 }
             }
             return rows;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load courses", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -166,7 +177,7 @@ public class LecturerData {
     public double averageAttendance(int lecturerId) {
         String sql = "SELECT AVG(CASE WHEN a.attend_status = 'PRESENT' THEN 100 ELSE 0 END)"
                 + " FROM attend a"
-                + " JOIN `session` s ON s.session_id = a.session_id"
+                + " JOIN session s ON s.session_id = a.session_id"
                 + " JOIN course_offering co ON co.offering_id = s.offering_id"
                 + " WHERE co.lecturer_id = ?";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
@@ -174,8 +185,10 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getDouble(1) : 0;
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load average attendance", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -205,8 +218,10 @@ public class LecturerData {
                 }
             }
             return rows;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load today's schedule", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -220,7 +235,7 @@ public class LecturerData {
                 + " VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setObject(1, m.getOffering_id());   // setObject also works when the value is null
+            ps.setObject(1, m.getOffering_id());
             ps.setObject(2, m.getLecturer_id());
             ps.setString(3, m.getTitle());
             ps.setString(4, m.getMaterial_type());
@@ -234,8 +249,10 @@ public class LecturerData {
                 }
             }
             return m;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not insert material", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -260,8 +277,10 @@ public class LecturerData {
                 }
             }
             return list;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load materials", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -276,8 +295,10 @@ public class LecturerData {
             ps.setString(5, m.getExternal_link());
             ps.setInt(6, m.getMaterial_id());
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not update material " + m.getMaterial_id(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -297,21 +318,25 @@ public class LecturerData {
                 + " VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, a.getOffering_id());
-            ps.setString(2, a.getAssessment_name());
-            ps.setString(3, a.getAssessment_type());
-            ps.setDate(4, a.getSubmitted_date());
-            ps.setString(5, a.getReference_number());
-            ps.setDate(6, a.getAssessment_date());
+            ps.setInt(1, a.getOfferingId());
+            ps.setString(2, a.getAssessmentName());
+            ps.setString(3, a.getAssessmentType());
+            if (a.getSubmittedDate() != null) ps.setDate(4, a.getSubmittedDate());
+            else ps.setNull(4, Types.DATE);
+            ps.setString(5, a.getReferenceNumber());
+            if (a.getAssessmentDate() != null) ps.setDate(6, a.getAssessmentDate());
+            else ps.setNull(6, Types.DATE);
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
-                    a.setAssessment_id(keys.getInt(1));
+                    a.setAssessmentId(keys.getInt(1));
                 }
             }
             return a;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not insert assessment", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -323,19 +348,21 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Assessment a = new Assessment();
-                    a.setAssessment_id(rs.getInt("assessment_id"));
-                    a.setOffering_id(rs.getInt("offering_id"));
-                    a.setAssessment_name(rs.getString("assessment_name"));
-                    a.setAssessment_type(rs.getString("assessment_type"));
-                    a.setSubmitted_date(rs.getDate("submitted_date"));
-                    a.setReference_number(rs.getString("reference_number"));
-                    a.setAssessment_date(rs.getDate("assessment_date"));
+                    a.setAssessmentId(rs.getInt("assessment_id"));
+                    a.setOfferingId(rs.getInt("offering_id"));
+                    a.setAssessmentName(rs.getString("assessment_name"));
+                    a.setAssessmentType(rs.getString("assessment_type"));
+                    a.setSubmittedDate(rs.getDate("submitted_date"));
+                    a.setReferenceNumber(rs.getString("reference_number"));
+                    a.setAssessmentDate(rs.getDate("assessment_date"));
                     list.add(a);
                 }
             }
             return list;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load assessments", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -343,15 +370,19 @@ public class LecturerData {
         String sql = "UPDATE assessment SET assessment_name = ?, assessment_type = ?, submitted_date = ?,"
                 + " reference_number = ?, assessment_date = ? WHERE assessment_id = ?";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, a.getAssessment_name());
-            ps.setString(2, a.getAssessment_type());
-            ps.setDate(3, a.getSubmitted_date());
-            ps.setString(4, a.getReference_number());
-            ps.setDate(5, a.getAssessment_date());
-            ps.setInt(6, a.getAssessment_id());
+            ps.setString(1, a.getAssessmentName());
+            ps.setString(2, a.getAssessmentType());
+            if (a.getSubmittedDate() != null) ps.setDate(3, a.getSubmittedDate());
+            else ps.setNull(3, Types.DATE);
+            ps.setString(4, a.getReferenceNumber());
+            if (a.getAssessmentDate() != null) ps.setDate(5, a.getAssessmentDate());
+            else ps.setNull(5, Types.DATE);
+            ps.setInt(6, a.getAssessmentId());
             return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not update assessment " + a.getAssessmentId(), e);
         } catch (Exception e) {
-            throw new DataAccessException("Could not update assessment " + a.getAssessment_id(), e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -365,33 +396,35 @@ public class LecturerData {
     // =====================================================================
 
     public Session insertSession(Session s) {
-        String sql = "INSERT INTO `session`"
+        String sql = "INSERT INTO session"
                 + " (offering_id, session_number, session_type, session_date, start_time, end_time, room)"
                 + " VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, s.getOffering_id());
-            ps.setInt(2, s.getSession_number());
-            ps.setString(3, s.getSession_type());
-            ps.setDate(4, s.getSession_date());
-            ps.setTime(5, s.getStart_time());
-            ps.setTime(6, s.getEnd_time());
+            ps.setInt(1, s.getOfferingId());
+            ps.setInt(2, s.getSessionNumber());
+            ps.setString(3, s.getSessionType());
+            ps.setDate(4, s.getSessionDate());
+            ps.setTime(5, s.getStartTime());
+            ps.setTime(6, s.getEndTime());
             ps.setString(7, s.getRoom());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
-                    s.setSession_id(keys.getInt(1));
+                    s.setSessionId(keys.getInt(1));
                 }
             }
             return s;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not insert session", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
     /** Sessions of one course on one date (fills the "Session" drop-down). */
     public List<Session> getSessions(int offeringId, Date date) {
-        String sql = "SELECT * FROM `session` WHERE offering_id = ? AND session_date = ? ORDER BY start_time";
+        String sql = "SELECT * FROM session WHERE offering_id = ? AND session_date = ? ORDER BY start_time";
         List<Session> list = new ArrayList<>();
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, offeringId);
@@ -399,25 +432,27 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Session s = new Session();
-                    s.setSession_id(rs.getInt("session_id"));
-                    s.setOffering_id(rs.getInt("offering_id"));
-                    s.setSession_number(rs.getInt("session_number"));
-                    s.setSession_type(rs.getString("session_type"));
-                    s.setSession_date(rs.getDate("session_date"));
-                    s.setStart_time(rs.getTime("start_time"));
-                    s.setEnd_time(rs.getTime("end_time"));
+                    s.setSessionId(rs.getInt("session_id"));
+                    s.setOfferingId(rs.getInt("offering_id"));
+                    s.setSessionNumber(rs.getInt("session_number"));
+                    s.setSessionType(rs.getString("session_type"));
+                    s.setSessionDate(rs.getDate("session_date"));
+                    s.setStartTime(rs.getTime("start_time"));
+                    s.setEndTime(rs.getTime("end_time"));
                     s.setRoom(rs.getString("room"));
                     list.add(s);
                 }
             }
             return list;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load sessions", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
     public boolean deleteSession(int sessionId) {
-        String sql = "DELETE FROM `session` WHERE session_id = ?";
+        String sql = "DELETE FROM session WHERE session_id = ?";
         return deleteWithId(sql, sessionId);
     }
 
@@ -436,8 +471,10 @@ public class LecturerData {
                 }
             }
             return rows;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load enrolled students", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -458,8 +495,10 @@ public class LecturerData {
                 }
             }
             return map;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load attendance", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -477,8 +516,10 @@ public class LecturerData {
             ps.setInt(2, sessionId);
             ps.setString(3, status);
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not save attendance", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -488,8 +529,10 @@ public class LecturerData {
             ps.setInt(1, sessionId);
             ps.setInt(2, studentId);
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not delete attendance", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -501,17 +544,19 @@ public class LecturerData {
         String sql = "INSERT INTO exam (offering_id, type) VALUES (?, ?)";
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, ex.getOffering_id());
+            ps.setInt(1, ex.getOfferingId());
             ps.setString(2, ex.getType());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
-                    ex.setExam_id(keys.getInt(1));
+                    ex.setExamId(keys.getInt(1));
                 }
             }
             return ex;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not insert exam", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -524,15 +569,17 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Exam ex = new Exam();
-                    ex.setExam_id(rs.getInt("exam_id"));
-                    ex.setOffering_id(rs.getInt("offering_id"));
+                    ex.setExamId(rs.getInt("exam_id"));
+                    ex.setOfferingId(rs.getInt("offering_id"));
                     ex.setType(rs.getString("type"));
                     list.add(ex);
                 }
             }
             return list;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load exams", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -570,8 +617,10 @@ public class LecturerData {
                 }
             }
             return rows;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load marks", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -587,15 +636,17 @@ public class LecturerData {
                 + " total_mark = VALUES(total_mark),"
                 + " result_status = VALUES(result_status)";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, r.getStudent_id());
-            ps.setInt(2, r.getExam_id());
-            ps.setBigDecimal(3, r.getCa_result());   // null is saved as NULL
-            ps.setBigDecimal(4, r.getFinal_exam_mark());
-            ps.setBigDecimal(5, r.getTotal_mark());
-            ps.setString(6, r.getResult_status());
+            ps.setInt(1, r.getStudentId());
+            ps.setInt(2, r.getExamId());
+            ps.setBigDecimal(3, r.getCaResult());
+            ps.setBigDecimal(4, r.getFinalExamMark());
+            ps.setBigDecimal(5, r.getTotalMark());
+            ps.setString(6, r.getResultStatus());
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not save result", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -605,14 +656,28 @@ public class LecturerData {
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, examId);
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not publish results", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public boolean deleteResult(int resultId) {
-        String sql = "DELETE FROM result WHERE result_id = ?";
-        return deleteWithId(sql, resultId);
+    /**
+     * Deletes a result by its composite key (student + exam).
+     * The result table has no single-column result_id PK.
+     */
+    public boolean deleteResult(int studentId, int examId) {
+        String sql = "DELETE FROM result WHERE student_id = ? AND exam_id = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, studentId);
+            ps.setInt(2, examId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not delete result", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // =====================================================================
@@ -651,8 +716,10 @@ public class LecturerData {
                 }
             }
             return rows;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load students", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -660,7 +727,7 @@ public class LecturerData {
     public double studentAttendance(int studentId, int lecturerId) {
         String sql = "SELECT AVG(CASE WHEN a.attend_status = 'PRESENT' THEN 100 ELSE 0 END)"
                 + " FROM attend a"
-                + " JOIN `session` s ON s.session_id = a.session_id"
+                + " JOIN session s ON s.session_id = a.session_id"
                 + " JOIN course_offering co ON co.offering_id = s.offering_id"
                 + " WHERE a.student_id = ? AND co.lecturer_id = ?";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
@@ -669,8 +736,10 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getDouble(1) : 0;
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load student attendance", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -683,8 +752,10 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getDouble("cgpa") : null;
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load GPA", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -720,8 +791,10 @@ public class LecturerData {
                 }
             }
             return rows;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load medicals", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -734,8 +807,10 @@ public class LecturerData {
             ps.setString(2, note);
             ps.setInt(3, medicalId);
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not update medical " + medicalId, e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -752,7 +827,8 @@ public class LecturerData {
             ps.setString(2, n.getTitle());
             ps.setString(3, n.getDescription());
             ps.setString(4, n.getAudience());
-            ps.setDate(5, n.getExpiry_date());
+            if (n.getExpiry_date() != null) ps.setDate(5, n.getExpiry_date());
+            else ps.setNull(5, Types.DATE);
             ps.setString(6, n.getStatus());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -761,8 +837,10 @@ public class LecturerData {
                 }
             }
             return n;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not insert notice", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -789,8 +867,10 @@ public class LecturerData {
                 }
             }
             return list;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not load notices", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -801,12 +881,15 @@ public class LecturerData {
             ps.setString(1, n.getTitle());
             ps.setString(2, n.getDescription());
             ps.setString(3, n.getAudience());
-            ps.setDate(4, n.getExpiry_date());
+            if (n.getExpiry_date() != null) ps.setDate(4, n.getExpiry_date());
+            else ps.setNull(4, Types.DATE);
             ps.setString(5, n.getStatus());
             ps.setInt(6, n.getNotice_id());
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Could not update notice " + n.getNotice_id(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -826,8 +909,10 @@ public class LecturerData {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Count query failed", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -836,8 +921,10 @@ public class LecturerData {
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new DataAccessException("Delete failed", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -850,6 +937,7 @@ public class LecturerData {
         l.setContact_number(rs.getString("phone"));
         l.setAddress(rs.getString("address"));
         l.setDOB(rs.getDate("dob"));
+        l.setGender(rs.getString("gender"));
         l.setUserType(rs.getString("user_type"));
         l.setQualification(rs.getString("qualification"));
         l.setDep_id(rs.getInt("dep_id"));

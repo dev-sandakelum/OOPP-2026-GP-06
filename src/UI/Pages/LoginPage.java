@@ -126,20 +126,50 @@ public class LoginPage extends JFrame implements FrameData {
         }
     }
 
-    /** Opens the correct frame based on userType stored in the DB. */
+
+    /** Opens the correct dashboard based on userType stored in the DB. */
     private void openDashboard(User user) {
         String type = user.getUserType();
-        if (type == null) type = "admin";       // safe default for old records
+
+        if (type == null || type.isBlank()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "User role is missing. Please check the database.",
+                    "Login Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
 
         JFrame dashboard;
-        switch (type.toLowerCase()) {
-            case "lecturer"  -> dashboard = new LecturerPage(user);
-            case "officer"   -> dashboard = new OfficerPages(user);
-            case "student"   -> dashboard = new StudentPages(user);
-            default          -> dashboard = new AdminPages(user);   // "admin"
+
+        switch (type.trim().toLowerCase()) {
+            case "lecturer" ->
+                    dashboard = new LecturerPage(user);
+
+            case "officer", "technical officer" ->
+                    dashboard = new OfficerPages(user);
+
+            case "student", "undergraduate" ->
+                    dashboard = new StudentPages(user);
+
+            case "admin", "administrator" ->
+                    dashboard = new AdminPages(user);
+
+            default -> {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Unknown user role: " + type,
+                        "Login Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
         }
+
         dashboard.setVisible(true);
     }
+
 
     // ── helpers ───────────────────────────────────────────────────────────────
     private static JLabel fieldLabel(String text) {
