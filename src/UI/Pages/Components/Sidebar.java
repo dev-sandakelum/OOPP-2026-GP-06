@@ -95,13 +95,29 @@ public class Sidebar extends JPanel implements FrameData {
         JComponent badge = new JComponent() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = Glass.aa(g);
-                Glass.brand(g2, 0, 0, getWidth(), getHeight(), 8);
-                g2.setColor(ON_BRAND);
-                g2.setFont(font(Font.BOLD, 15));
-                FontMetrics fm = g2.getFontMetrics();
-                String s = "UoR";
-                g2.drawString(s, (getWidth() - fm.stringWidth(s)) / 2,
-                        (getHeight() - fm.getHeight()) / 2 + fm.getAscent());
+                int s = Math.min(getWidth(), getHeight());
+                BufferedImage logo = Assets.image(Assets.APP_ICON);
+                if (logo != null) {
+                    // app logo on a white rounded tile (the PNG has an off-white background)
+                    RoundRectangle2D tile = new RoundRectangle2D.Float(0, 0, s, s, 16, 16);
+                    g2.setColor(SURFACE);
+                    g2.fill(tile);
+                    Shape old = g2.getClip();
+                    g2.clip(tile);
+                    int inset = Math.round(s * 0.08f);
+                    g2.drawImage(logo, inset, inset, s - inset * 2, s - inset * 2, null);
+                    g2.setClip(old);
+                    g2.setColor(LINE_2);
+                    g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, s - 1, s - 1, 16, 16));
+                } else {
+                    Glass.brand(g2, 0, 0, s, s, 8);
+                    g2.setColor(ON_BRAND);
+                    g2.setFont(font(Font.BOLD, 15));
+                    FontMetrics fm = g2.getFontMetrics();
+                    String txt = "UoR";
+                    g2.drawString(txt, (s - fm.stringWidth(txt)) / 2,
+                            (s - fm.getHeight()) / 2 + fm.getAscent());
+                }
                 g2.dispose();
             }
         };
@@ -109,7 +125,7 @@ public class Sidebar extends JPanel implements FrameData {
         badge.setMinimumSize(badge.getPreferredSize());
         badge.setMaximumSize(badge.getPreferredSize());
 
-        JLabel title = new JLabel("FOTIMS");
+        JLabel title = new JLabel("AFMS");
         title.setFont(font(Font.BOLD, 22));
         title.setForeground(INK);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);

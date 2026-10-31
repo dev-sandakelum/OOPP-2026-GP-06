@@ -36,26 +36,27 @@ public final class Backdrop {
         g2.setPaint(new GradientPaint(0, 0, BG_1, w, h, BG_2));
         g2.fillRect(0, 0, w, h);
 
-        // soft light blobs
-        glow(g2, w * 0.88f, h * 0.95f, w * 0.45f, GLOW, 70);
-        glow(g2, w * 0.40f, h * 0.10f, w * 0.35f, Color.WHITE, 140);
-        glow(g2, w * 0.10f, h * 0.85f, w * 0.30f, GLOW, 40);
+        // full-window background art (world map + swirls), scaled to cover and anchored
+        // to the right edge so the map stays behind the page content.
+        BufferedImage map = Assets.image(Assets.WORLD_MAP);
+        if (map != null) {
+            float scale = Math.max(w / (float) map.getWidth(), h / (float) map.getHeight());
+            int mw = Math.round(map.getWidth() * scale), mh = Math.round(map.getHeight() * scale);
+            g2.drawImage(map, w - mw, Math.round((h - mh) / 2f), mw, mh, null);
+        } else {
+            // soft light blobs painted in code when the image is absent
+            glow(g2, w * 0.88f, h * 0.95f, w * 0.45f, GLOW, 70);
+            glow(g2, w * 0.40f, h * 0.10f, w * 0.35f, Color.WHITE, 140);
+            glow(g2, w * 0.10f, h * 0.85f, w * 0.30f, GLOW, 40);
+        }
 
-        // optional images (see docs/ui-assets.md)
+        // optional extra swirl layer (see docs/ui-assets.md)
         BufferedImage swirl = Assets.image(Assets.BG_SWIRL);
         if (swirl != null) {
             int sw = Math.round(w * 0.55f);
             int sh = Math.round(sw * (swirl.getHeight() / (float) swirl.getWidth()));
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.9f));
             g2.drawImage(swirl, w - sw, h - sh, sw, sh, null);
-            g2.setComposite(AlphaComposite.SrcOver);
-        }
-        BufferedImage map = Assets.image(Assets.WORLD_MAP);
-        if (map != null) {
-            int mw = Math.round(w * 0.50f);
-            int mh = Math.round(mw * (map.getHeight() / (float) map.getWidth()));
-            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.55f));
-            g2.drawImage(map, w - mw - 24, 12, mw, mh, null);
             g2.setComposite(AlphaComposite.SrcOver);
         }
         g2.dispose();

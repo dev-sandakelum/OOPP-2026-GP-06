@@ -34,6 +34,7 @@ public class LecturerPage extends JFrame implements FrameData {
     private final JPanel cardHost = new JPanel(cards);
 
     public LecturerPage(User user) {
+        setTitle("AFMS — Lecturer · " + lecturerTabs[0]);
         setSize(width, height);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -42,8 +43,14 @@ public class LecturerPage extends JFrame implements FrameData {
                 getClass().getResource("/assets/img.png"))).getImage());
 
         sidebar = new Sidebar(user, "LECTURER", lecturerTabs, ICONS, PAGE_BG);
-        sidebar.setOnSelect(i -> cards.show(cardHost, lecturerTabs[i]));
-        sidebar.setOnLogout(() -> dispose());   // replace with your login flow
+        sidebar.setOnSelect(i -> {
+            cards.show(cardHost, lecturerTabs[i]);
+            setTitle("AFMS — Lecturer · " + lecturerTabs[i]);
+        });
+        sidebar.setOnLogout(() -> {
+            dispose();
+            SwingUtilities.invokeLater(() -> new LoginPage().setVisible(true));
+        });
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().setBackground(PAGE_BG);
