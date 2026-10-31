@@ -1,6 +1,22 @@
 package UI.Pages.lecturer;
 
 import UI.Pages.Components.Card;
+import data.AttendanceData;
+import data.BatchData;
+import data.CourseData;
+import data.CourseOfferingData;
+import data.EnrollmentData;
+import data.ResultData;
+import data.UndergraduateData;
+import data.UserData;
+import model.Attendance;
+import model.Batch;
+import model.Course;
+import model.CourseOffering;
+import model.Enrollment;
+import model.Result;
+import model.Undergraduate;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -10,7 +26,9 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import static UI.Kit.Palette.*;
@@ -44,8 +62,21 @@ public class Undergraduates extends LecturerUI.Page {
     private final JLabel gpaLbl   = new JLabel(" ");
     private final JLabel attLbl   = new JLabel(" ");
 
-    public Undergraduates() {
+    // ---------- Data layers ----------
+    private final CourseOfferingData offeringData = new CourseOfferingData();
+    private final CourseData courseData = new CourseData();
+    private final EnrollmentData enrollmentData = new EnrollmentData();
+    private final UserData userData = new UserData();
+    private final UndergraduateData undergraduateData = new UndergraduateData();
+    private final BatchData batchData = new BatchData();
+    private final AttendanceData attendanceData = new AttendanceData();
+    private final ResultData resultData = new ResultData();
+    private final int lecturerId;
+    private List<CourseOffering> offerings = new ArrayList<>();
+
+    public Undergraduates(User user) {
         super("Undergraduates", "Students in your modules", null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
         //  1. filters   2. student list + selected student details
         JPanel content = new JPanel(new BorderLayout(0, 16));
@@ -63,7 +94,7 @@ public class Undergraduates extends LecturerUI.Page {
     }
 
     // =====================================================================
-    //  DATABASE  (replace the sample data with real queries)
+    //  DATABASE  (loaded through the data layers)
     // =====================================================================
 
     /** Fills the "All my courses" drop-down. */
@@ -71,16 +102,12 @@ public class Undergraduates extends LecturerUI.Page {
         courseBox.removeAllItems();
         courseBox.addItem(ALL_COURSES);
 
-        // TODO: NEED TO GET DATA FROM DATABASE HERE
-        // Get the courses/modules taught by the logged-in lecturer, e.g.
-        //   SELECT course_code, course_name FROM courses WHERE lecturer_id = ?
-        // then add one item per row:
-        //   courseBox.addItem(code + " - " + name);
-
-        // ---- sample data (remove once the database is connected) ----
-        courseBox.addItem("CS3012 - Database Management Systems");
-        courseBox.addItem("CS3022 - Software Engineering Principles");
-        courseBox.addItem("CS2042 - Data Structures & Algorithms");
+        offerings = offeringData.findByLecturer(lecturerId);
+        for (CourseOffering o : offerings) {
+            Course c = courseData.findById(o.getCourse_id());
+            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
+                    : c.getCourse_code() + " - " + c.getCourse_name());
+        }
     }
 
     /**
@@ -90,25 +117,26 @@ public class Undergraduates extends LecturerUI.Page {
     private void loadStudents(String courseLabel) {
         List<Student> list = new ArrayList<>();
 
-        // TODO: NEED TO GET DATA FROM DATABASE HERE
-        // Get the undergraduates enrolled in the selected course (or in all of the lecturer's
-        // courses when ALL_COURSES is selected), e.g.
-        //   SELECT DISTINCT s.reg_no, s.full_name, s.batch, s.email,
-        //                   s.phone, s.current_gpa,
-        //                   a.attendance_percentage
-        //   FROM   enrollments e
-        //   JOIN   students s ON s.reg_no = e.reg_no
-        //   JOIN   courses  c ON c.course_code = e.course_code
-        //   LEFT JOIN attendance_summary a ON a.reg_no = s.reg_no AND a.course_code = e.course_code
-        //   WHERE  c.lecturer_id = ?
-        //     AND  (? = 'ALL' OR e.course_code = ?)
-        //   ORDER  BY s.reg_no
-        // For each row: list.add(new Student(reg, name, batch, email, attendance, phone, gpa));
+        // index 0 is "All my courses", the others follow the offerings list
+        int index = courseBox.getSelectedIndex();
+        List<CourseOffering> selected = (index <= 0 || index > offerings.size())
+                ? offerings : List.of(offerings.get(index - 1));
 
-        // ---- sample data (remove once the database is connected) ----
-        list.add(new Student("S/21/001", "Nimal Fernando",     "2021", "nimal@uni.lk",   94, "077 123 4567", 3.42));
-        list.add(new Student("S/21/002", "Kavindi Silva",      "2021", "kavindi@uni.lk", 88, "071 234 5678", 3.10));
-        list.add(new Student("S/22/014", "Ruwan Jayasinghe",   "2022", "ruwan@uni.lk",   71, "076 345 6789", 2.85));
+        // every student enrolled in the selected course(s), each one only once
+        Set<Integer> studentIds = new LinkedHashSet<>();
+        for (CourseOffering o : selected) {
+            for (Enrollment en : enrollmentData.findByOffering(o.getOffering_id())) {
+                studentIds.add(en.getStudent_id());
+            }
+        }
+
+        for (int id : studentIds) {
+            User u = userData.findById(id);
+            if (u == null) continue;
+            list.add(new Student(String.valueOf(id), u.getName(), batchName(id), u.getEmail(),
+                    attendancePercent(id, selected),
+                    u.getContact_number() == null ? "" : u.getContact_number(), latestGpa(id)));
+        }
 
         model.setRows(list);
         reloadBatchOptions();
@@ -117,11 +145,41 @@ public class Undergraduates extends LecturerUI.Page {
         else showStudent(null);
     }
 
-    /** Builds the batch drop-down from the loaded students (or query the batches table instead). */
-    private void reloadBatchOptions() {
-        // TODO: NEED TO GET DATA FROM DATABASE HERE (optional)
-        // Batches can also come straight from the database, e.g.  SELECT DISTINCT batch FROM students ORDER BY batch
+    /** Batch name of a student ("" if the student has no batch). */
+    private String batchName(int studentId) {
+        Undergraduate ug = undergraduateData.findById(studentId);
+        if (ug == null) return "";
+        Batch b = batchData.findById(ug.getBatch_id());
+        return b == null ? "" : b.getBatch_name();
+    }
 
+    /** Percentage of sessions the student attended in the given courses. */
+    private int attendancePercent(int studentId, List<CourseOffering> courses) {
+        int total = 0, present = 0;
+        for (CourseOffering o : courses) {
+            for (Attendance a : attendanceData.findByStudentAndOffering(studentId, o.getOffering_id())) {
+                total++;
+                if ("PRESENT".equalsIgnoreCase(a.getAttendStatus())) present++;
+            }
+        }
+        return total == 0 ? 0 : Math.round(present * 100f / total);
+    }
+
+    /** Latest CGPA from the student's results (null if there is none yet). */
+    private Double latestGpa(int studentId) {
+        Result latest = null;
+        for (Result r : resultData.findByStudent(studentId)) {
+            if (r.getCgpa() == null) continue;
+            if (latest == null || (r.getPublishedDate() != null && latest.getPublishedDate() != null
+                    && r.getPublishedDate().after(latest.getPublishedDate()))) {
+                latest = r;
+            }
+        }
+        return latest == null ? null : latest.getCgpa().doubleValue();
+    }
+
+    /** Builds the batch drop-down from the loaded students. */
+    private void reloadBatchOptions() {
         ActionListener[] ls = batchBox.getActionListeners();
         for (ActionListener l : ls) batchBox.removeActionListener(l);   // avoid refiltering while rebuilding
         batchBox.removeAllItems();
@@ -379,7 +437,7 @@ public class Undergraduates extends LecturerUI.Page {
         batchLbl.setText(s.batch);
         emailLbl.setText(s.email);
         phoneLbl.setText(s.phone);
-        gpaLbl.setText(String.format("%.2f", s.gpa));
+        gpaLbl.setText(s.gpa == null ? "–" : String.format("%.2f", s.gpa));
         attLbl.setText(s.attendance + "%");
         attLbl.setForeground(attendanceColour(s.attendance));
     }
@@ -398,8 +456,8 @@ public class Undergraduates extends LecturerUI.Page {
     static class Student {
         final String reg, name, batch, email, phone;
         final int attendance;
-        final double gpa;
-        Student(String reg, String name, String batch, String email, int attendance, String phone, double gpa) {
+        final Double gpa;
+        Student(String reg, String name, String batch, String email, int attendance, String phone, Double gpa) {
             this.reg = reg; this.name = name; this.batch = batch; this.email = email;
             this.attendance = attendance; this.phone = phone; this.gpa = gpa;
         }
