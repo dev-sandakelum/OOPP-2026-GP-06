@@ -143,11 +143,12 @@ public class LoginPage extends JFrame implements FrameData {
         if (type == null) type = "admin";       // safe default for old records
 
         JFrame dashboard;
+        // users.user_type is an ENUM: ADMIN, LECTURER, TECHNICAL_OFFICER, UNDERGRADUATE
         switch (type.toLowerCase()) {
-            case "lecturer"  -> dashboard = new LecturerPage(user);
-            case "officer"   -> dashboard = new OfficerPages(user);
-            case "student"   -> dashboard = new StudentPages(user);
-            default          -> dashboard = new AdminPages(user);   // "admin"
+            case "lecturer"                      -> dashboard = new LecturerPage(user);
+            case "technical_officer", "officer"  -> dashboard = new OfficerPages(user);
+            case "undergraduate", "student"      -> dashboard = new StudentPages(user);
+            default                              -> dashboard = new AdminPages(user);   // "admin"
         }
         dashboard.setVisible(true);
     }
