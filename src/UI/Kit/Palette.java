@@ -3,7 +3,7 @@ package UI.Kit;
 import java.awt.*;
 
 // Colors and font shared by every page.
-// Theme: "Bright Glass Tech" - light blue backdrop, frosted white cards, royal-blue accent.
+// Theme: "AFMS" (Academic & Faculty Management System) - light blue backdrop, frosted white cards, royal-blue accent.
 public final class Palette {
     private Palette() { }
 

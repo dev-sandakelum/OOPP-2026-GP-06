@@ -20,7 +20,7 @@ public interface FrameData {
     String[] studentTabs  = {"Overview", "My Courses", "My Attendance", "Marks & GPA",
             "Medicals", "Notices", "Timetables", "My Profile"};
 
-    // ---------- Colors (Bright Glass Tech) ----------
+    // ---------- Colors (AFMS) ----------
     Color PAGE_BG = new Color(228, 238, 252);           // solid fallback behind the Backdrop gradient
 
     Color SIDEBAR_BG = new Color(247, 250, 255);        // opaque stand-in for the frosted sidebar
