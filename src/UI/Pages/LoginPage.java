@@ -8,6 +8,7 @@ import UI.Pages.Components.Card;
 import UI.Pages.Components.PhotoPanel;
 import UI.Pages.Components.RoundedButton;
 import data.UserData;
+import database.Database;
 import model.User;
 
 import javax.swing.*;
@@ -26,6 +27,7 @@ public class LoginPage extends JFrame implements FrameData {
     private final JLabel errorLabel        = new JLabel(" ");
 
     public LoginPage() {
+        Database.useLoginRole();    // logout lands here too: drop back to the login-only DB account
         setTitle("AFMS — Login");
         setSize(860, 520);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -122,6 +124,9 @@ public class LoginPage extends JFrame implements FrameData {
                 return;
             }
 
+            // From here on, DB access uses the account for this user's role
+            Database.useRoleFor(user.getUserType());
+
             // Open the right dashboard based on user_type
             openDashboard(user);
             dispose();                   // close the login window
@@ -148,17 +153,11 @@ public class LoginPage extends JFrame implements FrameData {
         }
 
         JFrame dashboard;
-
-        switch (type.trim().toLowerCase()) {
-            case "lecturer" ->
-                    dashboard = new LecturerPage(user);
-
-            case "officer", "technical officer" ->
-                    dashboard = new OfficerPages(user);
-
-            case "student", "undergraduate" ->
-                    dashboard = new StudentPages(user);
-
+        // users.user_type is an ENUM: ADMIN, LECTURER, TECHNICAL_OFFICER, UNDERGRADUATE
+        switch (type.toLowerCase()) {
+            case "lecturer"                      -> dashboard = new LecturerPage(user);
+            case "technical_officer", "officer"  -> dashboard = new OfficerPages(user);
+            case "undergraduate", "student"      -> dashboard = new StudentPages(user);
             case "admin", "administrator" ->
                     dashboard = new AdminPages(user);
 
