@@ -9,7 +9,15 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.Objects;
 
+import UI.Pages.lecturer.Attendance;
+import UI.Pages.lecturer.Grades_GPA;
+import UI.Pages.lecturer.Marks;
+import UI.Pages.lecturer.Medicals;
+import UI.Pages.lecturer.MyCourses;
+import UI.Pages.lecturer.MyProfile;
+import UI.Pages.lecturer.Notices;
 import UI.Pages.lecturer.Overview;
+import UI.Pages.lecturer.Undergraduates;
 import model.User;
 
 public class LecturerPage extends JFrame implements FrameData {
@@ -45,7 +53,18 @@ public class LecturerPage extends JFrame implements FrameData {
 
     private JPanel container(User user) {
         cardHost.setBackground(PAGE_BG);
-        cardHost.add(new Overview(user),  adminTabs[0]);
+
+        // same order as lecturerTabs
+        cardHost.add(new Overview(user),   lecturerTabs[0]);
+        cardHost.add(new MyCourses(),      lecturerTabs[1]);
+        cardHost.add(new Marks(),          lecturerTabs[2]);
+        cardHost.add(new Undergraduates(), lecturerTabs[3]);
+        cardHost.add(new Attendance(),     lecturerTabs[4]);
+        cardHost.add(new Grades_GPA(),     lecturerTabs[5]);
+        cardHost.add(new Medicals(),       lecturerTabs[6]);
+        cardHost.add(new Notices(),        lecturerTabs[7]);
+        cardHost.add(new MyProfile(user),  lecturerTabs[8]);
+
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
     }
 
