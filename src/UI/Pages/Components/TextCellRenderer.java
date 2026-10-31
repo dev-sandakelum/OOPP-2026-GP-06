@@ -7,7 +7,7 @@ import java.awt.*;
 
 import static UI.Kit.Palette.*;
 
-// Normal table cell: padded text, soft green when selected.
+// Normal table cell: padded text, transparent on the glass card, soft blue when selected.
 public class TextCellRenderer extends DefaultTableCellRenderer {
 
     @Override
@@ -15,8 +15,9 @@ public class TextCellRenderer extends DefaultTableCellRenderer {
                                                    boolean selected, boolean focus, int row, int col) {
         JLabel l = (JLabel) super.getTableCellRendererComponent(table, value, selected, false, row, col);
         l.setBorder(new EmptyBorder(0, 16, 0, 16));
-        l.setBackground(selected ? BRAND_SOFT : SURFACE);
-        l.setOpaque(true);
+        l.setForeground(INK);
+        l.setBackground(BRAND_SOFT);
+        l.setOpaque(selected);
         return l;
     }
 }

@@ -167,7 +167,7 @@ public class Overview extends Page {
         c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
         c.setBorder(new EmptyBorder(18, 20, 18, 20));
         c.setPreferredSize(new Dimension(0, 124));
-        Color muted = dark ? new Color(190, 215, 200) : INK_2;
+        Color muted = dark ? ON_BRAND_2 : INK_2;
 
         JLabel l = new JLabel(label);
         l.setFont(font(Font.BOLD, 13));

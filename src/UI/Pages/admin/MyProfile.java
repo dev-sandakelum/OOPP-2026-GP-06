@@ -4,6 +4,7 @@ import UI.Pages.Components.Avatar;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import data.UserData;
 import model.User;
 
 import javax.swing.*;
@@ -14,16 +15,18 @@ import java.sql.Date;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Admin "My Profile" tab: shows and edits the logged-in user (the User model is not changed).
+// Admin "My Profile" tab: shows and persists edits for the logged-in admin user.
 public class MyProfile extends Page {
 
-    private final User user;
-    private final JTextField name = field(20);
-    private final JTextField email = field(20);
-    private final JTextField contact = field(20);
-    private final JTextField dob = field(20);
-    private final JTextField address = field(20);
-    private final JTextField gender = field(20);
+    private final UserData userData = new UserData();
+    private final User     user;
+
+    private final JTextField nameField    = field(20);
+    private final JTextField emailField   = field(20);
+    private final JTextField contactField = field(20);
+    private final JTextField dobField     = field(20);
+    private final JTextField addressField = field(20);
+    private final JTextField genderField  = field(20);
 
     public MyProfile(User user) {
         super("My Profile", "Your account details", null);
@@ -33,8 +36,8 @@ public class MyProfile extends Page {
         card.setLayout(new BorderLayout(0, 20));
         card.setBorder(new EmptyBorder(24, 26, 24, 26));
         card.add(identityRow(), BorderLayout.NORTH);
-        card.add(fieldsGrid(), BorderLayout.CENTER);
-        card.add(buttonsRow(), BorderLayout.SOUTH);
+        card.add(fieldsGrid(),  BorderLayout.CENTER);
+        card.add(buttonsRow(),  BorderLayout.SOUTH);
 
         JPanel wrap = new JPanel(new BorderLayout());
         wrap.setOpaque(false);
@@ -44,38 +47,44 @@ public class MyProfile extends Page {
         load();
     }
 
-    // copies the user into the text fields
+    // ----------------------------------------------------------------
+    //  Load / reset
+    // ----------------------------------------------------------------
+
     private void load() {
         if (user == null) return;
-        name.setText(nz(user.getName()));
-        email.setText(nz(user.getEmail()));
-        contact.setText(nz(user.getContact_number()));
-        dob.setText(user.getDOB() == null ? "" : user.getDOB().toString());
-        address.setText(nz(user.getAddress()));
-        gender.setText(nz(user.getGender()));
+        nameField.setText(nz(user.getName()));
+        emailField.setText(nz(user.getEmail()));
+        contactField.setText(nz(user.getContact_number()));
+        dobField.setText(user.getDOB() == null ? "" : user.getDOB().toString());
+        addressField.setText(nz(user.getAddress()));
+        genderField.setText(nz(user.getGender()));
     }
 
-    private static String nz(String s) {
-        return s == null ? "" : s;
-    }
+    private static String nz(String s) { return s == null ? "" : s; }
+
+    // ----------------------------------------------------------------
+    //  Identity row (avatar + name + role label)
+    // ----------------------------------------------------------------
 
     private JComponent identityRow() {
         String shown = (user != null && user.getName() != null && !user.getName().isBlank())
                 ? user.getName() : "Administrator";
 
-        JLabel t = new JLabel(shown);
-        t.setFont(font(Font.BOLD, 20));
-        t.setForeground(INK);
-        JLabel s = new JLabel("Administrator");
-        s.setFont(font(Font.PLAIN, 13));
-        s.setForeground(INK_2);
+        JLabel nameLabel = new JLabel(shown);
+        nameLabel.setFont(font(Font.BOLD, 20));
+        nameLabel.setForeground(INK);
+
+        JLabel roleLabel = new JLabel("Administrator");
+        roleLabel.setFont(font(Font.PLAIN, 13));
+        roleLabel.setForeground(INK_2);
 
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
         text.add(Box.createVerticalGlue());
-        text.add(t);
-        text.add(s);
+        text.add(nameLabel);
+        text.add(roleLabel);
         text.add(Box.createVerticalGlue());
 
         JPanel row = new JPanel(new BorderLayout(16, 0));
@@ -85,15 +94,19 @@ public class MyProfile extends Page {
         return row;
     }
 
+    // ----------------------------------------------------------------
+    //  Fields grid
+    // ----------------------------------------------------------------
+
     private JComponent fieldsGrid() {
         JPanel grid = new JPanel(new GridLayout(0, 2, 20, 14));
         grid.setOpaque(false);
-        addField(grid, "Full name", name);
-        addField(grid, "Email", email);
-        addField(grid, "Contact number", contact);
-        addField(grid, "Date of birth (yyyy-mm-dd)", dob);
-        addField(grid, "Address", address);
-        addField(grid, "Gender", gender);
+        addField(grid, "Full name",                    nameField);
+        addField(grid, "Email",                        emailField);
+        addField(grid, "Contact number",               contactField);
+        addField(grid, "Date of birth (yyyy-mm-dd)",   dobField);
+        addField(grid, "Address",                      addressField);
+        addField(grid, "Gender",                       genderField);
         return grid;
     }
 
@@ -101,12 +114,16 @@ public class MyProfile extends Page {
         JPanel p = new JPanel(new BorderLayout(0, 6));
         p.setOpaque(false);
         p.add(label(caption), BorderLayout.NORTH);
-        p.add(f, BorderLayout.CENTER);
+        p.add(f,              BorderLayout.CENTER);
         grid.add(p);
     }
 
+    // ----------------------------------------------------------------
+    //  Buttons row
+    // ----------------------------------------------------------------
+
     private JComponent buttonsRow() {
-        RoundedButton save = new RoundedButton("Save changes", true);
+        RoundedButton save  = new RoundedButton("Save changes", true);
         save.addActionListener(e -> save());
         RoundedButton reset = new RoundedButton("Reset", false);
         reset.addActionListener(e -> load());
@@ -118,27 +135,46 @@ public class MyProfile extends Page {
         return p;
     }
 
+    // ----------------------------------------------------------------
+    //  Save — validates fields then persists to DB via UserData
+    // ----------------------------------------------------------------
+
     private void save() {
         if (user == null) return;
-        if (name.getText().isBlank() || email.getText().isBlank()) {
+
+        if (nameField.getText().isBlank() || emailField.getText().isBlank()) {
             info(this, "Name and email are required.");
             return;
         }
-        Date d = null;
-        if (!dob.getText().isBlank()) {
+
+        Date dob = null;
+        if (!dobField.getText().isBlank()) {
             try {
-                d = Date.valueOf(dob.getText().trim());
+                dob = Date.valueOf(dobField.getText().trim());
             } catch (IllegalArgumentException ex) {
                 info(this, "Date of birth must look like 1985-03-21.");
                 return;
             }
         }
-        user.setName(name.getText().trim());
-        user.setEmail(email.getText().trim());
-        user.setContact_number(contact.getText().trim());
-        user.setDOB(d);
-        user.setAddress(address.getText().trim());
-        user.setGender(gender.getText().trim());
-        info(this, "Profile saved.");
+
+        // Update the in-memory user object
+        user.setName(nameField.getText().trim());
+        user.setEmail(emailField.getText().trim());
+        user.setContact_number(contactField.getText().trim());
+        user.setDOB(dob);
+        user.setAddress(addressField.getText().trim());
+        user.setGender(genderField.getText().trim());
+
+        // Persist to the database
+        try {
+            boolean ok = userData.update(user);
+            if (ok) {
+                info(this, "Profile saved successfully.");
+            } else {
+                info(this, "No changes were saved — the record may not exist.");
+            }
+        } catch (Exception ex) {
+            info(this, "Could not save profile: " + ex.getMessage());
+        }
     }
 }

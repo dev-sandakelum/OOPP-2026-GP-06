@@ -1,9 +1,11 @@
 package UI.Pages.admin;
 
 import UI.Pages.Components.BarMeter;
-import UI.Pages.Components.Card;
 import UI.Pages.Components.Dot;
+import UI.Pages.Components.KpiCard;
+import UI.Pages.Components.NavIcon;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.SectionCard;
 import data.AdminData;
 import model.User;
 
@@ -105,38 +107,13 @@ public class Overview extends Page {
             {"Notices",          String.valueOf(publishedNotices), "Published"},
             {"Pending medicals", String.valueOf(pendingMedicals),  "Awaiting decision"}
         };
+        NavIcon[] icons = {NavIcon.USERS, NavIcon.STUDENTS, NavIcon.MEGA, NavIcon.PLUS_BOX};
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
         row.setOpaque(false);
         for (int i = 0; i < kpis.length; i++) {
-            row.add(kpiCard(kpis[i][0], kpis[i][1], kpis[i][2], i == 0));
+            row.add(new KpiCard(kpis[i][0], kpis[i][1], kpis[i][2], icons[i], i == 0));
         }
         return row;
-    }
-
-    private JComponent kpiCard(String label, String value, String sub, boolean dark) {
-        Card c = new Card(dark);
-        c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
-        c.setBorder(new EmptyBorder(18, 20, 18, 20));
-        c.setPreferredSize(new Dimension(0, 124));
-        Color muted = dark ? new Color(190, 215, 200) : INK_2;
-
-        JLabel l = new JLabel(label);
-        l.setFont(font(Font.BOLD, 13));
-        l.setForeground(muted);
-
-        JLabel v = new JLabel(value);
-        v.setFont(font(Font.BOLD, 34));
-        v.setForeground(dark ? Color.WHITE : INK);
-
-        JLabel s = new JLabel(sub);
-        s.setFont(font(Font.PLAIN, 12));
-        s.setForeground(muted);
-
-        c.add(l);
-        c.add(Box.createVerticalGlue());
-        c.add(v);
-        c.add(s);
-        return c;
     }
 
     // -------------------------------------------------------------------------
@@ -146,28 +123,9 @@ public class Overview extends Page {
     private JComponent lowerRow() {
         JPanel row = new JPanel(new GridLayout(1, 2, 16, 0));
         row.setOpaque(false);
-        row.add(infoCard("Users by role",      rolesBody()));
-        row.add(infoCard("Requires attention", attentionBody()));
+        row.add(new SectionCard("Users by role",      NavIcon.USERS, rolesBody()));
+        row.add(new SectionCard("Requires attention", NavIcon.BELL,  attentionBody()));
         return row;
-    }
-
-    private JComponent infoCard(String title, JComponent content) {
-        Card c = new Card(false);
-        c.setLayout(new BorderLayout(0, 14));
-        c.setBorder(new EmptyBorder(20, 22, 20, 22));
-
-        JLabel t = new JLabel(title);
-        t.setFont(font(Font.BOLD, 16));
-        t.setForeground(INK);
-
-        // wrap content so it stays at the top of the card
-        JPanel wrap = new JPanel(new BorderLayout());
-        wrap.setOpaque(false);
-        wrap.add(content, BorderLayout.NORTH);
-
-        c.add(t, BorderLayout.NORTH);
-        c.add(wrap, BorderLayout.CENTER);
-        return c;
     }
 
     // -------------------------------------------------------------------------

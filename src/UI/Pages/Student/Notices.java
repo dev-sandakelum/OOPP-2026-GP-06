@@ -81,17 +81,17 @@ public class Notices extends Page {
 
     private void updateFilterUI(JLabel lbl, boolean selected) {
         if (selected) {
-            lbl.setBackground(new Color(20, 60, 50));
+            lbl.setBackground(BRAND);
             lbl.setForeground(Color.WHITE);
             lbl.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(20, 60, 50), 1, true),
+                    BorderFactory.createLineBorder(BRAND, 1, true),
                     BorderFactory.createEmptyBorder(6, 14, 6, 14)
             ));
         } else {
             lbl.setBackground(Color.WHITE);
             lbl.setForeground(Color.DARK_GRAY);
             lbl.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true),
+                    BorderFactory.createLineBorder(LINE, 1, true),
                     BorderFactory.createEmptyBorder(6, 14, 6, 14)
             ));
         }
@@ -123,7 +123,7 @@ public class Notices extends Page {
 
         JLabel dayLbl = new JLabel(day, SwingConstants.CENTER);
         dayLbl.setFont(font(Font.BOLD, 22));
-        dayLbl.setForeground(new Color(20, 60, 50));
+        dayLbl.setForeground(BRAND);
 
         JLabel monthLbl = new JLabel(month, SwingConstants.CENTER);
         monthLbl.setFont(font(Font.PLAIN, 11));
@@ -135,7 +135,7 @@ public class Notices extends Page {
         JPanel dateContainer = new JPanel(new BorderLayout());
         dateContainer.setOpaque(false);
         dateContainer.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(235, 235, 235)),
+                BorderFactory.createMatteBorder(0, 0, 0, 1, LINE),
                 new EmptyBorder(0, 5, 0, 25)
         ));
         dateContainer.add(dateBlock, BorderLayout.NORTH);
@@ -149,7 +149,7 @@ public class Notices extends Page {
         titleRow.setOpaque(false);
         titleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        titleRow.add(new Chip(n[0], new Color(46, 125, 50)));
+        titleRow.add(new Chip(n[0], OK));
 
         JLabel titleLbl = new JLabel(n[1]);
         titleLbl.setFont(font(Font.BOLD, 15));

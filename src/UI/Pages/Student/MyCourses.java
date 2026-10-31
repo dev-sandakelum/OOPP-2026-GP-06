@@ -88,7 +88,7 @@ public class MyCourses extends Page {
         card.setBorder(new EmptyBorder(18, 20, 18, 20));
 
         Color muted = dark
-                ? new Color(190, 215, 200)
+                ? ON_BRAND_2
                 : INK_2;
 
         JLabel titleLabel = new JLabel(label);
@@ -214,8 +214,8 @@ public class MyCourses extends Page {
         bar.setValue((int) Math.round(attendance));
         bar.setPreferredSize(new Dimension(110, 6));
         bar.setMaximumSize(new Dimension(110, 6));
-        bar.setForeground(new Color(46, 125, 50));
-        bar.setBackground(new Color(230, 240, 230));
+        bar.setForeground(OK);
+        bar.setBackground(BRAND_SOFT);
         bar.setBorderPainted(false);
 
         attPanel.add(pctLbl);
@@ -226,7 +226,7 @@ public class MyCourses extends Page {
         // 6. Grade Badge
         JPanel gradePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         gradePanel.setOpaque(false);
-        gradePanel.add(new Chip("● " + grade, new Color(46, 125, 50)));
+        gradePanel.add(new Chip("● " + grade, OK));
         row.add(wrapCell(gradePanel, widths[5]));
 
         container.add(row);

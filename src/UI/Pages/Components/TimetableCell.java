@@ -1,5 +1,7 @@
 package UI.Pages.Components;
 
+import UI.Kit.Glass;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
@@ -30,15 +32,17 @@ public class TimetableCell extends JButton {
         boolean hover = getModel().isRollover();
         boolean filled = !code.isEmpty();
 
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        Graphics2D g2 = Glass.aa(g);
+        Shape shape = new RoundRectangle2D.Float(0.5f, 0.5f, getWidth() - 2, getHeight() - 2, 18, 18);
 
-        Shape shape = new RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
-        g2.setColor(filled ? (hover ? new Color(206, 228, 215) : BRAND_SOFT) : (hover ? LINE : SURFACE_2));
-        g2.fill(shape);
-
-        if (!filled) {
+        if (filled) {
+            g2.setColor(hover ? Glass.alpha(BRAND_LT, 80) : BRAND_SOFT);
+            g2.fill(shape);
+            g2.setColor(GLASS_LINE);
+            g2.draw(shape);
+        } else {
+            g2.setColor(hover ? GLASS : GLASS_FAINT);
+            g2.fill(shape);
             g2.setColor(LINE_2);
             g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[]{4f, 4f}, 0f));
             g2.draw(shape);

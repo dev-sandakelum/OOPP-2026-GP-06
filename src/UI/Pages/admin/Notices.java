@@ -4,6 +4,7 @@ import UI.Pages.Components.Card;
 import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -15,27 +16,49 @@ import java.util.List;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Admin "Notices" tab: post and delete notices.
-// A notice is a String[]: {title, message, audience, date}.
+/**
+ * Admin "Notices" tab: post and delete notices.
+ * A notice is stored as String[]: {title, description, audience, date-string}.
+ *
+ * TODO (team task): replace the in-memory list with AdminData.getAllNotices /
+ * insertNotice / deleteNotice once the Notices data layer is delivered.
+ * See docs/issue-admin-ui-data-connect.md for the spec.
+ */
 public class Notices extends Page {
 
     // ---------- Placeholder data (swap for services later) ----------
     private final List<String[]> notices = new ArrayList<>(List.of(
-            new String[]{"Mid-semester examinations", "Mid-semester exams begin next Monday. Check the timetable for your venue.", "Everyone", "2026-10-05"},
-            new String[]{"Medical submission deadline", "Medical certificates must be submitted within 7 days of the absence.", "Undergraduates", "2026-10-02"},
-            new String[]{"Lab maintenance", "Computer Lab 2 is closed on Friday for maintenance.", "Staff", "2026-09-29"},
-            new String[]{"Assignment 2 released", "Assignment 2 for all level 1 modules is now available.", "Undergraduates", "2026-09-25"},
-            new String[]{"Staff meeting", "Faculty staff meeting on Thursday at 3 PM in the main board room.", "Staff", "2026-09-20"}
+            new String[]{"Mid-semester examinations",
+                    "Mid-semester exams begin next Monday. Check the timetable for your venue.",
+                    "Everyone", "2026-10-05"},
+            new String[]{"Medical submission deadline",
+                    "Medical certificates must be submitted within 7 days of the absence.",
+                    "Undergraduates", "2026-10-02"},
+            new String[]{"Lab maintenance",
+                    "Computer Lab 2 is closed on Friday for maintenance.",
+                    "Staff", "2026-09-29"},
+            new String[]{"Assignment 2 released",
+                    "Assignment 2 for all level 1 modules is now available.",
+                    "Undergraduates", "2026-09-25"},
+            new String[]{"Staff meeting",
+                    "Faculty staff meeting on Thursday at 3 PM in the main board room.",
+                    "Staff", "2026-09-20"}
     ));
     // ---------- end placeholder data ----------
 
     private final JPanel list = new JPanel();
 
-    public Notices() {
+    /** currentUser is kept for when the real data layer is wired in. */
+    @SuppressWarnings("unused")
+    private final User currentUser;
+
+    public Notices(User currentUser) {
         super("Notices", "Post announcements for staff and undergraduates", null);
+        this.currentUser = currentUser;
 
         RoundedButton post = new RoundedButton("+ Post notice", true);
         post.addActionListener(e -> postNotice());
+
         JPanel top = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         top.setOpaque(false);
         top.add(post);
@@ -45,11 +68,16 @@ public class Notices extends Page {
 
         JPanel body = new JPanel(new BorderLayout(0, 14));
         body.setOpaque(false);
-        body.add(top, BorderLayout.NORTH);
+        body.add(top,  BorderLayout.NORTH);
         body.add(list, BorderLayout.CENTER);
         setScrollBody(body);
+
         refresh();
     }
+
+    // -----------------------------------------------------------------
+    //  Render
+    // -----------------------------------------------------------------
 
     private void refresh() {
         list.removeAll();
@@ -58,23 +86,25 @@ public class Notices extends Page {
             empty.setFont(font(Font.PLAIN, 14));
             empty.setForeground(INK_2);
             list.add(empty);
-        }
-        for (String[] n : notices) {
-            list.add(noticeCard(n));
-            list.add(Box.createVerticalStrut(12));
+        } else {
+            for (String[] n : notices) {
+                list.add(noticeCard(n));
+                list.add(Box.createVerticalStrut(12));
+            }
         }
         list.revalidate();
         list.repaint();
     }
 
     private JComponent noticeCard(String[] n) {
+        // n = {title, description, audience, date}
         JLabel title = new JLabel(n[0]);
         title.setFont(font(Font.BOLD, 16));
         title.setForeground(INK);
 
         JLabel date = new JLabel(n[3]);
         date.setFont(font(Font.PLAIN, 12));
-      date.setForeground(INK_2);
+        date.setForeground(INK_2);
 
         JPanel meta = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         meta.setOpaque(false);
@@ -84,7 +114,7 @@ public class Notices extends Page {
         JPanel head = new JPanel(new BorderLayout(0, 6));
         head.setOpaque(false);
         head.add(title, BorderLayout.NORTH);
-      head.add(meta, BorderLayout.CENTER);
+        head.add(meta,  BorderLayout.CENTER);
 
         JTextArea message = new JTextArea(n[1]);
         message.setFont(font(Font.PLAIN, 14));
@@ -97,7 +127,7 @@ public class Notices extends Page {
 
         JPanel text = new JPanel(new BorderLayout(0, 8));
         text.setOpaque(false);
-        text.add(head, BorderLayout.NORTH);
+        text.add(head,    BorderLayout.NORTH);
         text.add(message, BorderLayout.CENTER);
 
         RoundedButton del = new RoundedButton("Delete", false);
@@ -116,23 +146,31 @@ public class Notices extends Page {
         return card;
     }
 
-    private void deleteNotice(String[] n) {
-        if (confirm(this, "Delete \"" + n[0] + "\"?")) {
-            notices.remove(n);
-            refresh();
-        }
-    }
+    // -----------------------------------------------------------------
+    //  Actions (in-memory until data layer is delivered)
+    // -----------------------------------------------------------------
 
     private void postNotice() {
-        String[] labels = {"Title", "Message", "Audience (Everyone / Staff / Undergraduates)"};
-        String[] v = form(this, "Post notice", labels, new String[]{"", "", "Everyone"});
+        String[] labels = {"Title", "Message",
+                "Audience (Everyone / Staff / Undergraduates)"};
+        String[] v = form(this, "Post notice",
+                labels, new String[]{"", "", "Everyone"});
         if (v == null) return;
+
         if (v[0].isEmpty() || v[1].isEmpty()) {
             info(this, "Title and message are required.");
             return;
         }
         String audience = v[2].isEmpty() ? "Everyone" : v[2];
-        notices.add(0, new String[]{v[0], v[1], audience, LocalDate.now().toString()});
+        notices.add(0, new String[]{v[0], v[1], audience,
+                LocalDate.now().toString()});
         refresh();
+    }
+
+    private void deleteNotice(String[] n) {
+        if (confirm(this, "Delete \"" + n[0] + "\"?")) {
+            notices.remove(n);
+            refresh();
+        }
     }
 }
