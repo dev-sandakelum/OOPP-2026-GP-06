@@ -13,6 +13,12 @@ import java.sql.SQLException;
  * matches the user's role. The accounts and their grants are created by
  * sql/db_users.sql.
  *
+ * Database Configuration:
+ * - Hostname: afms-db.mysql.database.azure.com
+ * - Port: 3306
+ * - Username: afms_admin (for initial setup; role-based accounts used at runtime)
+ * - SSL Mode: Required
+ *
  * Passwords can be overridden with the environment variables
  * AFMS_DB_LOGIN_PASSWORD, AFMS_DB_ADMIN_PASSWORD, AFMS_DB_LECTURER_PASSWORD,
  * AFMS_DB_OFFICER_PASSWORD and AFMS_DB_STUDENT_PASSWORD. The defaults below
@@ -37,10 +43,11 @@ public class Database {
         }
     }
 
-    private static final String HOST = "localhost";
+    private static final String HOST = "afms-db.mysql.database.azure.com";
     private static final String PORT = "3306";
     private static final String DB = "afms_db";
-    private static final String URL = "jdbc:mysql://" + HOST + ":" + PORT + "/" + DB;
+    private static final String URL = "jdbc:mysql://" + HOST + ":" + PORT + "/" + DB 
+            + "?useSSL=true&requireSSL=true&verifyServerCertificate=true";
 
     private static volatile Role currentRole = Role.LOGIN;
 
