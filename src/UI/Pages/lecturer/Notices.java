@@ -144,8 +144,7 @@ public class Notices extends LecturerUI.Page {
         String title = titleField.getText().trim();
         String message = messageArea.getText().trim();
         if (title.isEmpty() || message.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter a title and a message.",
-                    "Missing information", JOptionPane.WARNING_MESSAGE);
+            UI.Pages.Components.Ui.warn(this, "Missing information", "Please enter a title and a message.");
             return;
         }
 
@@ -165,7 +164,7 @@ public class Notices extends LecturerUI.Page {
         try {
             noticeData.insert(row);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Could not save the notice: " + ex.getMessage());
+            UI.Pages.Components.Ui.info(this, "Could not save the notice: " + ex.getMessage());
             return;
         }
 
