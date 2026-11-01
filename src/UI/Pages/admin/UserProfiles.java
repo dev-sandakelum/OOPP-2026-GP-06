@@ -24,7 +24,7 @@ import static UI.Pages.Components.Ui.*;
 // Admin "User Profiles" tab: search, filter by role, add / edit / delete users.
 public class UserProfiles extends Page {
 
-    private static final String[] COLS  = {"Name", "Role", "Email", "Contact", "Gender"};
+    private static final String[] COLS  = {"Name", "Role", "Email", "Contact", "Student Number", "Gender"};
     private static final String[] ROLES = {"Administrator", "Lecturer", "Technical Officer", "Undergraduate"};
 
     private final UserData userData = new UserData();
@@ -78,11 +78,26 @@ public class UserProfiles extends Page {
         photos.clear();
         try {
             for (User u : userData.findAll()) {
+                String studentNumber = "";
+                // If user is an undergraduate, fetch student number
+                if ("UNDERGRADUATE".equals(u.getUserType())) {
+                    try {
+                        data.UndergraduateData ugData = new data.UndergraduateData();
+                        model.Undergraduate ug = ugData.findById(u.getUser_id());
+                        if (ug != null && ug.getStudent_number() != null) {
+                            studentNumber = ug.getStudent_number();
+                        }
+                    } catch (Exception ex) {
+                        // Ignore and leave student number empty
+                    }
+                }
+                
                 model.addRow(new String[]{
                         u.getName(),
                         roleLabel(u.getUserType()),
                         u.getEmail(),
                         u.getContact_number() == null ? "" : u.getContact_number(),
+                        studentNumber,
                         u.getGender() == null ? "" : u.getGender()
                 });
                 ids.add(u.getUser_id());
@@ -159,12 +174,12 @@ public class UserProfiles extends Page {
     }
 
     // -----------------------------------------------------------------
-    //  Ask dialog — returns {name, roleLabel, email, contact, gender} or null
+    //  Ask dialog — returns {name, roleLabel, email, contact, studentNumber, gender} or null
     // -----------------------------------------------------------------
 
     private String[] ask(String title, String[] current) {
         String[] initial = current == null ? null
-                : new String[]{current[0], current[2], current[3], current[4]};
+                : new String[]{current[0], current[2], current[3], current[5]};
         String[] v = form(this, title, new String[]{"Name", "Email", "Contact", "Gender (M/F/Other)"}, initial);
         if (v == null) return null;
         if (v[0].isEmpty() || v[1].isEmpty()) {
@@ -174,7 +189,14 @@ public class UserProfiles extends Page {
         JComboBox<String> roleCb = new JComboBox<>(ROLES);
         if (current != null) roleCb.setSelectedItem(current[1]);
         if (!Ui.ask(this, "Role", roleCb)) return null;
-        return new String[]{v[0], (String) roleCb.getSelectedItem(), v[1], v[2], v[3]};
+        
+        // Student number is only for undergraduates and left empty for new users
+        String studentNumber = "";
+        if (current != null && current.length > 4) {
+            studentNumber = current[4];
+        }
+        
+        return new String[]{v[0], (String) roleCb.getSelectedItem(), v[1], v[2], studentNumber, v[3]};
     }
 
     // -----------------------------------------------------------------
@@ -196,7 +218,7 @@ public class UserProfiles extends Page {
         u.setName(v[0]);
         u.setEmail(v[2]);
         u.setContact_number(v[3]);
-        u.setGender(v[4]);
+        u.setGender(v[5]);
         u.setPassword(pw[0]);           // store hash in production
         u.setUserType(roleDbValue(v[1]));
         u.setPhoto(null);               // the database trigger picks a free photo
@@ -204,7 +226,7 @@ public class UserProfiles extends Page {
         try {
             userData.insert(u);
             User saved = userData.findById(u.getUser_id());   // re-read to get the assigned photo
-            model.addRow(new String[]{v[0], v[1], v[2], v[3], v[4]});
+            model.addRow(new String[]{v[0], v[1], v[2], v[3], v[4], v[5]});
             ids.add(u.getUser_id());
             photos.add(saved == null ? null : saved.getPhoto());
         } catch (Exception ex) {
@@ -229,7 +251,7 @@ public class UserProfiles extends Page {
         u.setName(v[0]);
         u.setEmail(v[2]);
         u.setContact_number(v[3]);
-        u.setGender(v[4]);
+        u.setGender(v[5]);
         u.setUserType(roleDbValue(v[1]));
         u.setPhoto(photos.get(m));      // keep the existing photo
 
