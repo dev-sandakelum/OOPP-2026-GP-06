@@ -53,7 +53,6 @@ public class MyCourses extends Page {
     // KPI label
     private final JLabel moduleCountLabel = new JLabel("0");
 
-
     // Constructor
     public MyCourses(User user) {
 
@@ -66,13 +65,11 @@ public class MyCourses extends Page {
         body.setBackground(new Color(245, 247, 250));
         body.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-
         // ==============================
         // ENROLLED MODULES KPI CARD
         // ==============================
 
         JPanel kpiCard = new JPanel(new BorderLayout());
-
         kpiCard.setBackground(Color.WHITE);
 
         kpiCard.setBorder(BorderFactory.createCompoundBorder(
@@ -113,7 +110,6 @@ public class MyCourses extends Page {
 
         body.add(kpiCard);
         body.add(Box.createVerticalStrut(20));
-
 
         // ==============================
         // COURSES TABLE
@@ -169,7 +165,6 @@ public class MyCourses extends Page {
                 new Dimension(750, 300)
         );
 
-
         // Table card
         JPanel tableCard = new JPanel(
                 new BorderLayout(10, 10)
@@ -219,15 +214,23 @@ public class MyCourses extends Page {
 
         body.add(tableCard);
 
-        setScrollBody(body);
+        // ==============================
+        // LECTURER UPLOADED MATERIALS CARD
+        // ==============================
 
+        body.add(Box.createVerticalStrut(25));
+
+        JComponent materials = new MaterialsCard(user);
+        materials.setAlignmentX(Component.LEFT_ALIGNMENT);
+        body.add(materials);
+
+        setScrollBody(body);
 
         // ==============================
         // LOAD COURSES
         // ==============================
 
         loadCourses();
-
 
         // ==============================
         // COURSE SELECTION LISTENER
@@ -260,7 +263,6 @@ public class MyCourses extends Page {
             }
         });
     }
-
 
     // =====================================================
     // LOAD ONLY ENROLLED COURSES OF THE LOGGED-IN STUDENT
@@ -296,7 +298,6 @@ public class MyCourses extends Page {
             // Prevent duplicate offering IDs
             Set<Integer> addedOfferingIds = new HashSet<>();
 
-
             for (Enrollment enrollment : enrollments) {
 
                 if (enrollment == null) {
@@ -320,7 +321,6 @@ public class MyCourses extends Page {
                     continue;
                 }
 
-
                 // Get course offering
                 CourseOffering offering =
                         offeringData.findById(offeringId);
@@ -328,7 +328,6 @@ public class MyCourses extends Page {
                 if (offering == null) {
                     continue;
                 }
-
 
                 // Get course details
                 Course course =
@@ -340,7 +339,6 @@ public class MyCourses extends Page {
                     continue;
                 }
 
-
                 // Get semester details
                 Semester semester =
                         semesterData.findById(
@@ -350,11 +348,9 @@ public class MyCourses extends Page {
                 String semesterName = "N/A";
 
                 if (semester != null) {
-
                     semesterName = "Semester " +
                             semester.getSemester_number();
                 }
-
 
                 // Get lecturer details
                 String lecturerName = "Not Assigned";
@@ -374,16 +370,12 @@ public class MyCourses extends Page {
                     }
                 }
 
-
                 // Add course details to table
                 tableModel.addRow(new Object[]{
 
                         course.getCourse_code(),
-
                         course.getCourse_name(),
-
                         semesterName,
-
                         lecturerName
 
                 });
@@ -392,14 +384,12 @@ public class MyCourses extends Page {
                 offeringIds.add(offeringId);
             }
 
-
             // Update enrolled modules count
             int enrolledCount = tableModel.getRowCount();
 
             moduleCountLabel.setText(
                     String.valueOf(enrolledCount)
             );
-
 
             // Display message when no enrolled courses exist
             if (enrolledCount == 0) {
@@ -436,7 +426,6 @@ public class MyCourses extends Page {
         }
     }
 
-
     // =====================================================
     // DISPLAY COURSE LEARNING MATERIALS
     // =====================================================
@@ -461,7 +450,6 @@ public class MyCourses extends Page {
                 return;
             }
 
-
             // Create list model
             DefaultListModel<CourseMaterial> listModel =
                     new DefaultListModel<>();
@@ -485,7 +473,6 @@ public class MyCourses extends Page {
                 return;
             }
 
-
             // Create materials list
             JList<CourseMaterial> materialsList =
                     new JList<>(listModel);
@@ -499,7 +486,6 @@ public class MyCourses extends Page {
             );
 
             materialsList.setFixedCellHeight(35);
-
 
             // Custom list renderer
             materialsList.setCellRenderer(
@@ -538,14 +524,12 @@ public class MyCourses extends Page {
                     }
             );
 
-
             JScrollPane materialScrollPane =
                     new JScrollPane(materialsList);
 
             materialScrollPane.setPreferredSize(
                     new Dimension(450, 220)
             );
-
 
             // Show materials dialog
             int result = JOptionPane.showConfirmDialog(
@@ -555,7 +539,6 @@ public class MyCourses extends Page {
                     JOptionPane.OK_CANCEL_OPTION,
                     JOptionPane.PLAIN_MESSAGE
             );
-
 
             // Open selected material
             if (result == JOptionPane.OK_OPTION) {
@@ -602,7 +585,6 @@ public class MyCourses extends Page {
         }
     }
 
-
     // =====================================================
     // OPEN SELECTED MATERIAL
     // =====================================================
@@ -618,7 +600,6 @@ public class MyCourses extends Page {
             String externalLink = material.getExternal_link();
 
             String filePath = material.getFile_path();
-
 
             // Open external link using default browser
             if (externalLink != null &&
