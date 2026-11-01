@@ -4,7 +4,9 @@ import UI.Pages.Components.Avatar;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import data.UndergraduateData;
 import data.UserData;
+import model.Undergraduate;
 import model.User;
 
 import javax.swing.*;
@@ -18,13 +20,15 @@ import static UI.Pages.Components.Ui.*;
 public class MyProfile extends Page {
 
     private final UserData userData = new UserData();
+    private final UndergraduateData undergraduateData = new UndergraduateData();
     private final User user;
+    private Undergraduate undergraduate;
 
     // Fields
     private final JTextField nameField = field(20);
     private final JTextField usernameField = field(20);
     private final JTextField roleField = field(20);
-    private final JTextField indexField = field(20);
+    private final JTextField studentNumberField = field(20);
     private final JTextField emailField = field(20);
     private final JTextField phoneField = field(20);
     private final JTextField dobField = field(20);
@@ -58,14 +62,24 @@ public class MyProfile extends Page {
 
     private void load() {
         if (user == null) return;
+        
+        // Load undergraduate data to get student_number
+        try {
+            undergraduate = undergraduateData.findById(user.getUser_id());
+        } catch (Exception e) {
+            info(this, "Could not load undergraduate details: " + e.getMessage());
+        }
+        
         String shownName = (user.getName() != null) ? user.getName() : "";
         String email = (user.getEmail() != null) ? user.getEmail() : "";
         String phone = (user.getContact_number() != null) ? user.getContact_number() : "";
+        String studentNumber = (undergraduate != null && undergraduate.getStudent_number() != null) 
+                ? undergraduate.getStudent_number() : "";
 
         nameField.setText(shownName);
         usernameField.setText(""); // Placeholder - username not in User model
         roleField.setText("Undergraduate");
-        indexField.setText(""); // Placeholder - can be retrieved from student_id if needed
+        studentNumberField.setText(studentNumber);
 
         emailField.setText(email);
         phoneField.setText(phone);
@@ -118,7 +132,7 @@ public class MyProfile extends Page {
 
         // Row 2: Locked
         grid.add(createFieldPanel("Role", roleField, true));
-        grid.add(createFieldPanel("Index number", indexField, true));
+        grid.add(createFieldPanel("Student number", studentNumberField, true));
 
         // Row 3: Editable
         grid.add(createFieldPanel("Email", emailField, false));
