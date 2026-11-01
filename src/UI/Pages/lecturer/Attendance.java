@@ -1,6 +1,17 @@
 package UI.Pages.lecturer;
 
 import UI.Pages.Components.Card;
+import data.AttendanceData;
+import data.CourseData;
+import data.CourseOfferingData;
+import data.EnrollmentData;
+import data.SessionData;
+import data.UserData;
+import model.Course;
+import model.CourseOffering;
+import model.Enrollment;
+import model.Session;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -33,8 +44,19 @@ public class Attendance extends LecturerUI.Page {
     private JPanel rowsPanel;
     private final List<StudentRow> studentRows = new ArrayList<>();
 
-    public Attendance() {
+    private final CourseOfferingData offeringData = new CourseOfferingData();
+    private final CourseData courseData = new CourseData();
+    private final EnrollmentData enrollmentData = new EnrollmentData();
+    private final UserData userData = new UserData();
+    private final SessionData sessionData = new SessionData();
+    private final AttendanceData attendanceData = new AttendanceData();
+    private final int lecturerId;
+    private List<CourseOffering> offerings = new ArrayList<>();
+    private List<Session> sessions = new ArrayList<>();   // sessions shown in sessionBox
+
+    public Attendance(User user) {
         super("Attendance", "Mark attendance for a session", null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
         //  1. filters + actions   2. summary cards   3. student list
         JPanel body = new JPanel();
@@ -114,7 +136,7 @@ public class Attendance extends LecturerUI.Page {
         c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
         c.setBorder(new EmptyBorder(16, 20, 16, 20));
         c.setPreferredSize(new Dimension(0, 112));
-        Color muted = dark ? new Color(190, 215, 200) : INK_2;
+        Color muted = dark ? ON_BRAND_2 : INK_2;
 
         JLabel l = new JLabel(label);
         l.setFont(font(Font.BOLD, 13));
@@ -169,16 +191,18 @@ public class Attendance extends LecturerUI.Page {
     }
 
     // =====================================================================
-    //  DATA LOADING  (replace the sample data with real database calls)
+    //  DATA LOADING  (loaded through the data layers)
     // =====================================================================
 
     /** Fills the course dropdown. */
     private void loadCourses() {
-        // TODO: DATABASE -> get the courses taught by the logged-in lecturer
-        //   e.g. SELECT course_code, course_name FROM courses WHERE lecturer_id = ?
+        offerings = offeringData.findByLecturer(lecturerId);
         courseBox.removeAllItems();
-        courseBox.addItem("CS2023 – Data Structures");
-        courseBox.addItem("CS2013 – Databases");
+        for (CourseOffering o : offerings) {
+            Course c = courseData.findById(o.getCourse_id());
+            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
+                    : c.getCourse_code() + " - " + c.getCourse_name());
+        }
     }
 
     /** Called when the course or date changes: reload the session list. */
@@ -187,16 +211,23 @@ public class Attendance extends LecturerUI.Page {
         loadSessions();
     }
 
-    /** Fills the session dropdown (Lecture 10:00, Lab 14:00 ...). */
+    /** Fills the session dropdown with the sessions of the selected course on the selected date. */
     private void loadSessions() {
-        // TODO: DATABASE -> get the sessions for the selected course on the selected date
-        //   e.g. SELECT session_type, start_time FROM sessions WHERE course_code = ? AND session_date = ?
-        String selectedCourse = (String) courseBox.getSelectedItem();
-        Date selectedDate = (Date) dateSpinner.getValue();
-
+        sessions.clear();
         sessionBox.removeAllItems();
-        sessionBox.addItem("Lecture 10:00");
-        sessionBox.addItem("Lab 14:00");
+
+        int index = courseBox.getSelectedIndex();
+        if (index >= 0) {
+            String date = new SimpleDateFormat("yyyy-MM-dd").format((Date) dateSpinner.getValue());
+            for (Session s : sessionData.findByOffering(offerings.get(index).getOffering_id())) {
+                if (s.getSessionDate() != null && s.getSessionDate().toString().equals(date)) {
+                    sessions.add(s);
+                    String time = s.getStartTime() == null ? "" : " " + s.getStartTime().toString().substring(0, 5);
+                    sessionBox.addItem(s.getSessionType() + time);
+                }
+            }
+        }
+        loadStudents();
     }
 
     /** Fills the student list for the selected session. */
@@ -206,24 +237,24 @@ public class Attendance extends LecturerUI.Page {
         rowsPanel.removeAll();
         studentRows.clear();
 
-        // TODO: DATABASE -> get all students enrolled in the selected course
-        //   e.g. SELECT reg_no, full_name FROM students s
-        //        JOIN enrollments e ON e.student_id = s.id WHERE e.course_code = ?
-        //
-        // TODO: DATABASE -> if attendance was already saved for this session, load the saved
-        //   status of each student so the radio buttons show it
-        //   e.g. SELECT student_id, status FROM attendance WHERE session_id = ?
-        //   (if nothing saved yet, default every student to PRESENT)
-        String[][] sample = {
-                {"S/21/001", "Nimal Fernando"},
-                {"S/21/002", "Kavindi Silva"},
-                {"S/22/014", "Ruwan Jayasinghe"}
-        };
+        int courseIndex = courseBox.getSelectedIndex();
+        int sessionIndex = sessionBox.getSelectedIndex();
+        if (courseIndex >= 0 && sessionIndex >= 0 && sessionIndex < sessions.size()) {
+            // students already saved for this session (id -> status)
+            java.util.Map<Integer, String> saved = new java.util.HashMap<>();
+            for (model.Attendance a : attendanceData.findBySession(sessions.get(sessionIndex).getSessionId())) {
+                saved.put(a.getStudentId(), a.getAttendStatus());
+            }
 
-        for (String[] s : sample) {
-            StudentRow row = new StudentRow(studentRows.size() + 1, s[0], s[1]);
-            studentRows.add(row);
-            rowsPanel.add(row.panel);
+            // every enrolled student; PRESENT by default when nothing is saved yet
+            for (Enrollment en : enrollmentData.findByOffering(offerings.get(courseIndex).getOffering_id())) {
+                User student = userData.findById(en.getStudent_id());
+                String regNo = String.valueOf(en.getStudent_id());
+                StudentRow row = new StudentRow(studentRows.size() + 1, regNo, student == null ? "" : student.getName());
+                if ("ABSENT".equals(saved.get(en.getStudent_id()))) row.absent.setSelected(true);
+                studentRows.add(row);
+                rowsPanel.add(row.panel);
+            }
         }
 
         updateStats();
@@ -242,27 +273,23 @@ public class Attendance extends LecturerUI.Page {
     }
 
     private void submitAttendance() {
-        if (studentRows.isEmpty()) {
+        int sessionIndex = sessionBox.getSelectedIndex();
+        if (studentRows.isEmpty() || sessionIndex < 0) {
             JOptionPane.showMessageDialog(this, "No students to submit.");
             return;
         }
 
-        String course  = (String) courseBox.getSelectedItem();
-        String session = (String) sessionBox.getSelectedItem();
-        String date    = new SimpleDateFormat("yyyy-MM-dd").format((Date) dateSpinner.getValue());
-
-        // TODO: DATABASE -> save the attendance (insert, or update if already saved for this session)
-        //   For each StudentRow r in studentRows:
-        //     INSERT INTO attendance (session_id, student_reg_no, status)
-        //     VALUES (?, r.regNo, r.isPresent() ? 'PRESENT' : 'ABSENT')
-        //     ON DUPLICATE KEY UPDATE status = VALUES(status)
-        //   Tip: use a batch + transaction so all rows are saved together.
-        for (StudentRow r : studentRows) {
-            String status = r.isPresent() ? "PRESENT" : "ABSENT";
-            System.out.println(course + " | " + date + " | " + session + " | " + r.regNo + " -> " + status);
+        int sessionId = sessions.get(sessionIndex).getSessionId();
+        java.sql.Date today = new java.sql.Date(System.currentTimeMillis());
+        try {
+            for (StudentRow r : studentRows) {
+                String status = r.isPresent() ? "PRESENT" : "ABSENT";
+                attendanceData.save(new model.Attendance(Integer.parseInt(r.regNo), sessionId, status, today));
+            }
+            JOptionPane.showMessageDialog(this, "Attendance submitted successfully.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Could not save attendance: " + ex.getMessage());
         }
-
-        JOptionPane.showMessageDialog(this, "Attendance submitted successfully.");
     }
 
     private void updateStats() {
@@ -271,8 +298,6 @@ public class Attendance extends LecturerUI.Page {
         for (StudentRow r : studentRows) {
             if (r.isPresent()) present++;
         }
-        // TODO: DATABASE (optional) -> "Enrolled" can come from
-        //   SELECT COUNT(*) FROM enrollments WHERE course_code = ?
         enrolledValue.setText(String.valueOf(total));
         presentValue.setText(String.valueOf(present));
         absentValue.setText(String.valueOf(total - present));

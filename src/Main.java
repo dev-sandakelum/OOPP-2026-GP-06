@@ -6,7 +6,7 @@ import javax.swing.*;
 public class Main {
     public static void main(String[] args) {
 
-        // Connect to the database once at startup
+        // Connect to the database once at startup (uses the login-only account)
         try {
             Database.getConnection();
         } catch (Exception e) {

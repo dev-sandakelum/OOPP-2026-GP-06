@@ -20,14 +20,14 @@ public interface FrameData {
     String[] studentTabs  = {"Overview", "My Courses", "My Attendance", "Marks & GPA",
             "Medicals", "Notices", "Timetables", "My Profile"};
 
-    // ---------- Colors ----------
-    Color PAGE_BG = new Color(255, 255, 255);
+    // ---------- Colors (AFMS) ----------
+    Color PAGE_BG = new Color(228, 238, 252);           // solid fallback behind the Backdrop gradient
 
-    Color SIDEBAR_BG = new Color(240, 244, 242);
-    Color ACTIVE_BG  = new Color(224, 238, 229);   // selected pill (soft green)
-    Color HOVER_BG   = new Color(230, 237, 233);
-    Color ACCENT     = new Color(215, 85, 55);     // not used by the nav anymore
-    Color TEXT_ON    = new Color(18, 64, 42);      // selected text/icon (dark green)
-    Color TEXT_OFF   = new Color(100, 112, 106);   // unselected text/icon
-    Color LABEL_COL  = new Color(150, 162, 156);   // "ADMINISTRATOR" label
+    Color SIDEBAR_BG = new Color(247, 250, 255);        // opaque stand-in for the frosted sidebar
+    Color ACTIVE_BG  = new Color(219, 232, 252);        // selected pill (soft blue)
+    Color HOVER_BG   = new Color(236, 242, 253);
+    Color ACCENT     = Palette.BRAND_LT;
+    Color TEXT_ON    = Palette.BRAND;                   // selected text/icon (royal blue)
+    Color TEXT_OFF   = new Color(52, 70, 110);          // unselected text/icon
+    Color LABEL_COL  = new Color(90, 108, 148);         // "ADMINISTRATOR" label
 }

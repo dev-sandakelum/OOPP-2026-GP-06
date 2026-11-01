@@ -5,6 +5,15 @@ import UI.Pages.Components.ChipRenderer;
 import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.TextCellRenderer;
 
+import data.CourseOfferingData;
+import data.EnrollmentData;
+import data.MedicalData;
+import data.UserData;
+import model.CourseOffering;
+import model.Enrollment;
+import model.Medical;
+import model.User;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
@@ -14,7 +23,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 import static UI.Kit.Palette.*;
@@ -32,7 +43,7 @@ public class Medicals extends LecturerUI.Page {
 
     // table columns
     private static final String[] COLUMNS =
-            {"Ref", "Student", "Reg. No", "Period", "Affects", "Submitted", "Status"};
+            {"Ref", "Student", "Reg. No", "Medical Date", "Reason", "Reviewed", "Status"};
     private static final int STATUS_COL = 6;
 
     private final DefaultTableModel model;
@@ -43,8 +54,16 @@ public class Medicals extends LecturerUI.Page {
             new JComboBox<>(new String[]{"All statuses", "Pending", "Approved", "Rejected"});
     private final JLabel footer = new JLabel();
 
-    public Medicals() {
+    // ---------- Data layers ----------
+    private final CourseOfferingData offeringData = new CourseOfferingData();
+    private final EnrollmentData enrollmentData = new EnrollmentData();
+    private final MedicalData medicalData = new MedicalData();
+    private final UserData userData = new UserData();
+    private final int lecturerId;
+
+    public Medicals(User user) {
         super("Medicals", "Review medical submissions", null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
         // read-only model: no cell can be edited
         model = new ReadOnlyTableModel(COLUMNS);
@@ -65,35 +84,40 @@ public class Medicals extends LecturerUI.Page {
     /*  DATABASE                                                              */
     /* ===================================================================== */
 
-    /**
-     * TODO (DATABASE): load the medical submissions here.
-     *
-     * Get the medical records for the students of the logged-in lecturer's courses from MySQL,
-     * for example:
-     *
-     *   SELECT m.medical_id, s.name, s.reg_no, m.from_date, m.to_date,
-     *          m.affected_assessment, m.submitted_date, m.status
-     *   FROM medicals m
-     *   JOIN students s ON s.student_id = m.student_id
-     *   JOIN courses  c ON c.course_id  = m.course_id
-     *   WHERE c.lecturer_id = ?
-     *   ORDER BY m.submitted_date DESC;
-     *
-     * Then convert every row into a String[] in the SAME order as COLUMNS:
-     *   { ref, studentName, regNo, "14 Oct – 18 Oct", affects, submittedDate, status }
-     * and call setMedicals(list).
-     *
-     * (The mock data below is only for design preview. Delete it when the DB code is ready.)
-     */
+    /** Loads the medicals of the students in the lecturer's courses (newest first). */
     private void loadMedicals() {
+        // every student enrolled in one of my courses, each one only once
+        Set<Integer> studentIds = new LinkedHashSet<>();
+        for (CourseOffering o : offeringData.findByLecturer(lecturerId)) {
+            for (Enrollment en : enrollmentData.findByOffering(o.getOffering_id())) {
+                studentIds.add(en.getStudent_id());
+            }
+        }
+
+        List<Medical> medicals = new ArrayList<>();
+        for (int id : studentIds) medicals.addAll(medicalData.findByStudent(id));
+        medicals.sort((a, b) -> b.getMedicalDate().compareTo(a.getMedicalDate()));
+
+        // one table row per medical, in the COLUMNS order
         List<String[]> rows = new ArrayList<>();
-        rows.add(new String[]{"MED-0415", "Thisara Ranasinghe",  "CS/2021/024", "21 Oct – 23 Oct", "Lecture – CS3012",       "24 Oct", "Pending"});
-        rows.add(new String[]{"MED-0412", "Nethmi Fernando",     "CS/2021/012", "14 Oct – 18 Oct", "Mid-Term – CS3012",      "20 Oct", "Pending"});
-        rows.add(new String[]{"MED-0409", "Tharushi Silva",      "CS/2021/015", "12 Oct – 13 Oct", "Quiz 2 – CS3022",        "15 Oct", "Pending"});
-        rows.add(new String[]{"MED-0401", "Ravindu Senanayake",  "CS/2021/018", "05 Oct – 09 Oct", "Assignment 1 – CS2042",  "10 Oct", "Approved"});
-        rows.add(new String[]{"MED-0397", "Lakshan Bandara",     "CS/2021/020", "01 Oct – 02 Oct", "Lab 3 – CS3022",         "03 Oct", "Rejected"});
-        rows.add(new String[]{"MED-0390", "Janith Kumara",       "CS/2021/023", "28 Sep – 30 Sep", "Mid-Term – CS4013",      "01 Oct", "Approved"});
+        for (Medical m : medicals) {
+            User student = userData.findById(m.getStudentId());
+            rows.add(new String[]{
+                    "MED-" + m.getMedicalId(),
+                    student == null ? "" : student.getName(),
+                    String.valueOf(m.getStudentId()),
+                    String.valueOf(m.getMedicalDate()),
+                    m.getReason() == null ? "" : m.getReason(),
+                    m.getReviewedDate() == null ? "-" : m.getReviewedDate().toString(),
+                    statusLabel(m.getStatus())});
+        }
         setMedicals(rows);
+    }
+
+    /** "PENDING" -> "Pending" (matches the chip colours and the status filter). */
+    private static String statusLabel(String status) {
+        if (status == null || status.isEmpty()) return "Pending";
+        return status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase();
     }
 
     /** Fill the table with rows from the database (each row follows the COLUMNS order). */

@@ -34,6 +34,7 @@ public class LecturerPage extends JFrame implements FrameData {
     private final JPanel cardHost = new JPanel(cards);
 
     public LecturerPage(User user) {
+        setTitle("AFMS — Lecturer · " + lecturerTabs[0]);
         setSize(width, height);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -42,8 +43,14 @@ public class LecturerPage extends JFrame implements FrameData {
                 getClass().getResource("/assets/img.png"))).getImage());
 
         sidebar = new Sidebar(user, "LECTURER", lecturerTabs, ICONS, PAGE_BG);
-        sidebar.setOnSelect(i -> cards.show(cardHost, lecturerTabs[i]));
-        sidebar.setOnLogout(() -> dispose());   // replace with your login flow
+        sidebar.setOnSelect(i -> {
+            cards.show(cardHost, lecturerTabs[i]);
+            setTitle("AFMS — Lecturer · " + lecturerTabs[i]);
+        });
+        sidebar.setOnLogout(() -> {
+            dispose();
+            SwingUtilities.invokeLater(() -> new LoginPage().setVisible(true));
+        });
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().setBackground(PAGE_BG);
@@ -56,13 +63,13 @@ public class LecturerPage extends JFrame implements FrameData {
 
         // same order as lecturerTabs
         cardHost.add(new Overview(user),   lecturerTabs[0]);
-        cardHost.add(new MyCourses(),      lecturerTabs[1]);
-        cardHost.add(new Marks(),          lecturerTabs[2]);
-        cardHost.add(new Undergraduates(), lecturerTabs[3]);
-        cardHost.add(new Attendance(),     lecturerTabs[4]);
-        cardHost.add(new Grades_GPA(),     lecturerTabs[5]);
-        cardHost.add(new Medicals(),       lecturerTabs[6]);
-        cardHost.add(new Notices(),        lecturerTabs[7]);
+        cardHost.add(new MyCourses(user), lecturerTabs[1]);
+        cardHost.add(new Marks(user), lecturerTabs[2]);
+        cardHost.add(new Undergraduates(user), lecturerTabs[3]);
+        cardHost.add(new Attendance(user), lecturerTabs[4]);
+        cardHost.add(new Grades_GPA(user), lecturerTabs[5]);
+        cardHost.add(new Medicals(user), lecturerTabs[6]);
+        cardHost.add(new Notices(user), lecturerTabs[7]);
         cardHost.add(new MyProfile(user),  lecturerTabs[8]);
 
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);

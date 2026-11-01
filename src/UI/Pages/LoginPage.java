@@ -1,7 +1,14 @@
 package UI.Pages;
 
+import UI.Kit.Assets;
+import UI.Kit.Backdrop;
 import UI.Kit.FrameData;
+import UI.Kit.Palette;
+import UI.Pages.Components.Card;
+import UI.Pages.Components.PhotoPanel;
+import UI.Pages.Components.RoundedButton;
 import data.UserData;
+import database.Database;
 import model.User;
 
 import javax.swing.*;
@@ -20,38 +27,45 @@ public class LoginPage extends JFrame implements FrameData {
     private final JLabel errorLabel        = new JLabel(" ");
 
     public LoginPage() {
-        setTitle("FOTIMS — Login");
-        setSize(440, 360);
+        Database.useLoginRole();    // logout lands here too: drop back to the login-only DB account
+        setTitle("AFMS — Login");
+        setSize(860, 520);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
         setIconImage(new ImageIcon(Objects.requireNonNull(
                 getClass().getResource("/assets/img.png"))).getImage());
 
-        getContentPane().setBackground(PAGE_BG);
-        getContentPane().setLayout(new BorderLayout());
+        setContentPane(new Backdrop.Panel(new BorderLayout(16, 0)));
+        ((JComponent) getContentPane()).setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        // left: cropped faculty photo with the brand caption (falls back to a blue panel without the image)
+        PhotoPanel photo = new PhotoPanel(Assets.SIDEBAR_PHOTO, 0.30f, 0.66f, Palette.RADIUS_CARD);
+        photo.setPreferredSize(new Dimension(380, 0));
+        photo.add(PhotoPanel.caption("AFMS", "FACULTY OF TECHNOLOGY  ·  UoR",
+                "Academic & Faculty Management System"), BorderLayout.SOUTH);
+        getContentPane().add(photo, BorderLayout.WEST);
         getContentPane().add(buildForm(), BorderLayout.CENTER);
     }
 
     // ── form panel ────────────────────────────────────────────────────────────
     private JPanel buildForm() {
-        JPanel panel = new JPanel();
-        panel.setBackground(PAGE_BG);
+        JPanel panel = new Card(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(new EmptyBorder(32, 48, 32, 48));
+        panel.setBorder(new EmptyBorder(44, 40, 36, 40));
 
         // Title
-        JLabel title = new JLabel("Sign in to FOTIMS");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        title.setForeground(new Color(18, 64, 42));
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel title = new JLabel("Sign in to AFMS");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        title.setForeground(Palette.INK);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(title);
         panel.add(Box.createVerticalStrut(6));
 
-        JLabel subtitle = new JLabel("Faculty of Technology Information Management System");
+        JLabel subtitle = new JLabel("Academic & Faculty Management System");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        subtitle.setForeground(new Color(100, 112, 106));
-        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        subtitle.setForeground(Palette.INK_2);
+        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(subtitle);
         panel.add(Box.createVerticalStrut(28));
 
@@ -71,21 +85,15 @@ public class LoginPage extends JFrame implements FrameData {
 
         // Error message
         errorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        errorLabel.setForeground(new Color(180, 40, 30));
+        errorLabel.setForeground(Palette.BAD);
         errorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(errorLabel);
         panel.add(Box.createVerticalStrut(14));
 
         // Sign-in button
-        JButton signInBtn = new JButton("Sign in");
-        signInBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        signInBtn.setBackground(new Color(18, 64, 42));
-        signInBtn.setForeground(Color.WHITE);
-        signInBtn.setFocusPainted(false);
-        signInBtn.setBorderPainted(false);
-        signInBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        signInBtn.setPreferredSize(new Dimension(Integer.MAX_VALUE, 38));
-        signInBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        JButton signInBtn = new RoundedButton("Sign in", true);
+        signInBtn.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
+        signInBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         signInBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         signInBtn.addActionListener(e -> doLogin());
         panel.add(signInBtn);
@@ -116,6 +124,9 @@ public class LoginPage extends JFrame implements FrameData {
                 return;
             }
 
+            // From here on, DB access uses the account for this user's role
+            Database.useRoleFor(user.getUserType());
+
             // Open the right dashboard based on user_type
             openDashboard(user);
             dispose();                   // close the login window
@@ -142,17 +153,11 @@ public class LoginPage extends JFrame implements FrameData {
         }
 
         JFrame dashboard;
-
-        switch (type.trim().toLowerCase()) {
-            case "lecturer" ->
-                    dashboard = new LecturerPage(user);
-
-            case "officer", "technical officer" ->
-                    dashboard = new OfficerPages(user);
-
-            case "student", "undergraduate" ->
-                    dashboard = new StudentPages(user);
-
+        // users.user_type is an ENUM: ADMIN, LECTURER, TECHNICAL_OFFICER, UNDERGRADUATE
+        switch (type.toLowerCase()) {
+            case "lecturer"                      -> dashboard = new LecturerPage(user);
+            case "technical_officer", "officer"  -> dashboard = new OfficerPages(user);
+            case "undergraduate", "student"      -> dashboard = new StudentPages(user);
             case "admin", "administrator" ->
                     dashboard = new AdminPages(user);
 
@@ -175,7 +180,7 @@ public class LoginPage extends JFrame implements FrameData {
     private static JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        l.setForeground(new Color(60, 70, 65));
+        l.setForeground(Palette.INK_2);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }
@@ -185,7 +190,7 @@ public class LoginPage extends JFrame implements FrameData {
         field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
         field.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 210, 205), 1),
+                BorderFactory.createLineBorder(Palette.LINE_2, 1, true),
                 new EmptyBorder(5, 10, 5, 10)));
         field.setBackground(Color.WHITE);
     }

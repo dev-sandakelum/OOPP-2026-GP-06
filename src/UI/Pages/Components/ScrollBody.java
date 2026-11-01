@@ -11,6 +11,16 @@ public class ScrollBody extends JPanel implements Scrollable {
         setOpaque(false);
     }
 
+    // Children (e.g. read-only JTextAreas used as wrapped labels) ask to be scrolled into
+    // view when their caret moves, which drags a freshly built page away from the top.
+    // Only honour such requests while the keyboard focus is inside this body.
+    @Override
+    public void scrollRectToVisible(Rectangle r) {
+        Component focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        if (focus == null || !SwingUtilities.isDescendingFrom(focus, this)) return;
+        super.scrollRectToVisible(r);
+    }
+
     @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
     @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 16; }
     @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return 64; }

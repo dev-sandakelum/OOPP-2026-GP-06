@@ -1,12 +1,25 @@
 package UI.Pages.lecturer;
 
 import UI.Pages.Components.Card;
+import data.CourseData;
+import data.CourseOfferingData;
+import data.EnrollmentData;
+import data.ExamData;
+import data.ResultData;
+import data.UserData;
+import model.Course;
+import model.CourseOffering;
+import model.Enrollment;
+import model.Exam;
+import model.Result;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
 import javax.swing.table.*;
 import java.awt.*;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,37 +29,27 @@ import static UI.Kit.Palette.*;
 /**
  * Lecturer Portal - Marks page (Java Swing).
  *
- * Columns: Reg. No | Student | Quiz 1 | Quiz 2 | Quiz 3 | Assignment 1 | Assignment 2
- *          | Mid-Term | Final | Total | Grade
+ * Columns: Reg. No | Student | CA /50 | Final /50 | Total /100 | Grade
  *
- * Scoring (total = 100):
- *   Quizzes      : 3 quizzes, each marked out of 10  -> scaled to 10 in the total
- *   Assignments  : 2 assignments, each out of 20     -> scaled to 20 in the total
- *   Mid-Term     : /20
- *   Final        : /50
- * Change the constants below if your weighting is different.
+ * CA and Final are saved in the result table (ca_result, final_exam_mark, total_mark).
+ * Total = CA + Final.
  */
 public class Marks extends LecturerUI.Page {
 
     // ---------- assessment structure ----------
-    static final int QUIZ_COUNT = 3;
-    static final int ASG_COUNT  = 2;
-    static final int QUIZ_MAX = 10, ASG_MAX = 20, MID_MAX = 20, FINAL_MAX = 50;
-    static final int QUIZ_WEIGHT = 10, ASG_WEIGHT = 20;     // share of the 100 total
+    static final int CA_MAX = 50, FINAL_MAX = 50;
 
-    // marks[] index -> 0..2 quizzes, 3..4 assignments, 5 mid, 6 final
-    static final int[] MAX = {QUIZ_MAX, QUIZ_MAX, QUIZ_MAX, ASG_MAX, ASG_MAX, MID_MAX, FINAL_MAX};
+    // marks[] index -> 0 = CA, 1 = final
+    static final int[] MAX = {CA_MAX, FINAL_MAX};
 
     // table column index
-    static final int C_REG = 0, C_NAME = 1, C_Q1 = 2, C_Q3 = 4, C_A1 = 5, C_A2 = 6,
-            C_MID = 7, C_FINAL = 8, C_TOTAL = 9, C_GRADE = 10;
-    static final String[] COLS = {"Reg. No", "Student", "Quiz 1 /10", "Quiz 2 /10", "Quiz 3 /10",
-            "Assign. 1 /20", "Assign. 2 /20", "Mid-Term /20", "Final /50", "Total /100", "Grade"};
+    static final int C_REG = 0, C_NAME = 1, C_CA = 2, C_FINAL = 3, C_TOTAL = 4, C_GRADE = 5;
+    static final String[] COLS = {"Reg. No", "Student", "CA /50", "Final /50", "Total /100", "Grade"};
 
     // ---------- UI ----------
     private final JComboBox<String> courseBox = new JComboBox<>();
     private final JComboBox<String> assessBox = new JComboBox<>(
-            new String[]{"All assessments", "Quiz", "Assignment", "Mid-Term", "Final"});
+            new String[]{"All assessments", "CA", "Final"});
     private final JTextField searchField = new JTextField();
     private final JLabel avgLbl = new JLabel("0"), highLbl = new JLabel("0"),
             lowLbl = new JLabel("0"), passLbl = new JLabel("0%");
@@ -57,8 +60,19 @@ public class Marks extends LecturerUI.Page {
     private TableRowSorter<MarksModel> sorter;
     private List<TableColumn> allColumns;
 
-    public Marks() {
+    // ---------- Data layers ----------
+    private final CourseOfferingData offeringData = new CourseOfferingData();
+    private final CourseData courseData = new CourseData();
+    private final EnrollmentData enrollmentData = new EnrollmentData();
+    private final ExamData examData = new ExamData();
+    private final ResultData resultData = new ResultData();
+    private final UserData userData = new UserData();
+    private final int lecturerId;
+    private List<CourseOffering> offerings = new ArrayList<>();
+
+    public Marks(User user) {
         super("Marks", "Enter and review assessment marks", null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
         //  1. filters   2. summary cards   3. marks table
         JPanel body = new JPanel();
@@ -73,68 +87,55 @@ public class Marks extends LecturerUI.Page {
 
         // ===== load initial data =====
         loadCourses();
-        if (courseBox.getItemCount() > 0) loadMarksForCourse((String) courseBox.getSelectedItem());
+        loadMarksForCourse();
 
         courseBox.addActionListener(e -> {
-            loadMarksForCourse((String) courseBox.getSelectedItem());
+            loadMarksForCourse();
         });
         assessBox.addActionListener(e -> applyAssessmentFilter((String) assessBox.getSelectedItem()));
     }
 
     // =====================================================================
-    //  DATABASE  (replace the sample data with real queries)
+    //  DATABASE
     // =====================================================================
 
     /** Fills the course drop-down. */
     private void loadCourses() {
         courseBox.removeAllItems();
-
-        // TODO: NEED TO GET DATA FROM DATABASE HERE
-        // Get the courses taught by the logged-in lecturer, e.g.
-        //   SELECT course_code, course_name FROM courses WHERE lecturer_id = ?
-        // then add one item per row:
-        //   courseBox.addItem(code + " - " + name);
-
-        // ---- sample data (remove once the database is connected) ----
-        courseBox.addItem("CS3012 - Database Management Systems");
-        courseBox.addItem("CS3022 - Software Engineering Principles");
-        courseBox.addItem("CS2042 - Data Structures & Algorithms");
-        courseBox.addItem("CS4013 - Machine Learning");
-        courseBox.addItem("CS4091 - Final Year Research Project");
+        offerings = offeringData.findByLecturer(lecturerId);
+        for (CourseOffering o : offerings) {
+            Course c = courseData.findById(o.getCourse_id());
+            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
+                    : c.getCourse_code() + " - " + c.getCourse_name());
+        }
     }
 
-    /** Loads every enrolled student with their 3 quiz + 2 assignment + mid + final marks. */
-    private void loadMarksForCourse(String courseLabel) {
+    /** The exam that holds the marks of a course (the first one); null if the course has no exam yet. */
+    private Exam findExam(int offeringId) {
+        List<Exam> exams = examData.findByOffering(offeringId);
+        return exams.isEmpty() ? null : exams.get(0);
+    }
+
+    /** Loads every enrolled student with the CA and final marks of the selected course. */
+    private void loadMarksForCourse() {
         List<StudentMarks> rows = new ArrayList<>();
 
-        // TODO: NEED TO GET DATA FROM DATABASE HERE
-        // Get all students enrolled in the selected course together with their marks, e.g.
-        //   SELECT s.reg_no, s.full_name,
-        //          m.quiz1, m.quiz2, m.quiz3,
-        //          m.assignment1, m.assignment2,
-        //          m.midterm, m.final_exam
-        //   FROM   enrollments e
-        //   JOIN   students s ON s.reg_no = e.reg_no
-        //   LEFT JOIN marks m ON m.reg_no = e.reg_no AND m.course_code = e.course_code
-        //   WHERE  e.course_code = ?
-        //   ORDER  BY s.reg_no
-        // For each row create a StudentMarks and fill marks[0..6] in this order:
-        //   quiz1, quiz2, quiz3, assignment1, assignment2, midterm, final   (use null if not entered yet)
+        int index = courseBox.getSelectedIndex();
+        if (index >= 0) {
+            int offeringId = offerings.get(index).getOffering_id();
+            Exam exam = findExam(offeringId);
 
-        // ---- sample data (remove once the database is connected) ----
-        String[] names = {"Kavindu Perera", "Nethmi Fernando", "Sahan Jayawardena", "Ishara Wickramasinghe",
-                "Tharushi Silva", "Dilshan Rajapaksha", "Chamodi Gunasekara", "Ravindu Senanayake",
-                "Hansika Dissanayake", "Lakshan Bandara", "Piumi Herath", "Nadeesha Amarasinghe"};
-        for (int i = 0; i < names.length; i++) {
-            StudentMarks s = new StudentMarks("CS/2021/" + String.format("%03d", i + 11), names[i]);
-            s.marks[0] = 4 + (i * 3) % 7;
-            s.marks[1] = 5 + (i * 5) % 6;
-            s.marks[2] = 3 + (i * 7) % 8;
-            s.marks[3] = 9 + (i * 4) % 12;
-            s.marks[4] = 8 + (i * 6) % 13;
-            s.marks[5] = 6 + (i * 5) % 15;
-            s.marks[6] = 18 + (i * 9) % 33;
-            rows.add(s);
+            for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
+                User student = userData.findById(en.getStudent_id());
+                StudentMarks s = new StudentMarks(en.getStudent_id(), student == null ? "" : student.getName());
+
+                Result r = exam == null ? null : resultData.find(en.getStudent_id(), exam.getExamId());
+                if (r != null) {
+                    s.marks[0] = r.getCaResult() == null ? null : r.getCaResult().intValue();
+                    s.marks[1] = r.getFinalExamMark() == null ? null : r.getFinalExamMark().intValue();
+                }
+                rows.add(s);
+            }
         }
 
         model.setRows(rows);
@@ -144,16 +145,41 @@ public class Marks extends LecturerUI.Page {
 
     /** Called by the "Save Marks" button. */
     private void saveMarksToDatabase() {
-        // TODO: NEED TO SAVE DATA TO DATABASE HERE
-        // Loop through model.getRows() and insert / update one row per student, e.g.
-        //   INSERT INTO marks (reg_no, course_code, quiz1, quiz2, quiz3,
-        //                      assignment1, assignment2, midterm, final_exam)
-        //   VALUES (?,?,?,?,?,?,?,?,?)
-        //   ON DUPLICATE KEY UPDATE quiz1=VALUES(quiz1), quiz2=VALUES(quiz2), quiz3=VALUES(quiz3),
-        //                           assignment1=VALUES(assignment1), assignment2=VALUES(assignment2),
-        //                           midterm=VALUES(midterm), final_exam=VALUES(final_exam)
-        // Use PreparedStatement.setNull(index, Types.INTEGER) when a mark is null.
-        // Wrap the loop in one transaction (conn.setAutoCommit(false) ... conn.commit()).
+        int index = courseBox.getSelectedIndex();
+        if (index < 0) return;
+        int offeringId = offerings.get(index).getOffering_id();
+
+        try {
+            // the first exam of the course holds the marks; create it if the course has none
+            Exam exam = findExam(offeringId);
+            if (exam == null) {
+                exam = new Exam();
+                exam.setOfferingId(offeringId);
+                exam.setType("Final");
+                examData.insert(exam);
+            }
+
+            for (StudentMarks s : model.getRows()) {
+                if (s.marks[0] == null && s.marks[1] == null) continue;   // nothing entered
+
+                // start from the saved result so GPA and published date are not lost
+                Result r = resultData.find(s.studentId, exam.getExamId());
+                if (r == null) {
+                    r = new Result();
+                    r.setStudentId(s.studentId);
+                    r.setExamId(exam.getExamId());
+                }
+                r.setCaResult(s.marks[0] == null ? null : BigDecimal.valueOf(s.marks[0]));
+                r.setFinalExamMark(s.marks[1] == null ? null : BigDecimal.valueOf(s.marks[1]));
+                r.setTotalMark(BigDecimal.valueOf(s.total()));
+                r.setResultStatus(s.total() >= 40 ? "PASS" : "FAIL");
+                resultData.save(r);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Could not save marks: " + ex.getMessage(),
+                    "Marks", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
         model.clearUnsaved();
         updateFooter();
@@ -216,7 +242,7 @@ public class Marks extends LecturerUI.Page {
         c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
         c.setBorder(new EmptyBorder(16, 20, 16, 20));
         c.setPreferredSize(new Dimension(0, 112));
-        Color muted = dark ? new Color(190, 215, 200) : INK_2;
+        Color muted = dark ? ON_BRAND_2 : INK_2;
 
         JLabel l = new JLabel(label);
         l.setFont(font(Font.BOLD, 13));
@@ -258,7 +284,7 @@ public class Marks extends LecturerUI.Page {
         // renderers
         table.getColumnModel().getColumn(C_REG).setCellRenderer(new CellRenderer(SwingConstants.LEFT, false, INK_2));
         table.getColumnModel().getColumn(C_NAME).setCellRenderer(new CellRenderer(SwingConstants.LEFT, true, INK));
-        for (int c = C_Q1; c <= C_FINAL; c++) {
+        for (int c = C_CA; c <= C_FINAL; c++) {
             table.getColumnModel().getColumn(c).setCellRenderer(new CellRenderer(SwingConstants.CENTER, false, INK));
             table.getColumnModel().getColumn(c).setCellEditor(new MarkEditor());
         }
@@ -272,7 +298,7 @@ public class Marks extends LecturerUI.Page {
         cols.getColumn(C_REG).setMinWidth(105);
         cols.getColumn(C_NAME).setPreferredWidth(220);
         cols.getColumn(C_NAME).setMinWidth(120);
-        for (int c = C_Q1; c <= C_GRADE; c++) {
+        for (int c = C_CA; c <= C_GRADE; c++) {
             cols.getColumn(c).setPreferredWidth(64);
             cols.getColumn(c).setMinWidth(60);
         }
@@ -355,11 +381,9 @@ public class Marks extends LecturerUI.Page {
     private boolean isVisible(int mi, String sel) {
         if (mi == C_REG || mi == C_NAME || mi == C_TOTAL || mi == C_GRADE) return true;
         switch (sel) {
-            case "Quiz":       return mi >= C_Q1 && mi <= C_Q3;
-            case "Assignment": return mi == C_A1 || mi == C_A2;
-            case "Mid-Term":   return mi == C_MID;
-            case "Final":      return mi == C_FINAL;
-            default:           return true;
+            case "CA":    return mi == C_CA;
+            case "Final": return mi == C_FINAL;
+            default:      return true;
         }
     }
 
@@ -394,23 +418,19 @@ public class Marks extends LecturerUI.Page {
     // =====================================================================
 
     static class StudentMarks {
+        final int studentId;
         final String regNo, name;
-        final Integer[] marks = new Integer[7];     // q1,q2,q3,a1,a2,mid,final (null = not entered)
+        final Integer[] marks = new Integer[2];     // CA, final (null = not entered)
 
-        StudentMarks(String regNo, String name) { this.regNo = regNo; this.name = name; }
+        StudentMarks(int studentId, String name) {
+            this.studentId = studentId;
+            this.regNo = String.valueOf(studentId);
+            this.name = name;
+        }
 
         private int v(int i) { return marks[i] == null ? 0 : marks[i]; }
 
-        double quizPart() {
-            return (v(0) + v(1) + v(2)) / (double) (QUIZ_COUNT * QUIZ_MAX) * QUIZ_WEIGHT;
-        }
-        double assignmentPart() {
-            return (v(3) + v(4)) / (double) (ASG_COUNT * ASG_MAX) * ASG_WEIGHT;
-        }
-        double total() {
-            double t = quizPart() + assignmentPart() + v(5) + v(6);
-            return Math.round(t * 10) / 10.0;
-        }
+        double total() { return v(0) + v(1); }
     }
 
     static class MarksModel extends AbstractTableModel {
@@ -427,7 +447,7 @@ public class Marks extends LecturerUI.Page {
         @Override public String getColumnName(int c) { return COLS[c]; }
 
         // only the 7 mark columns are editable; Total and Grade are read-only
-        @Override public boolean isCellEditable(int r, int c) { return c >= C_Q1 && c <= C_FINAL; }
+        @Override public boolean isCellEditable(int r, int c) { return c >= C_CA && c <= C_FINAL; }
 
         @Override public Object getValueAt(int r, int c) {
             StudentMarks s = rows.get(r);
@@ -435,7 +455,7 @@ public class Marks extends LecturerUI.Page {
             if (c == C_NAME)  return s.name;
             if (c == C_TOTAL) return s.total();
             if (c == C_GRADE) return s.total();            // renderer converts to a grade
-            return s.marks[c - C_Q1];
+            return s.marks[c - C_CA];
         }
 
         @Override public void setValueAt(Object value, int r, int c) {
@@ -445,15 +465,15 @@ public class Marks extends LecturerUI.Page {
             if (!txt.isEmpty()) {
                 try {
                     int n = (int) Math.round(Double.parseDouble(txt));
-                    newVal = Math.max(0, Math.min(MAX[c - C_Q1], n));   // keep inside 0..max
+                    newVal = Math.max(0, Math.min(MAX[c - C_CA], n));   // keep inside 0..max
                 } catch (NumberFormatException ex) {
                     return;                                              // ignore invalid text
                 }
             }
             StudentMarks s = rows.get(r);
-            Integer old = s.marks[c - C_Q1];
+            Integer old = s.marks[c - C_CA];
             if ((old == null && newVal == null) || (old != null && old.equals(newVal))) return;
-            s.marks[c - C_Q1] = newVal;
+            s.marks[c - C_CA] = newVal;
             unsaved++;
             fireTableRowsUpdated(r, r);                    // refreshes Total + Grade + triggers listener
         }
@@ -487,7 +507,7 @@ public class Marks extends LecturerUI.Page {
         @Override public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
             String text = v == null ? "" : v.toString().toUpperCase();
             int mi = t.convertColumnIndexToModel(c);
-            boolean centred = mi >= C_Q1 && mi <= C_GRADE;
+            boolean centred = mi >= C_CA && mi <= C_GRADE;
             int slash = text.lastIndexOf(" /");
             if (slash > 0) {
                 text = "<html><div style='text-align:center; white-space:nowrap'>" + text.substring(0, slash)
@@ -613,7 +633,7 @@ public class Marks extends LecturerUI.Page {
         SwingUtilities.invokeLater(() -> {
             JFrame f = new JFrame("Lecturer Portal - Marks");
             f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            f.setContentPane(new Marks());
+            f.setContentPane(new Marks(null));
             f.setSize(1250, 780);
             f.setLocationRelativeTo(null);
             f.setVisible(true);

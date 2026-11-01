@@ -20,20 +20,28 @@ public enum NavIcon {
     // ---------- Single-role icons ----------
     USERS,        // User Profiles (CRUD)                       | ADM only
     MARKS,        // Marks: CA / Final / Summary                | LEC only
-    STUDENTS,     // Undergraduates directory                   | LEC only
+    STUDENTS,     // Undergraduates directory (graduation cap)  | LEC only
     REGISTER,     // Attendance register (take P/M/A)           | TO only
 
     // ---------- Not a nav tab ----------
-    LOGOUT;       // Logout button on the account card          | ADM, LEC, TO, UG
+    LOGOUT,       // Logout button on the account card          | ADM, LEC, TO, UG
+    BELL,         // "Requires attention" section badge
+    PLUS_BOX;     // "Pending medicals" KPI badge
 
     public static final int SIZE = 20;
 
-    // Draws this icon with its top-left corner at (x, y).
+    // Draws this icon at its native 20x20 size with its top-left corner at (x, y).
     public void draw(Graphics2D base, int x, int y, Color c) {
+        draw(base, x, y, c, 1f);
+    }
+
+    // Draws this icon scaled (1f = 20px, 1.2f = 24px, ...) with its top-left corner at (x, y).
+    public void draw(Graphics2D base, int x, int y, Color c, float scale) {
         Graphics2D g = (Graphics2D) base.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
         g.translate(x, y);
+        g.scale(scale, scale);
         g.setColor(c);
         g.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
@@ -184,6 +192,25 @@ public enum NavIcon {
                 head.lineTo(17, 10);
                 head.lineTo(14, 13);
                 g.draw(head);
+            }
+            case BELL -> {   // bell with clapper
+                Path2D p = new Path2D.Float();
+                p.moveTo(4, 14.5f);
+                p.lineTo(16, 14.5f);
+                p.lineTo(14.5f, 12.5f);
+                p.lineTo(14.5f, 8.5f);
+                p.curveTo(14.5f, 5.5f, 12.5f, 3.5f, 10, 3.5f);
+                p.curveTo(7.5f, 3.5f, 5.5f, 5.5f, 5.5f, 8.5f);
+                p.lineTo(5.5f, 12.5f);
+                p.closePath();
+                g.draw(p);
+                g.draw(new Arc2D.Float(8, 14, 4, 4, 180, 180, Arc2D.OPEN));
+                g.draw(new Line2D.Float(10, 2, 10, 3.5f));
+            }
+            case PLUS_BOX -> {   // rounded square with a plus
+                g.draw(new RoundRectangle2D.Float(3, 3, 14, 14, 4, 4));
+                g.draw(new Line2D.Float(10, 7, 10, 13));
+                g.draw(new Line2D.Float(7, 10, 13, 10));
             }
         }
         g.dispose();

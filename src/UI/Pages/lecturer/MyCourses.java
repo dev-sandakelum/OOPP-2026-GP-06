@@ -3,6 +3,22 @@ package UI.Pages.lecturer;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.RoundedButton;
+import data.AssessmentData;
+import data.CourseData;
+import data.CourseMaterialData;
+import data.CourseOfferingData;
+import data.EnrollmentData;
+import data.ExamData;
+import data.ResultData;
+import data.UserData;
+import model.Assessment;
+import model.Course;
+import model.CourseMaterial;
+import model.CourseOffering;
+import model.Enrollment;
+import model.Exam;
+import model.Result;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,6 +29,8 @@ import java.io.File;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static UI.Kit.Palette.*;
@@ -24,11 +42,11 @@ import static UI.Pages.Components.Ui.tableCard;
 /**
  * Lecturer Course Page
  * Tab 1 - Upload lecture materials
- * Tab 2 - Schedule a quiz for a module
- * Tab 3 - View student quiz marks
+ * Tab 2 - Schedule a quiz (saved in the assessment table)
+ * Tab 3 - View student marks (CA / final from the result table)
  *
- * Every place marked "NEED TO ADD DATA FROM DATABASE" must be connected to MySQL.
- * The sample rows in the code are only dummy data so the screen is not empty.
+ * Data comes from CourseOfferingData, CourseData, CourseMaterialData, AssessmentData,
+ * EnrollmentData, ExamData, ResultData and UserData.
  */
 public class MyCourses extends LecturerUI.Page {
 
@@ -44,33 +62,39 @@ public class MyCourses extends LecturerUI.Page {
     JPanel cards = new JPanel(new CardLayout());
     JButton[] tabButtons = new JButton[TABS.length];
 
+    // ---------- Data layers ----------
+    private final CourseOfferingData offeringData = new CourseOfferingData();
+    private final CourseData courseData = new CourseData();
+    private final EnrollmentData enrollmentData = new EnrollmentData();
+    private final ExamData examData = new ExamData();
+    private final ResultData resultData = new ResultData();
+    private final UserData userData = new UserData();
+    private final CourseMaterialData materialData = new CourseMaterialData();
+    private final AssessmentData assessmentData = new AssessmentData();
+    private final int lecturerId;
+    private List<CourseOffering> offerings = new ArrayList<>();
+
     // ---------- Tab 1: Materials ----------
-    JComboBox<String> matModuleBox = new JComboBox<>();
     JTextField matTitleField = field(15);
     DefaultTableModel matModel =
-            new ReadOnlyTableModel(new String[]{"Module", "Title", "File Name", "Uploaded On"});
+            new ReadOnlyTableModel(new String[]{"Title", "File Name", "Uploaded On"});
 
     // ---------- Tab 2: Quiz ----------
-    JComboBox<String> quizModuleBox = new JComboBox<>();
     JTextField quizTitleField = field(15);
     JTextField quizDateField = field(12);
-    JTextField quizDurationField = field(5);
-    JTextField quizTotalField = field(5);
     DefaultTableModel quizModel =
-            new ReadOnlyTableModel(new String[]{"Module", "Quiz Title", "Date & Time", "Duration (min)", "Total Marks"});
+            new ReadOnlyTableModel(new String[]{"Quiz Title", "Date"});
 
     // ---------- Tab 3: Marks ----------
-    JComboBox<String> marksQuizBox = new JComboBox<>();
     JLabel summaryLabel = new JLabel(" ");
     DefaultTableModel marksModel =
-            new ReadOnlyTableModel(new String[]{"Student ID", "Student Name", "Marks", "Total", "Percentage", "Result"});
+            new ReadOnlyTableModel(new String[]{"Student ID", "Student Name", "CA /50", "Final /50", "Total /100", "Result"});
 
-    public MyCourses() {
+    public MyCourses(User user) {
         super("My Courses", "Upload materials, schedule quizzes, and manage marks", null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
-        quizDateField.setText("2026-11-10 09:00");
-        quizDurationField.setText("30");
-        quizTotalField.setText("20");
+        quizDateField.setText(java.time.LocalDate.now().plusDays(7).toString());
 
         // ----- Tab contents (only one is shown at a time) -----
         cards.setOpaque(false);
@@ -144,12 +168,10 @@ public class MyCourses extends LecturerUI.Page {
         uploadBtn.addActionListener(e -> uploadMaterial());
 
         // form: labels on the first row, inputs on the second row
-        JPanel form = new JPanel(new GridLayout(2, 3, 12, 6));
+        JPanel form = new JPanel(new GridLayout(2, 2, 12, 6));
         form.setOpaque(false);
-        form.add(label("MODULE"));
         form.add(label("TITLE"));
         form.add(new JLabel());
-        form.add(styleCombo(matModuleBox, 0));
         form.add(matTitleField);
         form.add(uploadBtn);
 
@@ -157,11 +179,11 @@ public class MyCourses extends LecturerUI.Page {
     }
 
     private void uploadMaterial() {
-        String module = (String) matModuleBox.getSelectedItem();
+        int index = courseBox.getSelectedIndex();
         String title = matTitleField.getText().trim();
 
-        if (module == null || title.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select a module and enter a title.");
+        if (index < 0 || title.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please select a course and enter a title.");
             return;
         }
 
@@ -177,16 +199,18 @@ public class MyCourses extends LecturerUI.Page {
             Path saved = folder.resolve(chosen.getName());
             Files.copy(chosen.toPath(), saved, StandardCopyOption.REPLACE_EXISTING);
 
-            String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            // Save the material in the database
+            CourseMaterial m = new CourseMaterial();
+            m.setOffering_id(offerings.get(index).getOffering_id());
+            m.setLecturer_id(lecturerId);
+            m.setTitle(title);
+            m.setMaterial_type("FILE");
+            m.setFile_path(saved.toString());
+            m.setFile_size(chosen.length());
+            materialData.insert(m);
 
-            // NEED TO ADD DATA TO DATABASE:
-            // INSERT INTO lecture_materials (module_id, title, file_name, file_path, uploaded_on)
-            // VALUES (?, ?, ?, ?, ?)
-            // (save the file name and 'saved.toString()' path in the table)
-
-            // Show the new row in the table
-            matModel.addRow(new Object[]{module, title, chosen.getName(), today});
             matTitleField.setText("");
+            loadMaterials();
             JOptionPane.showMessageDialog(this, "Material uploaded.");
 
         } catch (Exception ex) {
@@ -202,57 +226,49 @@ public class MyCourses extends LecturerUI.Page {
         scheduleBtn.addActionListener(e -> scheduleQuiz());
 
         // form: labels on the first row, inputs on the second row
-        JPanel form = new JPanel(new GridLayout(2, 6, 12, 6));
+        JPanel form = new JPanel(new GridLayout(2, 3, 12, 6));
         form.setOpaque(false);
-        form.add(label("MODULE"));
         form.add(label("QUIZ TITLE"));
-        form.add(label("DATE & TIME (yyyy-MM-dd HH:mm)"));
-        form.add(label("DURATION (MIN)"));
-        form.add(label("TOTAL MARKS"));
+        form.add(label("DATE (yyyy-MM-dd)"));
         form.add(new JLabel());
-        form.add(styleCombo(quizModuleBox, 0));
         form.add(quizTitleField);
         form.add(quizDateField);
-        form.add(quizDurationField);
-        form.add(quizTotalField);
         form.add(scheduleBtn);
 
         return tabPanel(formCard("Schedule a new quiz", form), table(quizModel, null, -1));
     }
 
     private void scheduleQuiz() {
-        String module = (String) quizModuleBox.getSelectedItem();
+        int index = courseBox.getSelectedIndex();
         String title = quizTitleField.getText().trim();
 
-        if (module == null || title.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select a module and enter a quiz title.");
+        if (index < 0 || title.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please select a course and enter a quiz title.");
             return;
         }
 
         try {
-            LocalDateTime when = LocalDateTime.parse(quizDateField.getText().trim(),
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-            int duration = Integer.parseInt(quizDurationField.getText().trim());
-            int total = Integer.parseInt(quizTotalField.getText().trim());
-
-            if (when.isBefore(LocalDateTime.now())) {
+            java.sql.Date when = java.sql.Date.valueOf(quizDateField.getText().trim());
+            if (when.toLocalDate().isBefore(java.time.LocalDate.now())) {
                 JOptionPane.showMessageDialog(this, "The quiz date must be in the future.");
                 return;
             }
 
-            // NEED TO ADD DATA TO DATABASE:
-            // INSERT INTO quizzes (module_id, title, quiz_date, duration_minutes, total_marks)
-            // VALUES (?, ?, ?, ?, ?)
+            Assessment a = new Assessment();
+            a.setOfferingId(offerings.get(index).getOffering_id());
+            a.setAssessmentName(title);
+            a.setAssessmentType("Quiz");
+            a.setAssessmentDate(when);
+            assessmentData.insert(a);
 
-            quizModel.addRow(new Object[]{module, title, quizDateField.getText().trim(), duration, total});
             quizTitleField.setText("");
+            loadQuizzes();
             JOptionPane.showMessageDialog(this, "Quiz scheduled.");
 
-            // The marks tab should also list the new quiz
-            loadQuizzesForMarksTab();
-
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, "The date must look like 2026-11-10.");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Please check the date format and the numbers.");
+            JOptionPane.showMessageDialog(this, "Could not schedule the quiz: " + ex.getMessage());
         }
     }
 
@@ -265,56 +281,52 @@ public class MyCourses extends LecturerUI.Page {
 
         JPanel form = new JPanel(new BorderLayout(12, 0));
         form.setOpaque(false);
-        JPanel quizRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        quizRow.setOpaque(false);
-        quizRow.add(label("QUIZ"));
-        quizRow.add(styleCombo(marksQuizBox, 250));
-        form.add(quizRow, BorderLayout.WEST);
-        form.add(summaryLabel, BorderLayout.EAST);
+        form.add(summaryLabel, BorderLayout.WEST);
 
         // "Result" column is shown as a green / red chip
         JTable marksTable = table(marksModel, RESULT_COLORS, RESULT_COL);
 
-        marksQuizBox.addActionListener(e -> loadMarks());
-        return tabPanel(formCard("Quiz results", form), marksTable);
+        return tabPanel(formCard("Student marks", form), marksTable);
     }
 
     private void loadMarks() {
         marksModel.setRowCount(0);
-        String quiz = (String) marksQuizBox.getSelectedItem();
-        if (quiz == null) {
+        int index = courseBox.getSelectedIndex();
+        if (index < 0) {
             summaryLabel.setText(" ");
             return;
         }
 
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT s.student_id, s.name, r.marks, q.total_marks
-        // FROM quiz_results r
-        // JOIN students s ON s.student_id = r.student_id
-        // JOIN quizzes q  ON q.quiz_id = r.quiz_id
-        // WHERE q.title = ?
-        // Loop through the result set and call addMarkRow(id, name, marks, total) for each row.
+        int offeringId = offerings.get(index).getOffering_id();
+        List<Exam> exams = examData.findByOffering(offeringId);
 
-        // ---- dummy data (delete when database is connected) ----
-        addMarkRow("S001", "Nimal Perera", 18, 20);
-        addMarkRow("S002", "Kamal Silva", 9, 20);
-        addMarkRow("S003", "Sunil Fernando", 14, 20);
-        addMarkRow("S004", "Amali Jayasinghe", 20, 20);
+        double sum = 0;
+        for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
+            // the student's first result among this course's exams (null if no marks yet)
+            Result r = null;
+            for (Exam exam : exams) {
+                r = resultData.find(en.getStudent_id(), exam.getExamId());
+                if (r != null) break;
+            }
+
+            User student = userData.findById(en.getStudent_id());
+            String name = student == null ? "" : student.getName();
+            if (r == null || r.getTotalMark() == null) {
+                marksModel.addRow(new Object[]{String.valueOf(en.getStudent_id()), name, "-", "-", "-", "-"});
+                continue;
+            }
+            double total = r.getTotalMark().doubleValue();
+            sum += total;
+            marksModel.addRow(new Object[]{String.valueOf(en.getStudent_id()), name,
+                    r.getCaResult() == null ? "-" : r.getCaResult(),
+                    r.getFinalExamMark() == null ? "-" : r.getFinalExamMark(),
+                    r.getTotalMark(), total >= 40 ? "Pass" : "Fail"});
+        }
 
         // Show the class average
-        int sum = 0;
-        for (int i = 0; i < marksModel.getRowCount(); i++) {
-            sum += (int) marksModel.getValueAt(i, 2);
-        }
-        double avg = marksModel.getRowCount() == 0 ? 0 : (double) sum / marksModel.getRowCount();
+        double avg = marksModel.getRowCount() == 0 ? 0 : sum / marksModel.getRowCount();
         summaryLabel.setText("Students: " + marksModel.getRowCount()
-                + "   |   Average marks: " + String.format("%.1f", avg));
-    }
-
-    private void addMarkRow(String id, String name, int marks, int total) {
-        double percent = marks * 100.0 / total;
-        String result = percent >= 50 ? "Pass" : "Fail";
-        marksModel.addRow(new Object[]{id, name, marks, total, String.format("%.0f%%", percent), result});
+                + "   |   Average total: " + String.format("%.1f", avg));
     }
 
     // =====================================================================
@@ -357,56 +369,42 @@ public class MyCourses extends LecturerUI.Page {
     // LOADING DATA
     // =====================================================================
     private void loadCourses() {
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT course_id, course_name FROM courses WHERE lecturer_id = ?
-        // (use the logged-in lecturer's id)
-
-        // ---- dummy data ----
-        courseBox.addItem("IT1010 - Introduction to Programming");
-        courseBox.addItem("IT2020 - Database Systems");
+        offerings = offeringData.findByLecturer(lecturerId);
+        courseBox.removeAllItems();
+        for (CourseOffering o : offerings) {
+            Course c = courseData.findById(o.getCourse_id());
+            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
+                    : c.getCourse_code() + " - " + c.getCourse_name());
+        }
     }
 
     private void loadCourseData() {
-        String course = (String) courseBox.getSelectedItem();
-        if (course == null) return;
-
-        // ----- Modules -----
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT module_id, module_name FROM modules WHERE course_id = ?
-        matModuleBox.removeAllItems();
-        quizModuleBox.removeAllItems();
-        String[] modules = {"Module 1 - Basics", "Module 2 - Loops", "Module 3 - Methods"}; // dummy
-        for (String m : modules) {
-            matModuleBox.addItem(m);
-            quizModuleBox.addItem(m);
-        }
-
-        // ----- Lecture materials -----
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT m.module_name, l.title, l.file_name, l.uploaded_on
-        // FROM lecture_materials l JOIN modules m ON m.module_id = l.module_id
-        // WHERE m.course_id = ?
-        matModel.setRowCount(0);
-        matModel.addRow(new Object[]{"Module 1 - Basics", "Intro Slides", "intro.pdf", "2026-10-01"}); // dummy
-
-        // ----- Scheduled quizzes -----
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT m.module_name, q.title, q.quiz_date, q.duration_minutes, q.total_marks
-        // FROM quizzes q JOIN modules m ON m.module_id = q.module_id
-        // WHERE m.course_id = ?
-        quizModel.setRowCount(0);
-        quizModel.addRow(new Object[]{"Module 1 - Basics", "Quiz 1", "2026-11-05 10:00", 30, 20}); // dummy
-
-        loadQuizzesForMarksTab();
+        loadMaterials();
+        loadQuizzes();
+        loadMarks();
     }
 
-    private void loadQuizzesForMarksTab() {
-        // Fill the quiz list of the marks tab from the quiz table above.
-        // NEED TO ADD DATA FROM DATABASE:
-        // SELECT title FROM quizzes WHERE course_id = ?
-        marksQuizBox.removeAllItems();
-        for (int i = 0; i < quizModel.getRowCount(); i++) {
-            marksQuizBox.addItem((String) quizModel.getValueAt(i, 1));
+    private void loadMaterials() {
+        matModel.setRowCount(0);
+        int index = courseBox.getSelectedIndex();
+        if (index < 0) return;
+
+        for (CourseMaterial m : materialData.findByOffering(offerings.get(index).getOffering_id())) {
+            String fileName = m.getFile_path() == null ? "" : Paths.get(m.getFile_path()).getFileName().toString();
+            String date = m.getUpload_date() == null ? "" : m.getUpload_date().toString().substring(0, 10);
+            matModel.addRow(new Object[]{m.getTitle(), fileName, date});
+        }
+    }
+
+    private void loadQuizzes() {
+        quizModel.setRowCount(0);
+        int index = courseBox.getSelectedIndex();
+        if (index < 0) return;
+
+        for (Assessment a : assessmentData.findByOffering(offerings.get(index).getOffering_id())) {
+            if (!"Quiz".equals(a.getAssessmentType())) continue;
+            quizModel.addRow(new Object[]{a.getAssessmentName(),
+                    a.getAssessmentDate() == null ? "" : a.getAssessmentDate().toString()});
         }
     }
 }

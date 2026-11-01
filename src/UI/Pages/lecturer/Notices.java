@@ -1,6 +1,12 @@
 package UI.Pages.lecturer;
 
 import UI.Pages.Components.Card;
+import data.CourseData;
+import data.CourseOfferingData;
+import data.NoticeData;
+import model.Course;
+import model.CourseOffering;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -17,9 +23,9 @@ import static UI.Kit.Palette.*;
 
 public class Notices extends LecturerUI.Page {
 
-    private static final Color PRIMARY = new Color(0x1F4D36);
-    private static final Color BORDER  = new Color(0xE0E8E2);
-    private static final Color SOFT    = new Color(0xE1EDE3);
+    private static final Color PRIMARY = UI.Kit.Palette.BRAND;
+    private static final Color BORDER  = UI.Kit.Palette.LINE_2;
+    private static final Color SOFT    = UI.Kit.Palette.BRAND_SOFT;
 
     /** One notice (matches the columns of the notices table). */
     public static final class Notice {
@@ -37,7 +43,7 @@ public class Notices extends LecturerUI.Page {
     private final JTextField searchField = new JTextField();
     private final JComboBox<String> courseFilter = new JComboBox<>();
     private final JComboBox<String> statusFilter =
-            new JComboBox<>(new String[]{"All statuses", "Published", "Draft"});
+            new JComboBox<>(new String[]{"All statuses", "Published", "Draft", "Expired"});
 
     // compose side
     private final JTextField titleField = new JTextField();
@@ -46,8 +52,15 @@ public class Notices extends LecturerUI.Page {
             new JComboBox<>(new String[]{"General", "Lecture", "Assignment", "Exam"});
     private final JTextArea messageArea = new JTextArea(7, 20);
 
-    public Notices() {
+    private final CourseOfferingData offeringData = new CourseOfferingData();
+    private final CourseData courseData = new CourseData();
+    private final NoticeData noticeData = new NoticeData();
+    private final int lecturerId;
+    private List<String> myCodes = new ArrayList<>();   // course codes of this lecturer
+
+    public Notices(User user) {
         super("Notices", "Notices for your modules", null);
+        this.lecturerId = user == null ? 0 : user.getUser_id();
 
         listPanel.setOpaque(false);
         listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
@@ -79,60 +92,54 @@ public class Notices extends LecturerUI.Page {
     /*  DATABASE                                                              */
     /* ===================================================================== */
 
-    /**
-     * TODO (DATABASE): load the lecturer's modules here (used by both course drop-downs).
-     *
-     *   SELECT course_code FROM courses WHERE lecturer_id = ?;
-     */
+    /** Fills both course drop-downs with the lecturer's course codes. */
     private void loadCourses() {
-        List<String> codes = List.of("CS3012", "CS3022", "CS2042", "CS4013", "CS4091");   // mock data
+        myCodes = new ArrayList<>();
+        for (CourseOffering o : offeringData.findByLecturer(lecturerId)) {
+            Course c = courseData.findById(o.getCourse_id());
+            if (c != null) myCodes.add(c.getCourse_code());
+        }
 
         courseFilter.removeAllItems();
         courseFilter.addItem("All modules");
         courseBox.removeAllItems();
         courseBox.addItem("All my modules");
-        for (String c : codes) { courseFilter.addItem(c); courseBox.addItem(c); }
+        for (String c : myCodes) { courseFilter.addItem(c); courseBox.addItem(c); }
     }
 
     /**
-     * TODO (DATABASE): load the notices here.
-     *
-     * Get the notices for the logged-in lecturer's modules from MySQL, for example:
-     *
-     *   SELECT n.title, c.course_code, n.posted_date, n.category, n.status, n.message
-     *   FROM notices n
-     *   LEFT JOIN courses c ON c.course_id = n.course_id
-     *   WHERE n.lecturer_id = ?
-     *   ORDER BY n.posted_date DESC;
-     *
-     * Convert each row to a Notice (course = "All modules" when course_id is NULL)
-     * and call setNotices(list).
-     *
-     * (The mock data below is only for design preview. Delete it when the DB code is ready.)
+     * Loads the notices. The audience column holds either a role (LECTURER, ALL) or,
+     * for notices written on this page, a course code or "All modules".
+     * We show the notices for lecturers, for everyone, and for the lecturer's own courses.
+     * (The category is not stored in the database, so loaded notices use "General".)
      */
     private void loadNotices() {
         List<Notice> list = new ArrayList<>();
-        list.add(new Notice("CS3012 – Assignment 2 deadline extended", "CS3012", "25 Oct 2026", "Assignment", "Published",
-                "The deadline for Assignment 2 is extended to 2 November, 11:59 PM. Submissions via the LMS only."));
-        list.add(new Notice("Lab session rescheduled to Thursday", "CS3022", "22 Oct 2026", "Lecture", "Published",
-                "Next week's lab moves to Thursday 14:00 in Lab 3."));
-        list.add(new Notice("Mid-term exam timetable released", "All modules", "20 Oct 2026", "Exam", "Published",
-                "Mid-term timetables are now available. Please check your hall allocation."));
-        list.add(new Notice("ML project proposal guidelines", "CS4013", "—", "General", "Draft",
-                "Proposal should be no more than 4 pages, including references."));
-        list.add(new Notice("Guest lecture: Cloud Databases", "CS3012", "18 Oct 2026", "Lecture", "Published",
-                "Join us in LT-2 on Friday at 3 PM."));
+        for (model.Notice n : noticeData.findAll()) {
+            String audience = n.getAudience() == null ? "All modules" : n.getAudience();
+            boolean forMe = audience.equals("All modules") || audience.equals("ALL")
+                    || audience.equals("LECTURER") || myCodes.contains(audience);
+            if (!forMe) continue;
+
+            String course = audience.equals("ALL") ? "All modules"
+                    : audience.equals("LECTURER") ? "Lecturers" : audience;
+            String date = n.getCreated_date() == null ? "—"
+                    : n.getCreated_date().toLocalDateTime().toLocalDate()
+                        .format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH));
+            String body = n.getDescription() == null ? "" : n.getDescription();
+            list.add(new Notice(n.getTitle(), course, date, "General", statusLabel(n.getStatus()), body));
+        }
         setNotices(list);
     }
 
-    /**
-     * TODO (DATABASE): save the new notice here.
-     *
-     *   INSERT INTO notices (lecturer_id, course_id, title, category, message, status, posted_date)
-     *   VALUES (?, ?, ?, ?, ?, ?, CURDATE());
-     *
-     * status is "Published" or "Draft". After the insert succeeds, the notice is added to the list below.
-     */
+    /** Database status (ACTIVE / DRAFT / EXPIRED) as shown on the page. */
+    private static String statusLabel(String dbStatus) {
+        if (dbStatus == null || dbStatus.equalsIgnoreCase("ACTIVE") || dbStatus.equalsIgnoreCase("PUBLISHED")) return "Published";
+        if (dbStatus.equalsIgnoreCase("DRAFT")) return "Draft";
+        return "Expired";
+    }
+
+    /** Saves a new notice. status is "Published" or "Draft". */
     private void saveNotice(String status) {
         String title = titleField.getText().trim();
         String message = messageArea.getText().trim();
@@ -149,7 +156,18 @@ public class Notices extends LecturerUI.Page {
 
         Notice n = new Notice(title, course, date, (String) categoryBox.getSelectedItem(), status, message);
 
-        // ---- DATABASE INSERT GOES HERE (see the comment above) ----
+        // created_by stays empty: the notice table only allows admin ids there
+        model.Notice row = new model.Notice();
+        row.setTitle(title);
+        row.setDescription(message);
+        row.setAudience(course);
+        row.setStatus(status.equals("Published") ? "ACTIVE" : "DRAFT");   // same values the admin pages use
+        try {
+            noticeData.insert(row);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Could not save the notice: " + ex.getMessage());
+            return;
+        }
 
         all.add(0, n);
         refreshList();
@@ -243,8 +261,8 @@ public class Notices extends LecturerUI.Page {
         JPanel head = new JPanel(new BorderLayout(10, 0));
         head.setOpaque(false);
         head.add(title, BorderLayout.CENTER);
-        head.add(new Pill(n.status, n.status.equals("Published") ? new Color(0xE1F1E8) : new Color(0xF3F6F3),
-                n.status.equals("Published") ? new Color(0x2E7D5B) : new Color(0x6B7C72)), BorderLayout.EAST);
+        head.add(new Pill(n.status, n.status.equals("Published") ? SOFT : UI.Kit.Palette.SURFACE_2,
+                n.status.equals("Published") ? PRIMARY : INK_2), BorderLayout.EAST);
 
         // message (fixed width so the HTML wraps correctly)
         JLabel msg = new JLabel("<html><div style='width:330px'>" + escape(n.body) + "</div></html>");
@@ -343,19 +361,7 @@ public class Notices extends LecturerUI.Page {
     }
 
     private JButton button(String text, boolean primary) {
-        JButton b = new JButton(text);
-        b.setFont(font(Font.BOLD, 12));
-        b.setFocusPainted(false);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setBorder(new EmptyBorder(9, 18, 9, 18));
-        b.setOpaque(true);
-        if (primary) { b.setBackground(PRIMARY); b.setForeground(Color.WHITE); b.setBorderPainted(false); }
-        else {
-            b.setBackground(Color.WHITE); b.setForeground(INK);
-            b.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(BORDER), new EmptyBorder(8, 17, 8, 17)));
-        }
-        return b;
+        return new LecturerUI.Btn(text, primary);   // shared rounded button (blue / glass)
     }
 
     /* ===================================================================== */
