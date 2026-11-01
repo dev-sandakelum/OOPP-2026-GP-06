@@ -1,38 +1,37 @@
 package UI.Pages.Officer;
 
+import Exception.DataAccessException;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import data.TechnicalOfficerData;
+import model.Notice;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Admin "Notices" tab: post and delete notices.
-// A notice is a String[]: {title, message, audience, date}.
+// Officer "Notices" tab: notices for staff / everyone plus the officer's own ones.
+// Officers can post notices and delete the ones they posted.
 public class Notices extends Page {
 
-    // ---------- Placeholder data (swap for services later) ----------
-    private final List<String[]> notices = new ArrayList<>(List.of(
-            new String[]{"Mid-semester examinations", "Mid-semester exams begin next Monday. Check the timetable for your venue.", "Everyone", "2026-10-05"},
-            new String[]{"Medical submission deadline", "Medical certificates must be submitted within 7 days of the absence.", "Undergraduates", "2026-10-02"},
-            new String[]{"Lab maintenance", "Computer Lab 2 is closed on Friday for maintenance.", "Staff", "2026-09-29"},
-            new String[]{"Assignment 2 released", "Assignment 2 for all level 1 modules is now available.", "Undergraduates", "2026-09-25"},
-            new String[]{"Staff meeting", "Faculty staff meeting on Thursday at 3 PM in the main board room.", "Staff", "2026-09-20"}
-    ));
-    // ---------- end placeholder data ----------
+    private static final List<String> AUDIENCES = List.of("ALL", "STAFF", "UNDERGRADUATE");
+
+    private final TechnicalOfficerData officerData = new TechnicalOfficerData();
+    private final int officerId;
 
     private final JPanel list = new JPanel();
 
-    public Notices() {
-        super("Notices", "Post announcements for staff and undergraduates", null);
+    public Notices(User user) {
+        super("Notices", "Announcements for staff and everyone", null);
+        this.officerId = user == null ? -1 : user.getUser_id();
 
         RoundedButton post = new RoundedButton("+ Post notice", true);
         post.addActionListener(e -> postNotice());
@@ -52,6 +51,13 @@ public class Notices extends Page {
     }
 
     private void refresh() {
+        List<Notice> notices = new ArrayList<>();
+        try {
+            notices = officerData.getNotices(officerId);
+        } catch (DataAccessException ex) {
+            info(this, "Failed to load notices: " + ex.getMessage());
+        }
+
         list.removeAll();
         if (notices.isEmpty()) {
             JLabel empty = new JLabel("No notices yet.");
@@ -59,7 +65,7 @@ public class Notices extends Page {
             empty.setForeground(INK_2);
             list.add(empty);
         }
-        for (String[] n : notices) {
+        for (Notice n : notices) {
             list.add(noticeCard(n));
             list.add(Box.createVerticalStrut(12));
         }
@@ -67,18 +73,20 @@ public class Notices extends Page {
         list.repaint();
     }
 
-    private JComponent noticeCard(String[] n) {
-        JLabel title = new JLabel(n[0]);
+    private JComponent noticeCard(Notice n) {
+        JLabel title = new JLabel(n.getTitle());
         title.setFont(font(Font.BOLD, 16));
         title.setForeground(INK);
 
-        JLabel date = new JLabel(n[3]);
+        String when = n.getCreated_date() == null ? ""
+                : n.getCreated_date().toLocalDateTime().toLocalDate().toString();
+        JLabel date = new JLabel(when);
         date.setFont(font(Font.PLAIN, 12));
         date.setForeground(INK_2);
 
         JPanel meta = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         meta.setOpaque(false);
-        meta.add(new Chip(n[2], BRAND));
+        meta.add(new Chip(n.getAudience() == null ? "" : n.getAudience(), BRAND));
         meta.add(date);
 
         JPanel head = new JPanel(new BorderLayout(0, 6));
@@ -86,7 +94,7 @@ public class Notices extends Page {
         head.add(title, BorderLayout.NORTH);
         head.add(meta, BorderLayout.CENTER);
 
-        JTextArea message = new JTextArea(n[1]);
+        JTextArea message = new JTextArea(n.getDescription() == null ? "" : n.getDescription());
         message.setFont(font(Font.PLAIN, 14));
         message.setForeground(INK);
         message.setOpaque(false);
@@ -100,39 +108,65 @@ public class Notices extends Page {
         text.add(head, BorderLayout.NORTH);
         text.add(message, BorderLayout.CENTER);
 
-        RoundedButton del = new RoundedButton("Delete", false);
-        del.addActionListener(e -> deleteNotice(n));
-        JPanel side = new JPanel(new BorderLayout());
-        side.setOpaque(false);
-        side.add(del, BorderLayout.NORTH);
-
         Card card = new Card(false);
         card.setLayout(new BorderLayout(16, 0));
         card.setBorder(new EmptyBorder(16, 20, 16, 20));
         card.setAlignmentX(LEFT_ALIGNMENT);
         card.add(text, BorderLayout.CENTER);
-        card.add(side, BorderLayout.EAST);
+
+        // delete button only on notices this officer posted
+        if (n.getCreated_by() != null && n.getCreated_by() == officerId) {
+            RoundedButton del = new RoundedButton("Delete", false);
+            del.addActionListener(e -> deleteNotice(n));
+            JPanel side = new JPanel(new BorderLayout());
+            side.setOpaque(false);
+            side.add(del, BorderLayout.NORTH);
+            card.add(side, BorderLayout.EAST);
+        }
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height + 40));
         return card;
     }
 
-    private void deleteNotice(String[] n) {
-        if (confirm(this, "Delete \"" + n[0] + "\"?")) {
-            notices.remove(n);
-            refresh();
+    private void deleteNotice(Notice n) {
+        if (!confirm(this, "Delete \"" + n.getTitle() + "\"?")) return;
+        try {
+            if (!officerData.deleteNotice(n.getNotice_id(), officerId)) {
+                info(this, "Nothing was deleted - you can only delete notices you posted.");
+                return;
+            }
+        } catch (DataAccessException ex) {
+            info(this, "Failed to delete the notice: " + ex.getMessage());
+            return;
         }
+        refresh();
     }
 
     private void postNotice() {
-        String[] labels = {"Title", "Message", "Audience (Everyone / Staff / Undergraduates)"};
-        String[] v = form(this, "Post notice", labels, new String[]{"", "", "Everyone"});
+        String[] labels = {"Title", "Message", "Audience (ALL / STAFF / UNDERGRADUATE)"};
+        String[] v = form(this, "Post notice", labels, new String[]{"", "", "ALL"});
         if (v == null) return;
         if (v[0].isEmpty() || v[1].isEmpty()) {
             info(this, "Title and message are required.");
             return;
         }
-        String audience = v[2].isEmpty() ? "Everyone" : v[2];
-        notices.add(0, new String[]{v[0], v[1], audience, LocalDate.now().toString()});
+        String audience = v[2].isEmpty() ? "ALL" : v[2].toUpperCase();
+        if (!AUDIENCES.contains(audience)) {
+            info(this, "Audience must be ALL, STAFF or UNDERGRADUATE.");
+            return;
+        }
+
+        Notice n = new Notice();
+        n.setCreated_by(officerId);
+        n.setTitle(v[0]);
+        n.setDescription(v[1]);
+        n.setAudience(audience);
+        n.setStatus("ACTIVE");
+        try {
+            officerData.insertNotice(n);
+        } catch (DataAccessException ex) {
+            info(this, "Failed to post the notice: " + ex.getMessage());
+            return;
+        }
         refresh();
     }
 }

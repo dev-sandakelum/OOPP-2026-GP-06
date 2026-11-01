@@ -1,41 +1,41 @@
 package UI.Pages.Officer;
 
-import UI.Pages.Components.Card;
+import Exception.DataAccessException;
+import UI.Pages.Components.Dot;
+import UI.Pages.Components.KpiCard;
+import UI.Pages.Components.NavIcon;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.ReadOnlyTableModel;
-import UI.Pages.Components.RoundedButton;
-import UI.Pages.Components.Sidebar;
+import UI.Pages.Components.SectionCard;
+import data.MedicalData;
+import data.TechnicalOfficerData;
+import data.UserData;
+import model.Medical;
 import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
+import java.util.List;
 
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
+// Officer "Overview" tab: 4 KPI cards on top, course attendance table + pending medicals below.
+// Everything comes from the database. refresh() reloads it (called after a medical decision
+// or after attendance is saved).
 public class Overview extends Page {
 
-    // ---------- Medicals Table Columns ----------
-    private static final String[] MEDICAL_COLS = {
-            "SUBMITTED", "UNDERGRADUATE", "LEAVE PERIOD", "REASON", "STATUS"
-    };
+    private static final String[] SUMMARY_COLS = {"Code", "Course", "Sessions", "Avg %"};
+    private static final int PENDING_LIST_LIMIT = 6;
 
-    // ---------- Timetable Columns ----------
-    private static final String[] TIMETABLE_COLS = {
-            "TIME", "MODULE", "TYPE", "VENUE", "LECTURER"
-    };
+    private final TechnicalOfficerData officerData = new TechnicalOfficerData();
+    private final MedicalData medicalData = new MedicalData();
+    private final UserData userData = new UserData();
 
-    private static final String[][] TIMETABLE_DATA = {
-            {"08.30 – 10.30", "ICT2131", "T", "LH-1", "Dr. Perera"},
-            {"10.45 – 12.45", "ICT2132", "P", "Lab-201", "Dr. Fernando"},
-            {"13.30 – 15.30", "ICT2134", "T", "LH-2", "Dr. Bandara"}
-    };
+    private final JPanel body = new JPanel(new BorderLayout(0, 20));
 
     public Overview(User user) {
         super("Overview",
@@ -43,304 +43,155 @@ public class Overview extends Page {
                         + "  ·  " + LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")),
                 null);
 
-        JPanel body = new JPanel();
         body.setOpaque(false);
-        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-
-        // 1. KPI Cards Row
-        body.add(kpiRow());
-        body.add(Box.createVerticalStrut(22));
-
-        // 2. Medicals Awaiting Approval Section (Redirects to tab index 2: Medicals)
-        body.add(sectionHeader(
-                "Medicals awaiting approval",
-                "Approve or reject from the Medicals section",
-                "Open medicals",
-                2
-        ));
-        body.add(Box.createVerticalStrut(10));
-        body.add(createMedicalsTableCard());
-        body.add(Box.createVerticalStrut(22));
-
-        // 3. Today's Timetable Section (Redirects to tab index 4: Timetables)
-        body.add(sectionHeader(
-                "Today — Mon",
-                "Department timetable",
-                "Full week",
-                4
-        ));
-        body.add(Box.createVerticalStrut(10));
-        body.add(createTimetableCard());
-        body.add(Box.createVerticalStrut(22));
-
-        // 4. Notice Board Section (Redirects to tab index 3: Notices)
-        body.add(sectionHeader(
-                "Notice board",
-                "Latest faculty announcements",
-                "View all",
-                3
-        ));
-        body.add(Box.createVerticalStrut(10));
-        body.add(createNoticesCard());
-        body.add(Box.createVerticalStrut(16));
-
         setScrollBody(body);
+        refresh();
     }
 
-    // ---------- Navigation Helper ----------
-    private void navigateToTab(int tabIndex) {
-        // Traverses up to the window to find the Sidebar component and triggers tab selection
-        Window window = SwingUtilities.getWindowAncestor(this);
-        if (window != null) {
-            Sidebar sidebar = findSidebar(window);
-            if (sidebar != null) {
-                sidebar.setSelectedIndex(tabIndex);
-            }
+    /** Reloads every number and list on this page from the database. */
+    public void refresh() {
+        int students = 0, sessionsToday = 0, pending = 0, courses = 0;
+        List<String[]> summary = List.of();
+        List<Medical> pendingList = List.of();
+        try {
+            students = officerData.countTotalStudents();
+            sessionsToday = officerData.countSessionsToday();
+            pending = officerData.countPendingMedicals();
+            courses = officerData.countCurrentCourses();
+            summary = officerData.getCourseAttendanceSummary();
+            pendingList = medicalData.findByStatus("PENDING");
+        } catch (DataAccessException ex) {
+            info(this, "Failed to load the overview: " + ex.getMessage());
         }
+
+        body.removeAll();
+        body.add(kpiRow(students, sessionsToday, pending, courses), BorderLayout.NORTH);
+        body.add(lowerRow(summary, pendingList), BorderLayout.CENTER);
+        body.revalidate();
+        body.repaint();
     }
 
-    private Sidebar findSidebar(Container container) {
-        for (Component comp : container.getComponents()) {
-            if (comp instanceof Sidebar) {
-                return (Sidebar) comp;
-            }
-            if (comp instanceof Container) {
-                Sidebar found = findSidebar((Container) comp);
-                if (found != null) return found;
-            }
-        }
-        return null;
-    }
+    // -------------------------------------------------------------------------
+    //  KPI cards
+    // -------------------------------------------------------------------------
 
-    // ---------- Section Header Helper ----------
-    private JComponent sectionHeader(String title, String subtitle, String actionText, int targetIndex) {
-        JPanel left = new JPanel();
-        left.setOpaque(false);
-        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
-
-        JLabel titleLbl = new JLabel(title);
-        titleLbl.setFont(font(Font.BOLD, 17));
-        titleLbl.setForeground(INK);
-
-        JLabel subLbl = new JLabel(subtitle);
-        subLbl.setFont(font(Font.PLAIN, 12));
-        subLbl.setForeground(INK_2);
-
-        left.add(titleLbl);
-        left.add(Box.createVerticalStrut(2));
-        left.add(subLbl);
-
-        RoundedButton actionBtn = new RoundedButton(actionText, false);
-        actionBtn.addActionListener(e -> navigateToTab(targetIndex));
-
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        header.setAlignmentX(Component.LEFT_ALIGNMENT);
-        header.add(left, BorderLayout.WEST);
-        header.add(actionBtn, BorderLayout.EAST);
-        return header;
-    }
-
-    // ---------- KPI Cards Row ----------
-    private JComponent kpiRow() {
+    private JComponent kpiRow(int students, int sessionsToday, int pending, int courses) {
         String[][] kpis = {
-                {"Modules", "6", "6 modules × 15 sessions"},
-                {"Registers", "90", "theory & practical"},
-                {"Undergraduates", "20", "2 repeat · 2 batch-missed"},
-                {"Pending medicals", "3", "awaiting your decision"}
+                {"Total students", String.valueOf(students), "Undergraduates"},
+                {"Sessions today", String.valueOf(sessionsToday), "Recorded today"},
+                {"Pending medicals", String.valueOf(pending), "Need review"},
+                {"Courses active", String.valueOf(courses), "This semester"}
         };
-
+        NavIcon[] icons = {NavIcon.STUDENTS, NavIcon.REGISTER, NavIcon.PLUS_BOX, NavIcon.BOOK};
         JPanel row = new JPanel(new GridLayout(1, kpis.length, 16, 0));
         row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 124));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         for (int i = 0; i < kpis.length; i++) {
-            row.add(kpiCard(kpis[i][0], kpis[i][1], kpis[i][2], i == 0));
+            row.add(new KpiCard(kpis[i][0], kpis[i][1], kpis[i][2], icons[i], i == 0));
         }
         return row;
     }
 
-    private JComponent kpiCard(String label, String value, String sub, boolean dark) {
-        Card c = new Card(dark);
-        c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
-        c.setBorder(new EmptyBorder(18, 20, 18, 20));
-        c.setPreferredSize(new Dimension(0, 124));
-        Color muted = dark ? ON_BRAND_2 : INK_2;
+    // -------------------------------------------------------------------------
+    //  Lower row
+    // -------------------------------------------------------------------------
 
-        JLabel l = new JLabel(label);
-        l.setFont(font(Font.BOLD, 13));
-        l.setForeground(muted);
+    private JComponent lowerRow(List<String[]> summary, List<Medical> pendingList) {
+        JComponent attendance = new SectionCard("Course attendance", NavIcon.REGISTER, summaryTable(summary));
+        JComponent medicals = new SectionCard("Pending medicals", NavIcon.MEDICAL, pendingBody(pendingList));
+        // width 1 so the weights below decide the split instead of the content's preferred width
+        attendance.setPreferredSize(new Dimension(1, attendance.getPreferredSize().height));
+        medicals.setPreferredSize(new Dimension(1, medicals.getPreferredSize().height));
 
-        JLabel v = new JLabel(value);
-        v.setFont(font(Font.BOLD, 34));
-        v.setForeground(dark ? Color.WHITE : INK);
+        JPanel row = new JPanel(new GridBagLayout());
+        row.setOpaque(false);
+        GridBagConstraints g = new GridBagConstraints();
+        g.fill = GridBagConstraints.BOTH;
+        g.weighty = 1;
+
+        g.gridx = 0; g.weightx = 0.6; g.insets = new Insets(0, 0, 0, 8);
+        row.add(attendance, g);
+        g.gridx = 1; g.weightx = 0.4; g.insets = new Insets(0, 8, 0, 0);
+        row.add(medicals, g);
+        return row;
+    }
+
+    // course_code, course_name, sessions_count, avg_attendance% (offering_id is not shown)
+    private JComponent summaryTable(List<String[]> summary) {
+        ReadOnlyTableModel model = new ReadOnlyTableModel(SUMMARY_COLS);
+        for (String[] r : summary) {
+            model.addRow(new String[]{r[1], r[2], r[3], r[4]});
+        }
+        JTable table = table(model, null, -1);
+        table.getColumnModel().getColumn(0).setPreferredWidth(90);
+        table.getColumnModel().getColumn(1).setPreferredWidth(230);
+        table.getColumnModel().getColumn(2).setPreferredWidth(80);
+        table.getColumnModel().getColumn(3).setPreferredWidth(70);
+        return tableCard(table);
+    }
+
+    private JComponent pendingBody(List<Medical> pendingList) {
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+
+        if (pendingList.isEmpty()) {
+            JLabel none = new JLabel("No pending medicals.");
+            none.setFont(font(Font.PLAIN, 14));
+            none.setForeground(INK_2);
+            p.add(none);
+            return p;
+        }
+
+        int shown = Math.min(PENDING_LIST_LIMIT, pendingList.size());
+        for (int i = 0; i < shown; i++) {
+            Medical m = pendingList.get(i);
+            User student = userData.findById(m.getStudentId());
+            String name = student == null ? "Student " + m.getStudentId() : student.getName();
+            String reason = m.getReason() == null ? "" : "  ·  " + m.getReason();
+            p.add(pendingRow(name, m.getMedicalDate() + reason));
+            if (i < shown - 1) {
+                JSeparator sep = new JSeparator();
+                sep.setForeground(LINE);
+                sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+                p.add(sep);
+            }
+        }
+        if (pendingList.size() > shown) {
+            JLabel more = new JLabel("+ " + (pendingList.size() - shown) + " more in the Medicals tab");
+            more.setFont(font(Font.PLAIN, 12));
+            more.setForeground(INK_2);
+            more.setBorder(new EmptyBorder(10, 0, 0, 0));
+            p.add(more);
+        }
+        return p;
+    }
+
+    private JComponent pendingRow(String title, String sub) {
+        JLabel t = new JLabel(title);
+        t.setFont(font(Font.BOLD, 14));
+        t.setForeground(INK);
 
         JLabel s = new JLabel(sub);
         s.setFont(font(Font.PLAIN, 12));
-        s.setForeground(muted);
+        s.setForeground(INK_2);
 
-        c.add(l);
-        c.add(Box.createVerticalGlue());
-        c.add(v);
-        c.add(s);
-        return c;
-    }
+        JPanel text = new JPanel();
+        text.setOpaque(false);
+        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+        text.add(t);
+        text.add(s);
 
-    // ---------- Medicals Card (From Medicals Data) ----------
-    private JComponent createMedicalsTableCard() {
-        ReadOnlyTableModel model = new ReadOnlyTableModel(MEDICAL_COLS);
+        JPanel left = new JPanel(new BorderLayout());
+        left.setOpaque(false);
+        left.add(new Dot(WARN), BorderLayout.NORTH);
 
-        // Uses the first pending medical records from the Medicals page
-        model.addRow(new String[]{"18 Sep", "K. D. Fernando (FOT/2023/044)", "10 Sep – 17 Sep", "Severe flu & fever", "Pending"});
-        model.addRow(new String[]{"19 Sep", "M. R. Perera (FOT/2023/088)", "12 Sep – 14 Sep", "Dental surgery", "Pending"});
-        model.addRow(new String[]{"16 Sep", "W. A. N. Silva (FOT/2023/061)", "24 Aug – 15 Sep", "Migraine — clinic observation", "Pending"});
-
-        JTable table = table(model, Map.of(
-                "Pending", WARN,
-                "Approved", OK,
-                "Rejected", BAD
-        ), 4);
-
-        table.setRowHeight(44);
-        TableColumnModel colModel = table.getColumnModel();
-
-        colModel.getColumn(0).setPreferredWidth(100);
-        colModel.getColumn(1).setPreferredWidth(280);
-        colModel.getColumn(2).setPreferredWidth(160);
-        colModel.getColumn(3).setPreferredWidth(260);
-        colModel.getColumn(4).setPreferredWidth(110);
-
-        JComponent card = tableCard(table);
-        card.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return card;
-    }
-
-    // ---------- Timetable Card ----------
-    private JComponent createTimetableCard() {
-        ReadOnlyTableModel model = new ReadOnlyTableModel(TIMETABLE_COLS);
-        for (String[] r : TIMETABLE_DATA) {
-            model.addRow(r);
-        }
-
-        JTable table = table(model, Map.of(
-                "T", INK_2,
-                "P", BRAND
-        ), 2);
-
-        table.setRowHeight(44);
-        TableColumnModel colModel = table.getColumnModel();
-
-        colModel.getColumn(0).setPreferredWidth(130);
-        colModel.getColumn(1).setPreferredWidth(130);
-        colModel.getColumn(2).setPreferredWidth(70);
-        colModel.getColumn(3).setPreferredWidth(130);
-        colModel.getColumn(4).setPreferredWidth(180);
-
-        DefaultTableCellRenderer centerRender = new DefaultTableCellRenderer();
-        centerRender.setHorizontalAlignment(SwingConstants.CENTER);
-        colModel.getColumn(2).setCellRenderer(centerRender);
-
-        JComponent card = tableCard(table);
-        card.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return card;
-    }
-
-    // ---------- Notice Board Card ----------
-    private JComponent createNoticesCard() {
-        Card card = new Card(false);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(16, 20, 16, 20));
-        card.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        card.add(noticeItem(
-                "28", "SEP", "EXAMINATION",
-                "Final examination timetable — Level II Semester I",
-                "The final examination timetable has been published. Examinations begin on 26 October 2026. " +
-                        "Check your eligibility (attendance ≥ 80% and CA ≥ 40%) before the exam. Hall tickets will be issued from 20 October.",
-                "posted by Administration · 28 Sep 2026"
-        ));
-
-        JSeparator sep = new JSeparator();
-        sep.setForeground(LINE);
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-        card.add(Box.createVerticalStrut(12));
-        card.add(sep);
-        card.add(Box.createVerticalStrut(12));
-
-        card.add(noticeItem(
-                "24", "SEP", "ATTENDANCE",
-                "Attendance eligibility list published for all modules",
-                "Session-by-session attendance for all 15 theory and practical sessions is now finalized. View the register to resolve any discrepancies.",
-                "posted by Technical Officer · 24 Sep 2026"
-        ));
-
-        return card;
-    }
-
-    private JComponent noticeItem(String day, String month, String category, String title, String description, String meta) {
-        JPanel item = new JPanel(new BorderLayout(16, 0));
-        item.setOpaque(false);
-
-        // Date Box
-        JPanel dateBox = new JPanel();
-        dateBox.setOpaque(false);
-        dateBox.setLayout(new BoxLayout(dateBox, BoxLayout.Y_AXIS));
-        dateBox.setPreferredSize(new Dimension(46, 50));
-
-        JLabel dayLbl = new JLabel(day, SwingConstants.CENTER);
-        dayLbl.setFont(font(Font.BOLD, 20));
-        dayLbl.setForeground(INK);
-        dayLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel monthLbl = new JLabel(month, SwingConstants.CENTER);
-        monthLbl.setFont(font(Font.BOLD, 10));
-        monthLbl.setForeground(INK_2);
-        monthLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        dateBox.add(dayLbl);
-        dateBox.add(monthLbl);
-
-        // Content
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-
-        JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        topRow.setOpaque(false);
-
-        JLabel tag = new JLabel(category);
-        tag.setFont(font(Font.BOLD, 9));
-        tag.setForeground(BRAND);
-        tag.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BRAND, 1, true),
-                BorderFactory.createEmptyBorder(2, 6, 2, 6)
-        ));
-
-        JLabel titleLbl = new JLabel(title);
-        titleLbl.setFont(font(Font.BOLD, 14));
-        titleLbl.setForeground(INK);
-
-        topRow.add(tag);
-        topRow.add(titleLbl);
-
-        JLabel descLbl = new JLabel("<html>" + description + "</html>");
-        descLbl.setFont(font(Font.PLAIN, 12));
-        descLbl.setForeground(INK_2);
-
-        JLabel metaLbl = new JLabel(meta);
-        metaLbl.setFont(font(Font.PLAIN, 11));
-        metaLbl.setForeground(INK_2);
-
-        content.add(topRow);
-        content.add(Box.createVerticalStrut(6));
-        content.add(descLbl);
-        content.add(Box.createVerticalStrut(6));
-        content.add(metaLbl);
-
-        item.add(dateBox, BorderLayout.WEST);
-        item.add(content, BorderLayout.CENTER);
-        return item;
+        JPanel row = new JPanel(new BorderLayout(12, 0));
+        row.setOpaque(false);
+        row.setBorder(new EmptyBorder(10, 0, 10, 0));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.add(left, BorderLayout.WEST);
+        row.add(text, BorderLayout.CENTER);
+        return row;
     }
 }
