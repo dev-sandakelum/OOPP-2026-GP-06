@@ -1,12 +1,14 @@
 package UI.Pages.Officer;
 
+import Exception.DataAccessException;
 import UI.Pages.Components.Avatar;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import data.DepartmentData;
+import data.TechnicalOfficerData;
+import model.Department;
 import model.TechnicalOfficer;
-import model.TechnicalOfficer;
-import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -16,22 +18,28 @@ import java.sql.Date;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Admin "My Profile" tab: shows and edits the logged-in user (the User model is not changed).
+// Officer "My Profile" tab: shows and saves the logged-in technical officer's details.
+// Department is shown as a label (read-only).
 public class MyProfile extends Page {
 
+    private final TechnicalOfficerData officerData = new TechnicalOfficerData();
     private final TechnicalOfficer user;
     private final JTextField name = field(20);
     private final JTextField email = field(20);
     private final JTextField contact = field(20);
     private final JTextField dob = field(20);
     private final JTextField address = field(20);
-    private final JTextField gender = field(20);
-    private final JTextField department = field(20);
-
+    private final JLabel gender = new JLabel();
+    private final JLabel department = new JLabel();
 
     public MyProfile(TechnicalOfficer user) {
         super("My Profile", "Your account details", null);
         this.user = user;
+        refreshFromDb();
+
+        department.setFont(font(Font.PLAIN, 14));
+        department.setForeground(INK);
+        loadDepartment();
 
         Card card = new Card(false);
         card.setLayout(new BorderLayout(0, 20));
@@ -47,6 +55,34 @@ public class MyProfile extends Page {
 
         load();
     }
+    // The login object only has basic columns, so read the full record first.
+    private void refreshFromDb() {
+        if (user == null) return;
+        try {
+            TechnicalOfficer fromDb = officerData.findById(user.getUser_id());
+            if (fromDb == null) return;
+            user.setName(fromDb.getName());
+            user.setEmail(fromDb.getEmail());
+            user.setContact_number(fromDb.getContact_number());
+            user.setDOB(fromDb.getDOB());
+            user.setAddress(fromDb.getAddress());
+            user.setGender(fromDb.getGender());
+            user.setDep_id(fromDb.getDep_id());
+        } catch (DataAccessException ex) {
+            info(this, "Failed to load your profile: " + ex.getMessage());
+        }
+    }
+
+    private void loadDepartment() {
+        if (user == null) return;
+        try {
+            Department d = new DepartmentData().findById(user.getDep_id());
+            department.setText(d == null ? "—" : d.getDep_name());
+        } catch (DataAccessException ex) {
+            department.setText("—");
+            info(this, "Failed to load your department: " + ex.getMessage());
+        }
+    }
 
     // copies the user into the text fields
     private void load() {
@@ -56,8 +92,7 @@ public class MyProfile extends Page {
         contact.setText(nz(user.getContact_number()));
         dob.setText(user.getDOB() == null ? "" : user.getDOB().toString());
         address.setText(nz(user.getAddress()));
-        gender.setText(nz(user.getGender()));
-        department.setText(nz(String.valueOf(user.getDep_id())));
+        gender.setText(nz(user.getGender()).isEmpty() ? "—" : user.getGender());
     }
 
     private static String nz(String s) {
@@ -98,12 +133,12 @@ public class MyProfile extends Page {
         addField(grid, "Contact number", contact);
         addField(grid, "Date of birth (yyyy-mm-dd)", dob);
         addField(grid, "Address", address);
-        addField(grid, "Gender", gender);
-        addField(grid, "Department", department);
+        addField(grid, "Gender (read-only)", gender);
+        addField(grid, "Department", department);   // read-only label
         return grid;
     }
 
-    private void addField(JPanel grid, String caption, JTextField f) {
+    private void addField(JPanel grid, String caption, JComponent f) {
         JPanel p = new JPanel(new BorderLayout(0, 6));
         p.setOpaque(false);
         p.add(label(caption), BorderLayout.NORTH);
@@ -144,7 +179,16 @@ public class MyProfile extends Page {
         user.setContact_number(contact.getText().trim());
         user.setDOB(d);
         user.setAddress(address.getText().trim());
-        user.setGender(gender.getText().trim());
-        info(this, "Profile saved.");
+
+        try {
+            if (officerData.updateProfile(user)) {
+                refreshFromDb();
+                info(this, "Profile saved successfully.");
+            } else {
+                info(this, "No changes were saved — the record may not exist.");
+            }
+        } catch (DataAccessException ex) {
+            info(this, "Failed to save your profile: " + ex.getMessage());
+        }
     }
 }
