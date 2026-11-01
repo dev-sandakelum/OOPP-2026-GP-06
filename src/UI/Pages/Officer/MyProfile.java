@@ -4,8 +4,7 @@ import UI.Pages.Components.Avatar;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
-import model.TechnicalOfficer;
-import model.TechnicalOfficer;
+import data.UserData;
 import model.User;
 
 import javax.swing.*;
@@ -16,20 +15,20 @@ import java.sql.Date;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Admin "My Profile" tab: shows and edits the logged-in user (the User model is not changed).
+// Officer "My Profile" tab: shows and edits the logged-in user (saved with UserData).
 public class MyProfile extends Page {
 
-    private final TechnicalOfficer user;
+    private final UserData userData = new UserData();
+    private final User user;
     private final JTextField name = field(20);
     private final JTextField email = field(20);
     private final JTextField contact = field(20);
     private final JTextField dob = field(20);
     private final JTextField address = field(20);
     private final JTextField gender = field(20);
-    private final JTextField department = field(20);
 
 
-    public MyProfile(TechnicalOfficer user) {
+    public MyProfile(User user) {
         super("My Profile", "Your account details", null);
         this.user = user;
 
@@ -57,7 +56,6 @@ public class MyProfile extends Page {
         dob.setText(user.getDOB() == null ? "" : user.getDOB().toString());
         address.setText(nz(user.getAddress()));
         gender.setText(nz(user.getGender()));
-        department.setText(nz(String.valueOf(user.getDep_id())));
     }
 
     private static String nz(String s) {
@@ -85,7 +83,7 @@ public class MyProfile extends Page {
 
         JPanel row = new JPanel(new BorderLayout(16, 0));
         row.setOpaque(false);
-        row.add(new Avatar(shown, 64), BorderLayout.WEST);
+        row.add(new Avatar(shown, user != null ? user.getPhoto() : null, 64), BorderLayout.WEST);
         row.add(text, BorderLayout.CENTER);
         return row;
     }
@@ -98,8 +96,7 @@ public class MyProfile extends Page {
         addField(grid, "Contact number", contact);
         addField(grid, "Date of birth (yyyy-mm-dd)", dob);
         addField(grid, "Address", address);
-        addField(grid, "Gender", gender);
-        addField(grid, "Department", department);
+        addField(grid, "Gender (MALE/FEMALE/OTHER)", gender);
         return grid;
     }
 
@@ -145,6 +142,12 @@ public class MyProfile extends Page {
         user.setDOB(d);
         user.setAddress(address.getText().trim());
         user.setGender(gender.getText().trim());
-        info(this, "Profile saved.");
+        
+        try {
+            boolean ok = userData.update(user);
+            info(this, ok ? "Profile saved successfully." : "Save failed — check the console.");
+        } catch (Exception ex) {
+            info(this, "Could not save profile: " + ex.getMessage());
+        }
     }
 }

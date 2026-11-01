@@ -166,6 +166,6 @@ public class Medicals extends Page {
                 model.getValueAt(m, 4),
                 model.getValueAt(m, 5)
         );
-        JOptionPane.showMessageDialog(this, message, "Medical Details", JOptionPane.INFORMATION_MESSAGE);
+        info(this, "Medical Details", message);
     }
 }

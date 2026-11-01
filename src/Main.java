@@ -1,3 +1,4 @@
+import UI.Kit.Theme;
 import UI.Pages.LoginPage;
 import database.Database;
 
@@ -5,6 +6,9 @@ import javax.swing.*;
 
 public class Main {
     public static void main(String[] args) {
+
+        // Theme the stock Swing widgets (combo boxes, dialogs) before any window exists
+        Theme.install();
 
         // Connect to the database once at startup (uses the login-only account)
         try {

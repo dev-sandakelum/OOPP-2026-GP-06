@@ -89,7 +89,7 @@ public class MyProfile extends Page {
 
         JPanel row = new JPanel(new BorderLayout(16, 0));
         row.setOpaque(false);
-        row.add(new Avatar(shown, 64), BorderLayout.WEST);
+        row.add(new Avatar(shown, user != null ? user.getPhoto() : null, 64), BorderLayout.WEST);
         row.add(text, BorderLayout.CENTER);
         return row;
     }
