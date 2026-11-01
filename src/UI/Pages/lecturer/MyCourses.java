@@ -183,7 +183,7 @@ public class MyCourses extends LecturerUI.Page {
         String title = matTitleField.getText().trim();
 
         if (index < 0 || title.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select a course and enter a title.");
+            UI.Pages.Components.Ui.info(this, "Please select a course and enter a title.");
             return;
         }
 
@@ -211,10 +211,10 @@ public class MyCourses extends LecturerUI.Page {
 
             matTitleField.setText("");
             loadMaterials();
-            JOptionPane.showMessageDialog(this, "Material uploaded.");
+            UI.Pages.Components.Ui.info(this, "Material uploaded.");
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Upload failed: " + ex.getMessage());
+            UI.Pages.Components.Ui.info(this, "Upload failed: " + ex.getMessage());
         }
     }
 
@@ -243,14 +243,14 @@ public class MyCourses extends LecturerUI.Page {
         String title = quizTitleField.getText().trim();
 
         if (index < 0 || title.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select a course and enter a quiz title.");
+            UI.Pages.Components.Ui.info(this, "Please select a course and enter a quiz title.");
             return;
         }
 
         try {
             java.sql.Date when = java.sql.Date.valueOf(quizDateField.getText().trim());
             if (when.toLocalDate().isBefore(java.time.LocalDate.now())) {
-                JOptionPane.showMessageDialog(this, "The quiz date must be in the future.");
+                UI.Pages.Components.Ui.info(this, "The quiz date must be in the future.");
                 return;
             }
 
@@ -263,12 +263,12 @@ public class MyCourses extends LecturerUI.Page {
 
             quizTitleField.setText("");
             loadQuizzes();
-            JOptionPane.showMessageDialog(this, "Quiz scheduled.");
+            UI.Pages.Components.Ui.info(this, "Quiz scheduled.");
 
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, "The date must look like 2026-11-10.");
+            UI.Pages.Components.Ui.info(this, "The date must look like 2026-11-10.");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Could not schedule the quiz: " + ex.getMessage());
+            UI.Pages.Components.Ui.info(this, "Could not schedule the quiz: " + ex.getMessage());
         }
     }
 

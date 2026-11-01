@@ -5,6 +5,7 @@ import UI.Pages.Components.Page;
 import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.RoundedButton;
 import UI.Pages.Components.SimpleDocListener;
+import UI.Pages.Components.Ui;
 import data.UserData;
 import model.User;
 
@@ -172,9 +173,7 @@ public class UserProfiles extends Page {
         }
         JComboBox<String> roleCb = new JComboBox<>(ROLES);
         if (current != null) roleCb.setSelectedItem(current[1]);
-        int r = JOptionPane.showConfirmDialog(this, roleCb, "Role",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r != JOptionPane.OK_OPTION) return null;
+        if (!Ui.ask(this, "Role", roleCb)) return null;
         return new String[]{v[0], (String) roleCb.getSelectedItem(), v[1], v[2], v[3]};
     }
 

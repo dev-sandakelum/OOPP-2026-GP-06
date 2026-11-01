@@ -10,20 +10,26 @@ import java.awt.geom.RoundRectangle2D;
 
 import static UI.Kit.Palette.*;
 
-// JOptionPane in the glass style: the same backdrop as the main windows (light-blue gradient
-// plus the world-map art), a frosted glass card holding the message and the fields, a round
-// badge icon, and the same pill buttons as RoundedButton (first button = royal blue, the rest
-// frosted white). Installed through Theme.install(); plain JOptionPane.showXxx calls pick it up.
+// JOptionPane in the glass style: one frosted glass card holding the message and the fields,
+// a round badge icon, and the same pill buttons as RoundedButton (first button = royal blue,
+// the rest frosted white). Pages show panes through GlassDialog, which lays the card over a
+// frosted wash on the parent window. Installed through Theme.install().
 public class GlassOptionPaneUI extends BasicOptionPaneUI {
 
-    // gap between the window edge and the glass card, and room under it for the card's shadow
-    public static final int CARD_INSET = 14, CARD_SHADOW = 6;
+    // room around the glass card for its shadow, and extra room under it
+    public static final int CARD_INSET = 8, CARD_SHADOW = 6;
 
     // padding inside the card (Theme adds CARD_INSET / CARD_SHADOW on top of this)
-    public static final Insets CARD_PADDING = new Insets(22, 26, 20, 26);
+    public static final Insets CARD_PADDING = new Insets(26, 32, 24, 32);
 
     public static ComponentUI createUI(JComponent c) {
         return new GlassOptionPaneUI();
+    }
+
+    @Override
+    protected void installDefaults() {
+        super.installDefaults();
+        LookAndFeel.installProperty(optionPane, "opaque", Boolean.FALSE);   // the card has round corners
     }
 
     @Override
@@ -43,12 +49,17 @@ public class GlassOptionPaneUI extends BasicOptionPaneUI {
 
     @Override
     public void update(Graphics g, JComponent c) {
-        Backdrop.paint(g, c);                       // gradient + world map, like the main windows
         Graphics2D g2 = Glass.aa(g);
+        boolean overlay = Boolean.TRUE.equals(c.getClientProperty(UI.Pages.Components.GlassDialog.OVERLAY));
+        if (!overlay) {
+            // shown in a plain window (not through GlassDialog): give it the gradient backdrop
+            g2.setPaint(new GradientPaint(0, 0, BG_1, c.getWidth(), c.getHeight(), BG_2));
+            g2.fillRect(0, 0, c.getWidth(), c.getHeight());
+        }
         float x = CARD_INSET, y = CARD_INSET;
         float w = c.getWidth() - CARD_INSET * 2, h = c.getHeight() - CARD_INSET * 2 - CARD_SHADOW;
         Glass.shadow(g2, x, y, w, h, RADIUS_CARD);
-        Glass.panel(g2, x, y, w, h, RADIUS_CARD, GLASS);
+        Glass.panel(g2, x, y, w, h, RADIUS_CARD, GLASS_STRONG);
         g2.dispose();
         paint(g, c);
     }

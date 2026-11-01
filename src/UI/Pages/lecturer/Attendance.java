@@ -275,7 +275,7 @@ public class Attendance extends LecturerUI.Page {
     private void submitAttendance() {
         int sessionIndex = sessionBox.getSelectedIndex();
         if (studentRows.isEmpty() || sessionIndex < 0) {
-            JOptionPane.showMessageDialog(this, "No students to submit.");
+            UI.Pages.Components.Ui.info(this, "No students to submit.");
             return;
         }
 
@@ -286,9 +286,9 @@ public class Attendance extends LecturerUI.Page {
                 String status = r.isPresent() ? "PRESENT" : "ABSENT";
                 attendanceData.save(new model.Attendance(Integer.parseInt(r.regNo), sessionId, status, today));
             }
-            JOptionPane.showMessageDialog(this, "Attendance submitted successfully.");
+            UI.Pages.Components.Ui.info(this, "Attendance submitted successfully.");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Could not save attendance: " + ex.getMessage());
+            UI.Pages.Components.Ui.info(this, "Could not save attendance: " + ex.getMessage());
         }
     }
 
