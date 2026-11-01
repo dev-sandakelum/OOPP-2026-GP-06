@@ -1,5 +1,6 @@
 package UI.Pages.admin;
 
+import UI.Pages.Components.AvatarCellRenderer;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.RoundedButton;
@@ -29,6 +30,8 @@ public class UserProfiles extends Page {
 
     // Parallel list keeps the user_id for each table row so we can call update/delete
     private final List<Integer> ids = new ArrayList<>();
+    // ...and the photo filename, so the Name column can paint the avatar
+    private final List<String> photos = new ArrayList<>();
 
     private final ReadOnlyTableModel model = new ReadOnlyTableModel(COLS);
     private final JTable table;
@@ -46,6 +49,9 @@ public class UserProfiles extends Page {
                 "Undergraduate",    INK_2), 1);
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
+        table.getColumnModel().getColumn(0).setCellRenderer(
+                new AvatarCellRenderer(r -> r < photos.size() ? photos.get(r) : null, null));
+        table.getColumnModel().getColumn(0).setPreferredWidth(220);
 
         search.getDocument().addDocumentListener(new SimpleDocListener(this::applyFilter));
         roleFilter.addItem("All roles");
@@ -68,6 +74,7 @@ public class UserProfiles extends Page {
     private void loadAll() {
         model.setRowCount(0);
         ids.clear();
+        photos.clear();
         try {
             for (User u : userData.findAll()) {
                 model.addRow(new String[]{
@@ -78,6 +85,7 @@ public class UserProfiles extends Page {
                         u.getGender() == null ? "" : u.getGender()
                 });
                 ids.add(u.getUser_id());
+                photos.add(u.getPhoto());
             }
         } catch (Exception ex) {
             info(this, "Could not load users: " + ex.getMessage());
@@ -192,14 +200,14 @@ public class UserProfiles extends Page {
         u.setGender(v[4]);
         u.setPassword(pw[0]);           // store hash in production
         u.setUserType(roleDbValue(v[1]));
-        
-        // Photo will be auto-assigned by database trigger or can be set later
-        u.setPhoto(null);
+        u.setPhoto(null);               // the database trigger picks a free photo
 
         try {
             userData.insert(u);
+            User saved = userData.findById(u.getUser_id());   // re-read to get the assigned photo
             model.addRow(new String[]{v[0], v[1], v[2], v[3], v[4]});
             ids.add(u.getUser_id());
+            photos.add(saved == null ? null : saved.getPhoto());
         } catch (Exception ex) {
             info(this, "Could not add user: " + ex.getMessage());
         }
@@ -224,6 +232,7 @@ public class UserProfiles extends Page {
         u.setContact_number(v[3]);
         u.setGender(v[4]);
         u.setUserType(roleDbValue(v[1]));
+        u.setPhoto(photos.get(m));      // keep the existing photo
 
         try {
             userData.update(u);
@@ -245,6 +254,7 @@ public class UserProfiles extends Page {
             userData.delete(userId);
             model.removeRow(m);
             ids.remove(m);
+            photos.remove(m);
         } catch (Exception ex) {
             info(this, "Could not delete user: " + ex.getMessage());
         }

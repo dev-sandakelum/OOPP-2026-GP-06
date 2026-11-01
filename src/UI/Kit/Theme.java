@@ -42,7 +42,10 @@ public final class Theme {
         UIManager.put("OptionPane.messageFont", new FontUIResource(font(Font.PLAIN, 14)));
         UIManager.put("OptionPane.buttonFont", new FontUIResource(font(Font.BOLD, 13)));
         UIManager.put("OptionPane.font", new FontUIResource(font(Font.PLAIN, 14)));
-        UIManager.put("OptionPane.border", new BorderUIResource(new EmptyBorder(20, 24, 18, 24)));
+        Insets pad = GlassOptionPaneUI.CARD_PADDING;
+        int in = GlassOptionPaneUI.CARD_INSET;
+        UIManager.put("OptionPane.border", new BorderUIResource(new EmptyBorder(
+                in + pad.top, in + pad.left, in + pad.bottom + GlassOptionPaneUI.CARD_SHADOW, in + pad.right)));
         UIManager.put("OptionPane.messageAreaBorder", new BorderUIResource(new EmptyBorder(0, 0, 0, 0)));
         UIManager.put("OptionPane.buttonAreaBorder", new BorderUIResource(new EmptyBorder(16, 0, 0, 0)));
         UIManager.put("OptionPane.buttonPadding", 8);

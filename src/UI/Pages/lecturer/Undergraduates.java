@@ -1,5 +1,7 @@
 package UI.Pages.lecturer;
 
+import UI.Pages.Components.Avatar;
+import UI.Pages.Components.AvatarCellRenderer;
 import UI.Pages.Components.Card;
 import data.AttendanceData;
 import data.BatchData;
@@ -52,7 +54,7 @@ public class Undergraduates extends LecturerUI.Page {
     private final TableRowSorter<StudentModel> sorter = new TableRowSorter<>(model);
     private final JLabel countLbl = new JLabel(" ");
 
-    private final AvatarPanel avatar = new AvatarPanel();
+    private final Avatar avatar = new Avatar("", 84);
     private final JLabel nameLbl  = new JLabel(" ");
     private final JLabel subLbl   = new JLabel(" ");
     private final JLabel regLbl   = new JLabel(" ");
@@ -135,7 +137,8 @@ public class Undergraduates extends LecturerUI.Page {
             if (u == null) continue;
             list.add(new Student(String.valueOf(id), u.getName(), batchName(id), u.getEmail(),
                     attendancePercent(id, selected),
-                    u.getContact_number() == null ? "" : u.getContact_number(), latestGpa(id)));
+                    u.getContact_number() == null ? "" : u.getContact_number(), latestGpa(id),
+                    u.getPhoto()));
         }
 
         model.setRows(list);
@@ -273,9 +276,11 @@ public class Undergraduates extends LecturerUI.Page {
 
         table.setDefaultRenderer(Object.class, new CellRenderer());
         table.getColumnModel().getColumn(ATT_COL).setCellRenderer(new AttendanceRenderer());
+        table.getColumnModel().getColumn(1).setCellRenderer(
+                new AvatarCellRenderer(r -> r < model.rows.size() ? model.rows.get(r).photo : null, SURFACE));
 
-        int[] widths    = {110, 190, 70, 200, 110};
-        int[] minWidths = { 90, 120, 64, 120, 104};   // keeps headers readable on narrow windows
+        int[] widths    = {110, 230, 70, 200, 110};
+        int[] minWidths = { 90, 160, 64, 120, 104};   // keeps headers readable on narrow windows
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
             table.getColumnModel().getColumn(i).setMinWidth(minWidths[i]);
@@ -424,13 +429,13 @@ public class Undergraduates extends LecturerUI.Page {
 
     private void showStudent(Student s) {
         if (s == null) {
-            avatar.setInitials("");
+            avatar.set("", null);
             nameLbl.setText("No student selected");
             subLbl.setText(" ");
             for (JLabel l : new JLabel[]{regLbl, batchLbl, emailLbl, phoneLbl, gpaLbl, attLbl}) l.setText("–");
             return;
         }
-        avatar.setInitials(initials(s.name));
+        avatar.set(s.name, s.photo);
         nameLbl.setText(s.name);
         subLbl.setText("Batch " + s.batch);
         regLbl.setText(s.reg);
@@ -442,24 +447,18 @@ public class Undergraduates extends LecturerUI.Page {
         attLbl.setForeground(attendanceColour(s.attendance));
     }
 
-    private static String initials(String name) {
-        String[] p = name.trim().split("\\s+");
-        String a = p[0].substring(0, 1);
-        String b = p.length > 1 ? p[p.length - 1].substring(0, 1) : "";
-        return (a + b).toUpperCase();
-    }
-
     // =====================================================================
     //  DATA
     // =====================================================================
 
     static class Student {
-        final String reg, name, batch, email, phone;
+        final String reg, name, batch, email, phone, photo;
         final int attendance;
         final Double gpa;
-        Student(String reg, String name, String batch, String email, int attendance, String phone, Double gpa) {
+        Student(String reg, String name, String batch, String email, int attendance, String phone, Double gpa,
+                String photo) {
             this.reg = reg; this.name = name; this.batch = batch; this.email = email;
-            this.attendance = attendance; this.phone = phone; this.gpa = gpa;
+            this.attendance = attendance; this.phone = phone; this.gpa = gpa; this.photo = photo;
         }
     }
 
@@ -539,33 +538,6 @@ public class Undergraduates extends LecturerUI.Page {
             g2.fill(new RoundRectangle2D.Float(x, y, w, h, h, h));
             g2.setColor(colour);
             g2.drawString(text, x + 10, y + (h - fm.getHeight()) / 2 + fm.getAscent());
-            g2.dispose();
-        }
-    }
-
-    /** Round avatar with the student's initials. */
-    static class AvatarPanel extends JPanel {
-        private String initials = "";
-        AvatarPanel() {
-            setOpaque(false);
-            Dimension d = new Dimension(84, 84);
-            setPreferredSize(d);
-            setMinimumSize(d);
-            setMaximumSize(d);
-        }
-        void setInitials(String s) { initials = s; repaint(); }
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setPaint(new GradientPaint(0, 0, BRAND_LT, getWidth(), getHeight(), BRAND));
-            g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
-            g2.setColor(Color.WHITE);
-            g2.setFont(font(Font.BOLD, 28));
-            FontMetrics fm = g2.getFontMetrics();
-            int x = (getWidth() - fm.stringWidth(initials)) / 2;
-            int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-            g2.drawString(initials, x, y);
             g2.dispose();
         }
     }
