@@ -1,14 +1,22 @@
 package UI.Pages.Officer;
 
+import Exception.DataAccessException;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.RoundedButton;
 import UI.Pages.Components.SimpleDocListener;
+import data.MedicalData;
+import data.UserData;
+import model.Medical;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -16,92 +24,69 @@ import java.util.regex.Pattern;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Technical Officer "Medicals" tab: view, filter by status, search, and approve/reject submissions.
+// Officer "Medicals" tab: review student medical certificates.
+// Loads from MedicalData, filters by status, and approves / rejects the selected PENDING row.
 public class Medicals extends Page {
 
-    private static final String[] COLS = {
-            "Submitted", "Undergraduate", "Leave Period", "Reason", "Sessions Affected", "Status"
-    };
+    private static final String[] COLS = {"Medical ID", "Student", "Student ID", "Date", "Reason", "Status"};
+    private static final int STATUS_COL = 5;
 
-    private static final String[] STATUSES = {"All", "Pending", "Approved", "Rejected"};
+    // label shown in the filter -> status stored in the database (null = all)
+    private static final String[] FILTERS = {"All", "Pending", "Approved", "Rejected"};
+    private static final String[] STATUSES = {"PENDING", "APPROVED", "REJECTED"};
 
-    // ---------- Seed / Placeholder data ----------
-    private static final String[][] SEED = {
-            {"16 Sep", "W. A. N. Silva (FOT/2023/061)", "24 Aug – 15 Sep", "Migraine — clinic observation", "ICT2131-T#12, ICT2132-T#12, ICT2134-T#15", "Approved"},
-            {"16 Sep", "P. L. Herath (FOT/2023/069)", "29 Jun – 15 Sep", "Viral fever", "ICT2134-T#08, ICT2135-T#04, ICT2136-T#09", "Approved"},
-            {"16 Sep", "L. F. Ekanayake (FOT/2022/119)", "23 Jun – 15 Sep", "Fractured wrist — follow-up", "ICT2134-T#15, ICT2135-T#04, ICT2136-T#08", "Approved"},
-            {"16 Sep", "C. W. Liyanage (FOT/2023/072)", "15 Jun – 15 Sep", "Dengue fever", "ICT2131-T#05, ICT2132-T#14, ICT2133-T#02", "Approved"},
-            {"18 Sep", "K. D. Fernando (FOT/2023/044)", "10 Sep – 17 Sep", "Severe flu & fever", "ICT2131-T#10, ICT2133-T#06", "Pending"},
-            {"19 Sep", "M. R. Perera (FOT/2023/088)", "12 Sep – 14 Sep", "Dental surgery", "ICT2135-P#02", "Pending"},
-            {"20 Sep", "S. T. Wickrama (FOT/2022/051)", "01 Sep – 05 Sep", "Unverified doctor note", "ICT2132-P#04", "Rejected"}
-    };
-    // ---------- end placeholder data ----------
+    private final MedicalData medicalData = new MedicalData();
+    private final UserData userData = new UserData();
+    private final Map<Integer, String> nameCache = new HashMap<>();
+    private final Runnable onChanged;   // lets the Overview refresh its pending count
 
     private final ReadOnlyTableModel model = new ReadOnlyTableModel(COLS);
     private final JTable table;
     private final TableRowSorter<ReadOnlyTableModel> sorter;
     private final JTextField search = field(18);
-    private final JComboBox<String> statusFilter = new JComboBox<>();
+    private final JComboBox<String> statusFilter = new JComboBox<>(FILTERS);
+    private final RoundedButton approveBtn = new RoundedButton("Approve", true);
+    private final RoundedButton rejectBtn = new RoundedButton("Reject", false);
 
-    public Medicals() {
-        super("Medicals", "Review student medical submissions and update attendance status", null);
+    public Medicals(Runnable onChanged) {
+        super("Medicals", "Review student medical certificates", null);
+        this.onChanged = onChanged == null ? () -> { } : onChanged;
 
-        for (String[] r : SEED) {
-            model.addRow(r);
-        }
-
-        // Status column is at index 5
-        Color DANGER = null;
         table = table(model, Map.of(
-                "Approved", OK,
-                "Pending", WARN,
-                "Rejected", DANGER != null ? DANGER : INK_2
-        ), 5);
+                "APPROVED", OK,
+                "PENDING", WARN,
+                "REJECTED", BAD
+        ), STATUS_COL);
 
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
+        table.getColumnModel().getColumn(0).setPreferredWidth(90);
+        table.getColumnModel().getColumn(1).setPreferredWidth(200);
+        table.getColumnModel().getColumn(2).setPreferredWidth(90);
+        table.getColumnModel().getColumn(3).setPreferredWidth(110);
+        table.getColumnModel().getColumn(4).setPreferredWidth(260);
+        table.getColumnModel().getColumn(5).setPreferredWidth(110);
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) updateButtons();
+        });
 
-        search.getDocument().addDocumentListener(new SimpleDocListener(this::applyFilter));
-        for (String s : STATUSES) {
-            statusFilter.addItem(s);
-        }
-        statusFilter.addActionListener(e -> applyFilter());
+        search.getDocument().addDocumentListener(new SimpleDocListener(this::applySearch));
+        statusFilter.setSelectedItem("Pending");        // default view = pending medicals
+        statusFilter.addActionListener(e -> load());
+
+        approveBtn.addActionListener(e -> review("APPROVED"));
+        rejectBtn.addActionListener(e -> review("REJECTED"));
 
         JPanel body = new JPanel(new BorderLayout(0, 14));
         body.setOpaque(false);
-
-        // Header section: description note + toolbar
-        JPanel northPanel = new JPanel(new BorderLayout(0, 10));
-        northPanel.setOpaque(false);
-        northPanel.add(createNoticeBanner(), BorderLayout.NORTH);
-        northPanel.add(toolbar(), BorderLayout.SOUTH);
-
-        body.add(northPanel, BorderLayout.NORTH);
+        body.add(toolbar(), BorderLayout.NORTH);
         body.add(tableCard(table), BorderLayout.CENTER);
-
         setBody(body);
-    }
 
-    private JComponent createNoticeBanner() {
-        JLabel notice = new JLabel("<html><i>Approved leave is flagged as medical in the register; rejected submissions count as absent. Decide on pending medicals below.</i></html>");
-        notice.setFont(notice.getFont().deriveFont(12.5f));
-        notice.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createDashedBorder(null, 2, 4),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
-        return notice;
+        load();
     }
 
     private JComponent toolbar() {
-        RoundedButton approveBtn = new RoundedButton("Approve", true);
-        approveBtn.addActionListener(e -> updateStatus("Approved"));
-
-        RoundedButton rejectBtn = new RoundedButton("Reject", false);
-        rejectBtn.addActionListener(e -> updateStatus("Rejected"));
-
-        RoundedButton detailsBtn = new RoundedButton("View Details", false);
-        detailsBtn.addActionListener(e -> showDetails());
-
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         left.setOpaque(false);
         left.add(search);
@@ -109,7 +94,6 @@ public class Medicals extends Page {
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         right.setOpaque(false);
-        right.add(detailsBtn);
         right.add(rejectBtn);
         right.add(approveBtn);
 
@@ -120,52 +104,93 @@ public class Medicals extends Page {
         return bar;
     }
 
-    private void applyFilter() {
-        String q = search.getText().trim();
-        String status = (String) statusFilter.getSelectedItem();
+    // ---------------------------------------------------------------- loading
 
-        List<RowFilter<Object, Object>> filters = new ArrayList<>();
-        if (!q.isEmpty()) {
-            // Search across student info (1), reason (3), or sessions (4)
-            filters.add(RowFilter.regexFilter("(?i)" + Pattern.quote(q), 1, 3, 4));
+    /** Reloads the table for the selected status filter. */
+    private void load() {
+        model.setRowCount(0);
+        try {
+            for (Medical m : fetch()) {
+                model.addRow(new Object[]{
+                        m.getMedicalId(),
+                        studentName(m.getStudentId()),
+                        m.getStudentId(),
+                        m.getMedicalDate() == null ? "" : m.getMedicalDate().toString(),
+                        m.getReason() == null ? "" : m.getReason(),
+                        m.getStatus()
+                });
+            }
+        } catch (DataAccessException ex) {
+            info(this, "Failed to load medicals: " + ex.getMessage());
         }
-        if (status != null && !status.equals("All")) {
-            filters.add(RowFilter.regexFilter("^" + Pattern.quote(status) + "$", 5));
-        }
-        sorter.setRowFilter(filters.isEmpty() ? null : RowFilter.andFilter(filters));
+        applySearch();
+        updateButtons();
     }
 
-    private void updateStatus(String newStatus) {
+    private List<Medical> fetch() {
+        int pick = statusFilter.getSelectedIndex();
+        if (pick > 0) {
+            return medicalData.findByStatus(STATUSES[pick - 1]);
+        }
+        List<Medical> all = new ArrayList<>();
+        for (String s : STATUSES) all.addAll(medicalData.findByStatus(s));
+        all.sort((a, b) -> b.getMedicalDate().compareTo(a.getMedicalDate()));
+        return all;
+    }
+
+    private String studentName(int studentId) {
+        String cached = nameCache.get(studentId);
+        if (cached != null) return cached;
+        User u = userData.findById(studentId);
+        String name = u == null ? "Student " + studentId : u.getName();
+        nameCache.put(studentId, name);
+        return name;
+    }
+
+    private void applySearch() {
+        String q = search.getText().trim();
+        sorter.setRowFilter(q.isEmpty() ? null
+                : RowFilter.regexFilter("(?i)" + Pattern.quote(q), 1, 2, 4));
+    }
+
+    // Approve / Reject only work on a selected PENDING row.
+    private void updateButtons() {
+        int row = table.getSelectedRow();
+        boolean pending = row >= 0 && "PENDING".equals(
+                model.getValueAt(table.convertRowIndexToModel(row), STATUS_COL));
+        approveBtn.setEnabled(pending);
+        rejectBtn.setEnabled(pending);
+    }
+
+    // ---------------------------------------------------------------- review
+
+    private void review(String newStatus) {
         int row = table.getSelectedRow();
         if (row < 0) {
-            info(this, "Select a medical record first.");
+            info(this, "Select a pending medical first.");
             return;
         }
         int m = table.convertRowIndexToModel(row);
+        int medicalId = (Integer) model.getValueAt(m, 0);
         String student = (String) model.getValueAt(m, 1);
 
-        if (confirm(this, "Mark submission for " + student + " as " + newStatus + "?")) {
-            model.setValueAt(newStatus, m, 5);
-        }
-    }
+        String verb = newStatus.equals("APPROVED") ? "Approve" : "Reject";
+        String note = JOptionPane.showInputDialog(this,
+                verb + " the medical of " + student + "?\nReviewer note:",
+                verb + " medical", JOptionPane.PLAIN_MESSAGE);
+        if (note == null) return;   // cancelled
 
-    private void showDetails() {
-        int row = table.getSelectedRow();
-        if (row < 0) {
-            info(this, "Select a medical record first.");
+        try {
+            boolean ok = medicalData.updateStatus(medicalId, newStatus, note.trim(),
+                    Date.valueOf(LocalDate.now()));
+            if (!ok) {
+                info(this, "No changes were saved — the medical record may no longer exist.");
+            }
+        } catch (DataAccessException ex) {
+            info(this, "Failed to update medical status: " + ex.getMessage());
             return;
         }
-        int m = table.convertRowIndexToModel(row);
-
-        String message = String.format(
-                "Undergraduate: %s\nSubmission Date: %s\nLeave Period: %s\nReason: %s\nSessions: %s\nCurrent Status: %s",
-                model.getValueAt(m, 1),
-                model.getValueAt(m, 0),
-                model.getValueAt(m, 2),
-                model.getValueAt(m, 3),
-                model.getValueAt(m, 4),
-                model.getValueAt(m, 5)
-        );
-        JOptionPane.showMessageDialog(this, message, "Medical Details", JOptionPane.INFORMATION_MESSAGE);
+        load();
+        onChanged.run();
     }
 }
