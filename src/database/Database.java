@@ -1,5 +1,7 @@
 package database;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -72,8 +74,55 @@ public class Database {
         };
     }
 
+    // ---------------------------------------------------------------------
+    //  Connection reuse
+    //
+    //  Opening a connection to the Azure server means a TLS handshake and a
+    //  login, which takes a noticeable fraction of a second. The data classes
+    //  open a connection per query and the pages run hundreds of queries while
+    //  they build, so a fresh connection each time made the lecturer dashboard
+    //  take minutes. Instead each thread keeps one real connection and gets a
+    //  wrapper whose close() is a no-op, so the try-with-resources code in the
+    //  data classes works unchanged. The connection is replaced when the role
+    //  changes, when it has gone stale, or when it has been idle for a while.
+    // ---------------------------------------------------------------------
+
+    private static final long IDLE_CHECK_MS = 30_000;   // ping the server if unused for this long
+
+    private static final class Cached {
+        final Role role;
+        final Connection raw;
+        long lastUsed = System.currentTimeMillis();
+        Cached(Role role, Connection raw) { this.role = role; this.raw = raw; }
+    }
+
+    private static final ThreadLocal<Cached> CACHE = new ThreadLocal<>();
+
     public static Connection getConnection() throws Exception {
         Role role = currentRole;
+        Cached cached = CACHE.get();
+        if (cached != null) {
+            if (cached.role == role && alive(cached)) {
+                cached.lastUsed = System.currentTimeMillis();
+                return shared(cached.raw);
+            }
+            closeQuietly(cached.raw);
+            CACHE.remove();
+        }
+        Connection raw = open(role);
+        if (raw == null) return null;
+        CACHE.set(new Cached(role, raw));
+        return shared(raw);
+    }
+
+    /** Drops this thread's cached connection (e.g. on logout). */
+    public static void release() {
+        Cached cached = CACHE.get();
+        if (cached != null) closeQuietly(cached.raw);
+        CACHE.remove();
+    }
+
+    private static Connection open(Role role) {
         try {
             return DriverManager.getConnection(URL, role.user, role.password);
 
@@ -86,5 +135,33 @@ public class Database {
             System.out.println("Error: " + e.getMessage());
         }
         return null;
+    }
+
+    private static boolean alive(Cached c) {
+        try {
+            if (c.raw.isClosed()) return false;
+            // only ping when it has sat idle long enough that the server may have dropped it
+            return System.currentTimeMillis() - c.lastUsed < IDLE_CHECK_MS || c.raw.isValid(3);
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    private static void closeQuietly(Connection c) {
+        try { c.close(); } catch (Exception ignored) { }
+    }
+
+    /** Wrapper that ignores close() so the cached connection stays open. */
+    private static Connection shared(Connection raw) {
+        return (Connection) Proxy.newProxyInstance(
+                Connection.class.getClassLoader(), new Class<?>[]{Connection.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("close") && (args == null || args.length == 0)) return null;
+                    try {
+                        return method.invoke(raw, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
     }
 }
