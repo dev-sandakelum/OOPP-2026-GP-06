@@ -1,112 +1,20 @@
-//
-//package UI.Pages.Student;
-//
-//import UI.Pages.Components.Card;
-//import UI.Pages.Components.Page;
-//import data.UserData;
-//import model.User;
-//
-//import javax.swing.*;
-//import javax.swing.border.EmptyBorder;
-//import java.awt.*;
-//
-//import static UI.Kit.Palette.*;
-//
-//public class MarksGPA extends Page {
-//
-//    private final UserData userData = new UserData();
-//
-//    public MarksGPA(User user) {
-//        super(
-//                "My Attendace",
-//                "View Attendance",
-//                null
-//        );
-//
-//        JPanel body = new JPanel(new BorderLayout(0, 20));
-//
-//        body.add(kpiRow(), BorderLayout.NORTH);
-//
-//        setScrollBody(body);
-//    }
-//
-//    // KPI cards
-//    private JComponent kpiRow() {
-//
-//        String[][] kpis = {
-//                {"CA eligible", "6/6", "CA>=40 required"},
-//                {"Finals sat", "6/6", "AB graded later"},
-//                {"SGPA", "3.80", "18 credits . Level 11 sem 1"},
-//                {"CGPA", "3.48", "inclu.Level 1 . 22 credits"}
-//        };
-//
-//        JPanel row = new JPanel(
-//                new GridLayout(1, kpis.length, 16, 0)
-//        );
-//
-//        row.setOpaque(false);
-//
-//        for (int i = 0; i < kpis.length; i++) {
-//            row.add(
-//                    kpiCard(
-//                            kpis[i][0],
-//                            kpis[i][1],
-//                            kpis[i][2],
-//                            i == 0
-//                    )
-//            );
-//        }
-//
-//        return row;
-//    }
-//
-//    // Individual KPI card
-//    private JComponent kpiCard(
-//            String label,
-//            String value,
-//            String sub,
-//            boolean dark
-//    ) {
-//
-//        Card card = new Card(dark);
-//
-//        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-//        card.setBorder(new EmptyBorder(18, 20, 18, 20));
-//        card.setPreferredSize(new Dimension(0, 124));
-//
-//        Color muted = dark
-//                ? ON_BRAND_2
-//                : INK_2;
-//
-//        JLabel titleLabel = new JLabel(label);
-//        titleLabel.setFont(font(Font.BOLD, 13));
-//        titleLabel.setForeground(muted);
-//
-//        JLabel valueLabel = new JLabel(value);
-//        valueLabel.setFont(font(Font.BOLD, 34));
-//        valueLabel.setForeground(dark ? Color.WHITE : INK);
-//
-//        JLabel subLabel = new JLabel(sub);
-//        subLabel.setFont(font(Font.PLAIN, 12));
-//        subLabel.setForeground(muted);
-//
-//        card.add(titleLabel);
-//        card.add(Box.createVerticalGlue());
-//        card.add(valueLabel);
-//        card.add(subLabel);
-//
-//        return card;
-//    }
-//}
-
 
 package UI.Pages.Student;
 
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.ReadOnlyTableModel;
-import data.UserData;
+
+import data.ResultData;
+import data.ExamData;
+import data.CourseOfferingData;
+import data.CourseData;
+
 import model.User;
+import model.Result;
+import model.Exam;
+import model.CourseOffering;
+import model.Course;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -114,27 +22,21 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
+
 import java.awt.*;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 import static UI.Kit.Palette.*;
 
 public class MarksGPA extends Page {
 
-    private final UserData userData = new UserData();
-
     private static final String[] COLS = {
             "MODULE", "CR", "CA / 100",
             "FINAL / 100", "TOTAL", "GRADE", "GP"
-    };
-
-    // Sample results based on the reference screenshot
-    private static final Object[][] SEED = {
-            {"ICT2131", "Programming with Java", 3, 76, 81, 79.0, "A", 3.70},
-            {"ICT2132", "Object Oriented Programming Practicum", 3, 82, 91, 87.4, "A+", 4.00},
-            {"ICT2133", "Database Management Systems", 3, 75, 96, 87.6, "A+", 4.00},
-            {"ICT2134", "Data Structures & Algorithms", 3, 75, 86, 81.6, "A", 3.70},
-            {"ICT2135", "Software Engineering", 3, 73, 79, 76.6, "A", 3.70},
-            {"ICT2136", "Computer Networks", 3, 73, 90, 83.2, "A", 3.70}
     };
 
     private static final String[][] GRADES = {
@@ -150,10 +52,30 @@ public class MarksGPA extends Page {
             {"F",  "0–34",   "0.00"}
     };
 
+    private final ResultData resultData = new ResultData();
+    private final ExamData examData = new ExamData();
+    private final CourseOfferingData offeringData =
+            new CourseOfferingData();
+    private final CourseData courseData = new CourseData();
+
     private final ReadOnlyTableModel model =
             new ReadOnlyTableModel(COLS);
 
     private final JTable table;
+
+    private final JLabel caValue = new JLabel("0");
+    private final JLabel finalValue = new JLabel("0");
+    private final JLabel sgpaValue = new JLabel("N/A");
+    private final JLabel cgpaValue = new JLabel("N/A");
+
+    private final JLabel caSub = new JLabel("CA marks recorded");
+    private final JLabel finalSub = new JLabel("Final marks recorded");
+    private final JLabel sgpaSub = new JLabel("From published results");
+    private final JLabel cgpaSub = new JLabel("From published results");
+
+    private final JLabel emptyLabel =
+            new JLabel("No published results available yet.",
+                    SwingConstants.CENTER);
 
     public MarksGPA(User user) {
 
@@ -162,21 +84,6 @@ public class MarksGPA extends Page {
                 "View your semester results and grade point average",
                 null
         );
-
-        // Add sample semester results
-        for (Object[] row : SEED) {
-            Object[] tableRow = {
-                    row[0] + " " + row[1],
-                    row[2],
-                    row[3],
-                    row[4],
-                    row[5],
-                    row[6],
-                    row[7]
-            };
-
-            model.addRow(tableRow);
-        }
 
         table = new JTable(model);
 
@@ -202,13 +109,13 @@ public class MarksGPA extends Page {
 
         body.setOpaque(false);
 
-        // Existing KPI cards at the top
         body.add(kpiRow(), BorderLayout.NORTH);
 
-        // Results and grade scale below the cards
         JPanel content = new JPanel();
         content.setOpaque(false);
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setLayout(
+                new BoxLayout(content, BoxLayout.Y_AXIS)
+        );
 
         content.add(resultsSection());
         content.add(Box.createVerticalStrut(26));
@@ -217,45 +124,338 @@ public class MarksGPA extends Page {
         body.add(content, BorderLayout.CENTER);
 
         setScrollBody(body);
+
+        // Load results belonging to the logged-in student.
+        loadResults(user);
     }
 
     // =================================================
-    // KPI CARDS - PRESERVED
+    // LOAD RESULTS FROM DATABASE
+    // =================================================
+
+    private void loadResults(User user) {
+
+        model.setRowCount(0);
+
+        if (user == null) {
+            showError("Student information is unavailable.");
+            return;
+        }
+
+        try {
+
+            int studentId = user.getUser_id();
+
+            List<Result> results =
+                    resultData.findByStudent(studentId);
+
+            if (results == null || results.isEmpty()) {
+                updateKpis(0, 0, null, null);
+                showEmptyMessage();
+                return;
+            }
+
+            // Sort latest published results first.
+            results.sort(
+                    Comparator.comparing(
+                            Result::getPublishedDate,
+                            Comparator.nullsLast(
+                                    Comparator.reverseOrder()
+                            )
+                    )
+            );
+
+            int caCount = 0;
+            int finalCount = 0;
+
+            BigDecimal latestSGPA = null;
+            BigDecimal latestCGPA = null;
+
+            boolean firstSGPAFound = false;
+            boolean firstCGPAFound = false;
+
+            for (Result result : results) {
+
+                if (result == null) {
+                    continue;
+                }
+
+                // Display only published results.
+                if (result.getPublishedDate() == null
+                        || result.getResultStatus() == null
+                        || result.getResultStatus().trim().isEmpty()) {
+                    continue;
+                }
+
+                BigDecimal ca = result.getCaResult();
+                BigDecimal finalMark = result.getFinalExamMark();
+                BigDecimal total = result.getTotalMark();
+
+                if (ca != null) {
+                    caCount++;
+                }
+
+                if (finalMark != null) {
+                    finalCount++;
+                }
+
+                if (!firstSGPAFound && result.getSgpa() != null) {
+                    latestSGPA = result.getSgpa();
+                    firstSGPAFound = true;
+                }
+
+                if (!firstCGPAFound && result.getCgpa() != null) {
+                    latestCGPA = result.getCgpa();
+                    firstCGPAFound = true;
+                }
+
+                // Find the exam belonging to this result.
+                Exam exam =
+                        examData.findById(result.getExamId());
+
+                if (exam == null) {
+                    continue;
+                }
+
+                // Find the course offering.
+                CourseOffering offering =
+                        offeringData.findById(exam.getOfferingId());
+
+                if (offering == null) {
+                    continue;
+                }
+
+                // Find the actual course.
+                Course course =
+                        courseData.findById(offering.getCourse_id());
+
+                if (course == null) {
+                    continue;
+                }
+
+                String courseCode =
+                        safeText(course.getCourse_code());
+
+                String courseName =
+                        safeText(course.getCourse_name());
+
+                String moduleName =
+                        courseCode + " " + courseName;
+
+                double credits = course.getCredit();
+
+                String grade = "";
+                Object gradePoint = "";
+
+                if (total != null) {
+                    grade = calculateGrade(total);
+                    gradePoint = calculateGradePoint(total);
+                }
+
+                Object[] row = {
+                        moduleName,
+                        credits,
+                        ca,
+                        finalMark,
+                        total,
+                        grade,
+                        gradePoint
+                };
+
+                model.addRow(row);
+            }
+
+            updateKpis(
+                    caCount,
+                    finalCount,
+                    latestSGPA,
+                    latestCGPA
+            );
+
+            if (model.getRowCount() == 0) {
+                showEmptyMessage();
+            } else {
+                emptyLabel.setVisible(false);
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            showError(
+                    "Could not load your marks and GPA.\n"
+                            + "Please check the database connection."
+            );
+        }
+    }
+
+    // =================================================
+    // GRADE CALCULATION
+    // =================================================
+
+    private String calculateGrade(BigDecimal total) {
+
+        if (total == null) {
+            return "";
+        }
+
+        if (total.compareTo(new BigDecimal("85")) >= 0) {
+            return "A+";
+        }
+
+        if (total.compareTo(new BigDecimal("70")) >= 0) {
+            return "A";
+        }
+
+        if (total.compareTo(new BigDecimal("65")) >= 0) {
+            return "A-";
+        }
+
+        if (total.compareTo(new BigDecimal("60")) >= 0) {
+            return "B+";
+        }
+
+        if (total.compareTo(new BigDecimal("55")) >= 0) {
+            return "B";
+        }
+
+        if (total.compareTo(new BigDecimal("50")) >= 0) {
+            return "B-";
+        }
+
+        if (total.compareTo(new BigDecimal("45")) >= 0) {
+            return "C+";
+        }
+
+        if (total.compareTo(new BigDecimal("40")) >= 0) {
+            return "C";
+        }
+
+        if (total.compareTo(new BigDecimal("35")) >= 0) {
+            return "C-";
+        }
+
+        return "F";
+    }
+
+    private String calculateGradePoint(BigDecimal total) {
+
+        String grade = calculateGrade(total);
+
+        for (String[] item : GRADES) {
+
+            if (item[0].equals(grade)) {
+                return item[2];
+            }
+        }
+
+        return "";
+    }
+
+    // =================================================
+    // UPDATE KPI CARDS
+    // =================================================
+
+    private void updateKpis(
+            int caCount,
+            int finalCount,
+            BigDecimal sgpa,
+            BigDecimal cgpa
+    ) {
+
+        caValue.setText(String.valueOf(caCount));
+        finalValue.setText(String.valueOf(finalCount));
+
+        sgpaValue.setText(
+                sgpa == null ? "N/A" : formatGpa(sgpa)
+        );
+
+        cgpaValue.setText(
+                cgpa == null ? "N/A" : formatGpa(cgpa)
+        );
+    }
+
+    private String formatGpa(BigDecimal value) {
+        return value.setScale(
+                2,
+                java.math.RoundingMode.HALF_UP
+        ).toPlainString();
+    }
+
+    private String safeText(String value) {
+        return value == null ? "" : value;
+    }
+
+    private void showEmptyMessage() {
+
+        emptyLabel.setFont(font(Font.PLAIN, 13));
+        emptyLabel.setForeground(INK_2);
+        emptyLabel.setBorder(
+                new EmptyBorder(25, 10, 25, 10)
+        );
+
+        model.setRowCount(0);
+    }
+
+    private void showError(String message) {
+
+        SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(
+                        this,
+                        message,
+                        "Marks & GPA",
+                        JOptionPane.INFORMATION_MESSAGE
+                )
+        );
+    }
+
+    // =================================================
+    // KPI CARDS
     // =================================================
 
     private JComponent kpiRow() {
 
-        String[][] kpis = {
-                {"CA eligible", "6/6", "CA ≥ 40 required"},
-                {"Finals sat", "6/6", "AB graded later"},
-                {"SGPA", "3.80", "18 credits · Level II Sem I"},
-                {"CGPA", "3.48", "incl. Level I · 22 credits"}
-        };
-
         JPanel row = new JPanel(
-                new GridLayout(1, kpis.length, 14, 0)
+                new GridLayout(1, 4, 14, 0)
         );
 
         row.setOpaque(false);
 
-        for (int i = 0; i < kpis.length; i++) {
-            row.add(
-                    kpiCard(
-                            kpis[i][0],
-                            kpis[i][1],
-                            kpis[i][2],
-                            i == 0
-                    )
-            );
-        }
+        row.add(kpiCard(
+                "CA recorded",
+                caValue,
+                caSub,
+                true
+        ));
+
+        row.add(kpiCard(
+                "Finals sat",
+                finalValue,
+                finalSub,
+                false
+        ));
+
+        row.add(kpiCard(
+                "SGPA",
+                sgpaValue,
+                sgpaSub,
+                false
+        ));
+
+        row.add(kpiCard(
+                "CGPA",
+                cgpaValue,
+                cgpaSub,
+                false
+        ));
 
         return row;
     }
 
     private JComponent kpiCard(
             String label,
-            String value,
-            String sub,
+            JLabel valueLabel,
+            JLabel subLabel,
             boolean dark
     ) {
 
@@ -273,21 +473,17 @@ public class MarksGPA extends Page {
                 new Dimension(0, 124)
         );
 
-        Color muted = dark
-                ? ON_BRAND_2
-                : INK_2;
+        Color muted = dark ? ON_BRAND_2 : INK_2;
 
         JLabel titleLabel = new JLabel(label);
         titleLabel.setFont(font(Font.BOLD, 13));
         titleLabel.setForeground(muted);
 
-        JLabel valueLabel = new JLabel(value);
         valueLabel.setFont(font(Font.BOLD, 34));
         valueLabel.setForeground(
                 dark ? Color.WHITE : INK
         );
 
-        JLabel subLabel = new JLabel(sub);
         subLabel.setFont(font(Font.PLAIN, 11));
         subLabel.setForeground(muted);
 
@@ -304,7 +500,7 @@ public class MarksGPA extends Page {
     }
 
     // =================================================
-    // SEMESTER RESULTS SECTION
+    // RESULTS SECTION
     // =================================================
 
     private JComponent resultsSection() {
@@ -320,7 +516,7 @@ public class MarksGPA extends Page {
         title.setForeground(INK);
 
         JLabel subtitle = new JLabel(
-                "Total = CA × 40% + Final × 60%"
+                "Marks and total values retrieved from published results"
         );
 
         subtitle.setFont(font(Font.PLAIN, 12));
@@ -355,7 +551,10 @@ public class MarksGPA extends Page {
 
         JScrollPane scrollPane = new JScrollPane(table);
 
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBorder(
+                BorderFactory.createEmptyBorder()
+        );
+
         scrollPane.setBackground(SURFACE);
         scrollPane.getViewport().setBackground(SURFACE);
 
@@ -364,14 +563,26 @@ public class MarksGPA extends Page {
         );
 
         scrollPane.setVerticalScrollBarPolicy(
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
         );
 
-        card.add(scrollPane, BorderLayout.CENTER);
+        JPanel tableContainer = new JPanel(new BorderLayout());
+        tableContainer.setBackground(SURFACE);
+        tableContainer.add(scrollPane, BorderLayout.CENTER);
+
+        // Empty state message appears when there are no results.
+        tableContainer.add(emptyLabel, BorderLayout.SOUTH);
+        emptyLabel.setVisible(false);
+
+        card.add(tableContainer, BorderLayout.CENTER);
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         return card;
     }
+
+    // =================================================
+    // TABLE STYLE
+    // =================================================
 
     private void styleTable() {
 
@@ -432,9 +643,12 @@ public class MarksGPA extends Page {
 
         @Override
         public Component getTableCellRendererComponent(
-                JTable table, Object value,
-                boolean selected, boolean focused,
-                int row, int column
+                JTable table,
+                Object value,
+                boolean selected,
+                boolean focused,
+                int row,
+                int column
         ) {
 
             super.getTableCellRendererComponent(
@@ -445,13 +659,21 @@ public class MarksGPA extends Page {
             int space = text.indexOf(' ');
 
             if (space > 0) {
+
                 String code = text.substring(0, space);
                 String title = text.substring(space + 1);
 
-                setText("<html><b>" + code
-                        + "</b> <font color='#"
-                        + String.format("%06X", INK_2.getRGB() & 0xFFFFFF)
-                        + "'>" + title + "</font></html>");
+                setText(
+                        "<html><b>" + code
+                                + "</b> <font color='#"
+                                + String.format(
+                                "%06X",
+                                INK_2.getRGB() & 0xFFFFFF
+                        )
+                                + "'>" + title
+                                + "</font></html>"
+                );
+
             } else {
                 setText(text);
             }
@@ -479,9 +701,12 @@ public class MarksGPA extends Page {
 
         @Override
         public Component getTableCellRendererComponent(
-                JTable table, Object value,
-                boolean selected, boolean focused,
-                int row, int column
+                JTable table,
+                Object value,
+                boolean selected,
+                boolean focused,
+                int row,
+                int column
         ) {
 
             super.getTableCellRendererComponent(
@@ -489,13 +714,16 @@ public class MarksGPA extends Page {
             );
 
             if (value instanceof Number) {
+
                 double number = ((Number) value).doubleValue();
 
                 if (column == 4) {
                     setText(String.format("%.1f", number));
                     setFont(font(Font.BOLD, 12));
+
                 } else if (column == 6) {
                     setText(String.format("%.2f", number));
+
                 } else {
                     setText(
                             number == Math.floor(number)
@@ -503,6 +731,9 @@ public class MarksGPA extends Page {
                                     : String.format("%.1f", number)
                     );
                 }
+
+            } else if (value == null) {
+                setText("-");
             }
 
             setForeground(INK);
@@ -548,13 +779,18 @@ public class MarksGPA extends Page {
 
         @Override
         public Component getTableCellRendererComponent(
-                JTable table, Object value,
-                boolean selected, boolean focused,
-                int row, int column
+                JTable table,
+                Object value,
+                boolean selected,
+                boolean focused,
+                int row,
+                int column
         ) {
 
             badge.setText(
-                    "●  " + (value == null ? "" : value.toString())
+                    value == null || value.toString().isEmpty()
+                            ? "-"
+                            : "●  " + value
             );
 
             setBackground(selected ? BRAND_SOFT : SURFACE);
@@ -580,7 +816,7 @@ public class MarksGPA extends Page {
         title.setForeground(INK);
 
         JLabel subtitle = new JLabel(
-                "UGC Circular No. 12-2024"
+                "Grade and grade points"
         );
 
         subtitle.setFont(font(Font.PLAIN, 12));
@@ -623,9 +859,6 @@ public class MarksGPA extends Page {
 
             cell.setBackground(SURFACE);
 
-            int top = i < 5 ? 10 : 10;
-            int left = 12;
-
             cell.setBorder(
                     BorderFactory.createCompoundBorder(
                             BorderFactory.createMatteBorder(
@@ -633,7 +866,7 @@ public class MarksGPA extends Page {
                                     i % 5 == 0 ? 0 : 1,
                                     0, 0, LINE
                             ),
-                            new EmptyBorder(top, left, 8, 8)
+                            new EmptyBorder(10, 12, 8, 8)
                     )
             );
 
@@ -659,4 +892,3 @@ public class MarksGPA extends Page {
         return grid;
     }
 }
-

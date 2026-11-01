@@ -57,7 +57,7 @@ public class StudentPages extends JFrame implements FrameData {
         cardHost.add(new MarksGPA(user), studentTabs[3]);
         cardHost.add(new Medicals(user), studentTabs[4]);
         cardHost.add(new Notices(user), studentTabs[5]);
-        cardHost.add(new Timetable(), studentTabs[6]);
+        cardHost.add(new Timetable(user), studentTabs[6]);
         cardHost.add(new MyProfile(user), studentTabs[7]);
         
 
