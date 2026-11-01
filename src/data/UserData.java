@@ -15,7 +15,7 @@ import java.util.List;
 public class UserData {
 
     private static final String TABLE = "users";
-    private static final String COLUMNS = "user_id, name, email, password, phone, address, dob, user_type";
+    private static final String COLUMNS = "user_id, name, email, password, phone, address, dob, gender, user_type";
 
     private Connection conn() throws Exception {
         return Database.getConnection();
@@ -26,8 +26,8 @@ public class UserData {
     /** Inserts the user and sets the generated user_id on the object. */
     public User insert(User u) {
         String sql = "INSERT INTO " + TABLE
-                + " (name, email, password, phone, address, dob, user_type)"
-                + " VALUES (?, ?, ?, ?, ?, ?, ?)";
+                + " (name, email, password, phone, address, dob, gender, user_type)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, u.getName());
@@ -37,7 +37,8 @@ public class UserData {
             ps.setString(5, u.getAddress());
             if (u.getDOB() != null) ps.setDate(6, u.getDOB());
             else ps.setNull(6, Types.DATE);
-            ps.setString(7, u.getUserType());
+            ps.setString(7, u.getGender());
+            ps.setString(8, u.getUserType());
 
             if (ps.executeUpdate() == 0) {
                 throw new DataAccessException("Insert failed, no rows affected", null);
@@ -108,7 +109,7 @@ public class UserData {
     /** Updates profile fields. Does NOT touch the password. */
     public boolean update(User u) {
         String sql = "UPDATE " + TABLE
-                + " SET name = ?, email = ?, phone = ?, address = ?, dob = ?, user_type = ?"
+                + " SET name = ?, email = ?, phone = ?, address = ?, dob = ?, gender = ?, user_type = ?"
                 + " WHERE user_id = ?";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, u.getName());
@@ -117,8 +118,9 @@ public class UserData {
             ps.setString(4, u.getAddress());
             if (u.getDOB() != null) ps.setDate(5, u.getDOB());
             else ps.setNull(5, Types.DATE);
-            ps.setString(6, u.getUserType());
-            ps.setInt(7, u.getUser_id());
+            ps.setString(6, u.getGender());
+            ps.setString(7, u.getUserType());
+            ps.setInt(8, u.getUser_id());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new DataAccessException("Could not update user " + u.getUser_id(), e);
@@ -183,6 +185,7 @@ public class UserData {
         u.setContact_number(rs.getString("phone"));
         u.setAddress(rs.getString("address"));
         u.setDOB(rs.getDate("dob"));
+        u.setGender(rs.getString("gender"));
         u.setUserType(rs.getString("user_type"));
         return u;
     }

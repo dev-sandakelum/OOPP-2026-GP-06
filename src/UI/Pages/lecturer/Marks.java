@@ -630,6 +630,7 @@ public class Marks extends LecturerUI.Page {
     //  RUN STANDALONE (to preview the page)
     // =====================================================================
     public static void main(String[] args) {
+        UI.Kit.Theme.install();
         SwingUtilities.invokeLater(() -> {
             JFrame f = new JFrame("Lecturer Portal - Marks");
             f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

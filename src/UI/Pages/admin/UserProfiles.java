@@ -22,7 +22,7 @@ import static UI.Pages.Components.Ui.*;
 // Admin "User Profiles" tab: search, filter by role, add / edit / delete users.
 public class UserProfiles extends Page {
 
-    private static final String[] COLS  = {"Name", "Role", "Email", "Contact"};
+    private static final String[] COLS  = {"Name", "Role", "Email", "Contact", "Gender"};
     private static final String[] ROLES = {"Administrator", "Lecturer", "Technical Officer", "Undergraduate"};
 
     private final UserData userData = new UserData();
@@ -74,7 +74,8 @@ public class UserProfiles extends Page {
                         u.getName(),
                         roleLabel(u.getUserType()),
                         u.getEmail(),
-                        u.getContact_number() == null ? "" : u.getContact_number()
+                        u.getContact_number() == null ? "" : u.getContact_number(),
+                        u.getGender() == null ? "" : u.getGender()
                 });
                 ids.add(u.getUser_id());
             }
@@ -149,13 +150,13 @@ public class UserProfiles extends Page {
     }
 
     // -----------------------------------------------------------------
-    //  Ask dialog — returns {name, roleLabel, email, contact} or null
+    //  Ask dialog — returns {name, roleLabel, email, contact, gender} or null
     // -----------------------------------------------------------------
 
     private String[] ask(String title, String[] current) {
         String[] initial = current == null ? null
-                : new String[]{current[0], current[2], current[3]};
-        String[] v = form(this, title, new String[]{"Name", "Email", "Contact"}, initial);
+                : new String[]{current[0], current[2], current[3], current[4]};
+        String[] v = form(this, title, new String[]{"Name", "Email", "Contact", "Gender (M/F/Other)"}, initial);
         if (v == null) return null;
         if (v[0].isEmpty() || v[1].isEmpty()) {
             info(this, "Name and email are required.");
@@ -166,7 +167,7 @@ public class UserProfiles extends Page {
         int r = JOptionPane.showConfirmDialog(this, roleCb, "Role",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (r != JOptionPane.OK_OPTION) return null;
-        return new String[]{v[0], (String) roleCb.getSelectedItem(), v[1], v[2]};
+        return new String[]{v[0], (String) roleCb.getSelectedItem(), v[1], v[2], v[3]};
     }
 
     // -----------------------------------------------------------------
@@ -188,12 +189,13 @@ public class UserProfiles extends Page {
         u.setName(v[0]);
         u.setEmail(v[2]);
         u.setContact_number(v[3]);
+        u.setGender(v[4]);
         u.setPassword(pw[0]);           // store hash in production
         u.setUserType(roleDbValue(v[1]));
 
         try {
             userData.insert(u);
-            model.addRow(new String[]{v[0], v[1], v[2], v[3]});
+            model.addRow(new String[]{v[0], v[1], v[2], v[3], v[4]});
             ids.add(u.getUser_id());
         } catch (Exception ex) {
             info(this, "Could not add user: " + ex.getMessage());
@@ -217,6 +219,7 @@ public class UserProfiles extends Page {
         u.setName(v[0]);
         u.setEmail(v[2]);
         u.setContact_number(v[3]);
+        u.setGender(v[4]);
         u.setUserType(roleDbValue(v[1]));
 
         try {

@@ -18,6 +18,7 @@ import static UI.Pages.Components.Ui.*;
 // Lecturer "My Profile" tab: shows and edits the logged-in user (saved with UserData).
 public class MyProfile extends Page {
 
+    private final UserData userData = new UserData();
     private final User user;
     private final JTextField name = field(20);
     private final JTextField email = field(20);
@@ -94,7 +95,7 @@ public class MyProfile extends Page {
         addField(grid, "Contact number", contact);
         addField(grid, "Date of birth (yyyy-mm-dd)", dob);
         addField(grid, "Address", address);
-        addField(grid, "Gender", gender);
+        addField(grid, "Gender (MALE/FEMALE/OTHER)", gender);
         return grid;
     }
 
@@ -139,12 +140,13 @@ public class MyProfile extends Page {
         user.setContact_number(contact.getText().trim());
         user.setDOB(d);
         user.setAddress(address.getText().trim());
-        user.setGender(gender.getText().trim());   // gender is not stored in the database
+        user.setGender(gender.getText().trim());
+        
         try {
-            new UserData().update(user);
-            info(this, "Profile saved.");
+            boolean ok = userData.update(user);
+            info(this, ok ? "Profile saved successfully." : "Save failed — check the console.");
         } catch (Exception ex) {
-            info(this, "Could not save the profile: " + ex.getMessage());
+            info(this, "Could not save profile: " + ex.getMessage());
         }
     }
 }
