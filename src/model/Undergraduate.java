@@ -2,6 +2,7 @@ package model;
 
 public class Undergraduate extends User {
 
+    private String student_number;
     private int dep_id;
     private int batch_id;
     private String profile_picture;
@@ -19,6 +20,14 @@ public class Undergraduate extends User {
         this.setAddress(user.getAddress());
         this.setGender(user.getGender());
         this.setUserType(user.getUserType());
+    }
+
+    public String getStudent_number() {
+        return student_number;
+    }
+
+    public void setStudent_number(String student_number) {
+        this.student_number = student_number;
     }
 
     public int getDep_id() {
@@ -50,6 +59,7 @@ public class Undergraduate extends User {
         return "Undergraduate{" +
                 "user_id=" + getUser_id() +
                 ", name='" + getName() + '\'' +
+                ", student_number='" + student_number + '\'' +
                 ", dep_id=" + dep_id +
                 ", batch_id=" + batch_id +
                 ", profile_picture='" + profile_picture + '\'' +

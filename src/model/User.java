@@ -13,6 +13,7 @@ public class User {
     private String address ;
     private String gender ;
     private String userType;
+    private String photo;  // photo filename (e.g., "b1.jpg", "g5.jpg")
 
 
     // No-arg constructor (needed by many frameworks)
@@ -119,4 +120,7 @@ public class User {
 
     public String getUserType() { return userType; }
     public void setUserType(String userType) { this.userType = userType; }
+
+    public String getPhoto() { return photo; }
+    public void setPhoto(String photo) { this.photo = photo; }
 }

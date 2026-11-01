@@ -78,6 +78,8 @@ public class MyCourses extends LecturerUI.Page {
     JTextField matTitleField = field(15);
     DefaultTableModel matModel =
             new ReadOnlyTableModel(new String[]{"Title", "File Name", "Uploaded On"});
+    JTable matTable;
+    private List<CourseMaterial> shownMaterials = new ArrayList<>();   // same order as matModel rows
 
     // ---------- Tab 2: Quiz ----------
     JTextField quizTitleField = field(15);
@@ -175,7 +177,67 @@ public class MyCourses extends LecturerUI.Page {
         form.add(matTitleField);
         form.add(uploadBtn);
 
-        return tabPanel(formCard("Upload a new material", form), table(matModel, null, -1));
+        // actions for the selected row
+        RoundedButton openBtn = new RoundedButton("Open", false);
+        RoundedButton editBtn = new RoundedButton("Edit Title", false);
+        RoundedButton replaceBtn = new RoundedButton("Replace File", false);
+        RoundedButton deleteBtn = new RoundedButton("Delete", false);
+        openBtn.addActionListener(e -> openMaterial());
+        editBtn.addActionListener(e -> renameMaterial());
+        replaceBtn.addActionListener(e -> replaceMaterialFile());
+        deleteBtn.addActionListener(e -> deleteMaterial());
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        actions.setOpaque(false);
+        actions.add(openBtn);
+        actions.add(editBtn);
+        actions.add(replaceBtn);
+        actions.add(deleteBtn);
+
+        JPanel content = new JPanel(new BorderLayout(0, 12));
+        content.setOpaque(false);
+        content.add(form, BorderLayout.CENTER);
+        content.add(actions, BorderLayout.SOUTH);
+
+        matTable = table(matModel, null, -1);
+        matTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        matTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) openMaterial();
+            }
+        });
+        return tabPanel(formCard("Upload a new material", content), matTable);
+    }
+
+    private static final Path UPLOAD_DIR = Paths.get("uploads");
+
+    // Copies a chosen file into the uploads folder (timestamp prefix avoids name clashes)
+    private Path copyToUploads(File chosen) throws java.io.IOException {
+        Files.createDirectories(UPLOAD_DIR);
+        Path saved = UPLOAD_DIR.resolve(System.currentTimeMillis() + "_" + chosen.getName());
+        Files.copy(chosen.toPath(), saved, StandardCopyOption.REPLACE_EXISTING);
+        return saved;
+    }
+
+    // Only files the app uploaded itself are ever deleted from disk (never the sample PDFs)
+    private void deleteIfUploaded(String filePath) {
+        if (filePath == null) return;
+        try {
+            Path p = Paths.get(filePath).toAbsolutePath().normalize();
+            if (p.startsWith(UPLOAD_DIR.toAbsolutePath().normalize())) Files.deleteIfExists(p);
+        } catch (Exception ignored) {
+            // the database row is the source of truth; a leftover file is harmless
+        }
+    }
+
+    // The material highlighted in the table (null + a message if none)
+    private CourseMaterial selectedMaterial() {
+        int row = matTable.getSelectedRow();
+        if (row < 0) {
+            UI.Pages.Components.Ui.info(this, "Please select a material in the table first.");
+            return null;
+        }
+        return shownMaterials.get(matTable.convertRowIndexToModel(row));
     }
 
     private void uploadMaterial() {
@@ -183,7 +245,7 @@ public class MyCourses extends LecturerUI.Page {
         String title = matTitleField.getText().trim();
 
         if (index < 0 || title.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select a course and enter a title.");
+            UI.Pages.Components.Ui.info(this, "Please select a course and enter a title.");
             return;
         }
 
@@ -193,28 +255,98 @@ public class MyCourses extends LecturerUI.Page {
         File chosen = chooser.getSelectedFile();
 
         try {
-            // Copy the file into an "uploads" folder
-            Path folder = Paths.get("uploads");
-            Files.createDirectories(folder);
-            Path saved = folder.resolve(chosen.getName());
-            Files.copy(chosen.toPath(), saved, StandardCopyOption.REPLACE_EXISTING);
+            Path saved = copyToUploads(chosen);
 
             // Save the material in the database
             CourseMaterial m = new CourseMaterial();
             m.setOffering_id(offerings.get(index).getOffering_id());
             m.setLecturer_id(lecturerId);
             m.setTitle(title);
-            m.setMaterial_type("FILE");
-            m.setFile_path(saved.toString());
+            m.setMaterial_type("LECTURE_NOTES");
+            m.setFile_path(saved.toString().replace('\\', '/'));
             m.setFile_size(chosen.length());
             materialData.insert(m);
 
             matTitleField.setText("");
             loadMaterials();
-            JOptionPane.showMessageDialog(this, "Material uploaded.");
+            UI.Pages.Components.Ui.info(this, "Material uploaded.");
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Upload failed: " + ex.getMessage());
+            UI.Pages.Components.Ui.info(this, "Upload failed: " + ex.getMessage());
+        }
+    }
+
+    // Open the selected file with the system's default viewer
+    private void openMaterial() {
+        CourseMaterial m = selectedMaterial();
+        if (m == null) return;
+        try {
+            if (m.getFile_path() == null) {
+                UI.Pages.Components.Ui.info(this, "This material has no file.");
+                return;
+            }
+            File f = new File(m.getFile_path());
+            if (!f.exists()) {
+                UI.Pages.Components.Ui.info(this, "File not found: " + m.getFile_path());
+                return;
+            }
+            Desktop.getDesktop().open(f);
+        } catch (Exception ex) {
+            UI.Pages.Components.Ui.info(this, "Could not open the file: " + ex.getMessage());
+        }
+    }
+
+    // Update: rename the selected material
+    private void renameMaterial() {
+        CourseMaterial m = selectedMaterial();
+        if (m == null) return;
+        String[] v = UI.Pages.Components.Ui.form(this, "Edit material",
+                new String[]{"TITLE"}, new String[]{m.getTitle()});
+        if (v == null) return;
+        if (v[0].isEmpty()) {
+            UI.Pages.Components.Ui.info(this, "The title cannot be empty.");
+            return;
+        }
+        try {
+            m.setTitle(v[0]);
+            materialData.update(m);
+            loadMaterials();
+        } catch (Exception ex) {
+            UI.Pages.Components.Ui.info(this, "Could not update: " + ex.getMessage());
+        }
+    }
+
+    // Update: swap the file of the selected material for a new one
+    private void replaceMaterialFile() {
+        CourseMaterial m = selectedMaterial();
+        if (m == null) return;
+        JFileChooser chooser = new JFileChooser();
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+        File chosen = chooser.getSelectedFile();
+        try {
+            String oldPath = m.getFile_path();
+            Path saved = copyToUploads(chosen);
+            m.setFile_path(saved.toString().replace('\\', '/'));
+            m.setFile_size(chosen.length());
+            materialData.update(m);
+            deleteIfUploaded(oldPath);
+            loadMaterials();
+            UI.Pages.Components.Ui.info(this, "File replaced.");
+        } catch (Exception ex) {
+            UI.Pages.Components.Ui.info(this, "Could not replace the file: " + ex.getMessage());
+        }
+    }
+
+    // Delete the selected material (database row + uploaded file)
+    private void deleteMaterial() {
+        CourseMaterial m = selectedMaterial();
+        if (m == null) return;
+        if (!UI.Pages.Components.Ui.confirm(this, "Delete \"" + m.getTitle() + "\"?")) return;
+        try {
+            if (materialData.delete(m.getMaterial_id())) deleteIfUploaded(m.getFile_path());
+            loadMaterials();
+        } catch (Exception ex) {
+            UI.Pages.Components.Ui.info(this, "Could not delete: " + ex.getMessage());
         }
     }
 
@@ -243,14 +375,14 @@ public class MyCourses extends LecturerUI.Page {
         String title = quizTitleField.getText().trim();
 
         if (index < 0 || title.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select a course and enter a quiz title.");
+            UI.Pages.Components.Ui.info(this, "Please select a course and enter a quiz title.");
             return;
         }
 
         try {
             java.sql.Date when = java.sql.Date.valueOf(quizDateField.getText().trim());
             if (when.toLocalDate().isBefore(java.time.LocalDate.now())) {
-                JOptionPane.showMessageDialog(this, "The quiz date must be in the future.");
+                UI.Pages.Components.Ui.info(this, "The quiz date must be in the future.");
                 return;
             }
 
@@ -263,12 +395,12 @@ public class MyCourses extends LecturerUI.Page {
 
             quizTitleField.setText("");
             loadQuizzes();
-            JOptionPane.showMessageDialog(this, "Quiz scheduled.");
+            UI.Pages.Components.Ui.info(this, "Quiz scheduled.");
 
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, "The date must look like 2026-11-10.");
+            UI.Pages.Components.Ui.info(this, "The date must look like 2026-11-10.");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Could not schedule the quiz: " + ex.getMessage());
+            UI.Pages.Components.Ui.info(this, "Could not schedule the quiz: " + ex.getMessage());
         }
     }
 
@@ -386,10 +518,12 @@ public class MyCourses extends LecturerUI.Page {
 
     private void loadMaterials() {
         matModel.setRowCount(0);
+        shownMaterials = new ArrayList<>();
         int index = courseBox.getSelectedIndex();
         if (index < 0) return;
 
-        for (CourseMaterial m : materialData.findByOffering(offerings.get(index).getOffering_id())) {
+        shownMaterials = materialData.findByOffering(offerings.get(index).getOffering_id());
+        for (CourseMaterial m : shownMaterials) {
             String fileName = m.getFile_path() == null ? "" : Paths.get(m.getFile_path()).getFileName().toString();
             String date = m.getUpload_date() == null ? "" : m.getUpload_date().toString().substring(0, 10);
             matModel.addRow(new Object[]{m.getTitle(), fileName, date});

@@ -1,9 +1,11 @@
 package UI.Pages.admin;
 
+import UI.Pages.Components.AvatarCellRenderer;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.RoundedButton;
 import UI.Pages.Components.SimpleDocListener;
+import UI.Pages.Components.Ui;
 import data.UserData;
 import model.User;
 
@@ -22,13 +24,15 @@ import static UI.Pages.Components.Ui.*;
 // Admin "User Profiles" tab: search, filter by role, add / edit / delete users.
 public class UserProfiles extends Page {
 
-    private static final String[] COLS  = {"Name", "Role", "Email", "Contact"};
+    private static final String[] COLS  = {"Name", "Role", "Email", "Contact", "Student Number", "Gender"};
     private static final String[] ROLES = {"Administrator", "Lecturer", "Technical Officer", "Undergraduate"};
 
     private final UserData userData = new UserData();
 
     // Parallel list keeps the user_id for each table row so we can call update/delete
     private final List<Integer> ids = new ArrayList<>();
+    // ...and the photo filename, so the Name column can paint the avatar
+    private final List<String> photos = new ArrayList<>();
 
     private final ReadOnlyTableModel model = new ReadOnlyTableModel(COLS);
     private final JTable table;
@@ -46,6 +50,9 @@ public class UserProfiles extends Page {
                 "Undergraduate",    INK_2), 1);
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
+        table.getColumnModel().getColumn(0).setCellRenderer(
+                new AvatarCellRenderer(r -> r < photos.size() ? photos.get(r) : null, null));
+        table.getColumnModel().getColumn(0).setPreferredWidth(220);
 
         search.getDocument().addDocumentListener(new SimpleDocListener(this::applyFilter));
         roleFilter.addItem("All roles");
@@ -68,15 +75,33 @@ public class UserProfiles extends Page {
     private void loadAll() {
         model.setRowCount(0);
         ids.clear();
+        photos.clear();
         try {
             for (User u : userData.findAll()) {
+                String studentNumber = "";
+                // If user is an undergraduate, fetch student number
+                if ("UNDERGRADUATE".equals(u.getUserType())) {
+                    try {
+                        data.UndergraduateData ugData = new data.UndergraduateData();
+                        model.Undergraduate ug = ugData.findById(u.getUser_id());
+                        if (ug != null && ug.getStudent_number() != null) {
+                            studentNumber = ug.getStudent_number();
+                        }
+                    } catch (Exception ex) {
+                        // Ignore and leave student number empty
+                    }
+                }
+                
                 model.addRow(new String[]{
                         u.getName(),
                         roleLabel(u.getUserType()),
                         u.getEmail(),
-                        u.getContact_number() == null ? "" : u.getContact_number()
+                        u.getContact_number() == null ? "" : u.getContact_number(),
+                        studentNumber,
+                        u.getGender() == null ? "" : u.getGender()
                 });
                 ids.add(u.getUser_id());
+                photos.add(u.getPhoto());
             }
         } catch (Exception ex) {
             info(this, "Could not load users: " + ex.getMessage());
@@ -149,13 +174,13 @@ public class UserProfiles extends Page {
     }
 
     // -----------------------------------------------------------------
-    //  Ask dialog — returns {name, roleLabel, email, contact} or null
+    //  Ask dialog — returns {name, roleLabel, email, contact, studentNumber, gender} or null
     // -----------------------------------------------------------------
 
     private String[] ask(String title, String[] current) {
         String[] initial = current == null ? null
-                : new String[]{current[0], current[2], current[3]};
-        String[] v = form(this, title, new String[]{"Name", "Email", "Contact"}, initial);
+                : new String[]{current[0], current[2], current[3], current[5]};
+        String[] v = form(this, title, new String[]{"Name", "Email", "Contact", "Gender (M/F/Other)"}, initial);
         if (v == null) return null;
         if (v[0].isEmpty() || v[1].isEmpty()) {
             info(this, "Name and email are required.");
@@ -163,10 +188,15 @@ public class UserProfiles extends Page {
         }
         JComboBox<String> roleCb = new JComboBox<>(ROLES);
         if (current != null) roleCb.setSelectedItem(current[1]);
-        int r = JOptionPane.showConfirmDialog(this, roleCb, "Role",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r != JOptionPane.OK_OPTION) return null;
-        return new String[]{v[0], (String) roleCb.getSelectedItem(), v[1], v[2]};
+        if (!Ui.ask(this, "Role", roleCb)) return null;
+        
+        // Student number is only for undergraduates and left empty for new users
+        String studentNumber = "";
+        if (current != null && current.length > 4) {
+            studentNumber = current[4];
+        }
+        
+        return new String[]{v[0], (String) roleCb.getSelectedItem(), v[1], v[2], studentNumber, v[3]};
     }
 
     // -----------------------------------------------------------------
@@ -188,13 +218,17 @@ public class UserProfiles extends Page {
         u.setName(v[0]);
         u.setEmail(v[2]);
         u.setContact_number(v[3]);
+        u.setGender(v[5]);
         u.setPassword(pw[0]);           // store hash in production
         u.setUserType(roleDbValue(v[1]));
+        u.setPhoto(null);               // the database trigger picks a free photo
 
         try {
             userData.insert(u);
-            model.addRow(new String[]{v[0], v[1], v[2], v[3]});
+            User saved = userData.findById(u.getUser_id());   // re-read to get the assigned photo
+            model.addRow(new String[]{v[0], v[1], v[2], v[3], v[4], v[5]});
             ids.add(u.getUser_id());
+            photos.add(saved == null ? null : saved.getPhoto());
         } catch (Exception ex) {
             info(this, "Could not add user: " + ex.getMessage());
         }
@@ -217,7 +251,9 @@ public class UserProfiles extends Page {
         u.setName(v[0]);
         u.setEmail(v[2]);
         u.setContact_number(v[3]);
+        u.setGender(v[5]);
         u.setUserType(roleDbValue(v[1]));
+        u.setPhoto(photos.get(m));      // keep the existing photo
 
         try {
             userData.update(u);
@@ -239,6 +275,7 @@ public class UserProfiles extends Page {
             userData.delete(userId);
             model.removeRow(m);
             ids.remove(m);
+            photos.remove(m);
         } catch (Exception ex) {
             info(this, "Could not delete user: " + ex.getMessage());
         }
