@@ -192,6 +192,9 @@ public class UserProfiles extends Page {
         u.setGender(v[4]);
         u.setPassword(pw[0]);           // store hash in production
         u.setUserType(roleDbValue(v[1]));
+        
+        // Photo will be auto-assigned by database trigger or can be set later
+        u.setPhoto(null);
 
         try {
             userData.insert(u);

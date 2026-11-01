@@ -83,7 +83,7 @@ public class MyProfile extends Page {
         String shownName = (user != null && user.getName() != null && !user.getName().isBlank())
                 ? user.getName() : "Silva";
 
-        Avatar avatar = new Avatar(shownName, 80);
+        Avatar avatar = new Avatar(shownName, user != null ? user.getPhoto() : null, 80);
         avatar.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         RoundedButton changePhotoBtn = new RoundedButton("Change photo", false);
