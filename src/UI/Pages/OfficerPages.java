@@ -6,7 +6,6 @@ import UI.Pages.Components.NavIcon;
 import UI.Pages.Components.Sidebar;
 import UI.Pages.Officer.*;
 import model.TechnicalOfficer;
-import model.Undergraduate;
 import model.User;
 
 import javax.swing.*;
@@ -56,13 +55,16 @@ public class OfficerPages extends JFrame implements FrameData {
         TechnicalOfficer to = new TechnicalOfficer(user);
         cardHost.setOpaque(false);   // so the card's fill shows through
 
-        cardHost.add(new Overview(user), officerTabs[0]);
-        cardHost.add(new AttendanceRegister(), officerTabs[1]);
-        cardHost.add(new Medicals(), officerTabs[2]);
-        cardHost.add(new Notices(), officerTabs[3]);
+        // the Overview is refreshed whenever attendance or a medical changes
+        Overview overview = new Overview(user);
+        Runnable refreshOverview = overview::refresh;
+
+        cardHost.add(overview, officerTabs[0]);
+        cardHost.add(new AttendanceRegister(refreshOverview), officerTabs[1]);
+        cardHost.add(new Medicals(refreshOverview), officerTabs[2]);
+        cardHost.add(new Notices(user), officerTabs[3]);
         cardHost.add(new Timetables(), officerTabs[4]);
         cardHost.add(new MyProfile(to), officerTabs[5]);
-
 
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
     }
