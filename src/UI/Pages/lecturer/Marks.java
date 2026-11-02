@@ -176,14 +176,13 @@ public class Marks extends LecturerUI.Page {
                 resultData.save(r);
             }
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Could not save marks: " + ex.getMessage(),
-                    "Marks", JOptionPane.ERROR_MESSAGE);
+            UI.Pages.Components.Ui.error(this, "Marks", "Could not save marks: " + ex.getMessage());
             return;
         }
 
         model.clearUnsaved();
         updateFooter();
-        JOptionPane.showMessageDialog(this, "Marks saved successfully.", "Marks", JOptionPane.INFORMATION_MESSAGE);
+        UI.Pages.Components.Ui.info(this, "Marks saved successfully.");
     }
 
     // =====================================================================
@@ -630,6 +629,7 @@ public class Marks extends LecturerUI.Page {
     //  RUN STANDALONE (to preview the page)
     // =====================================================================
     public static void main(String[] args) {
+        UI.Kit.Theme.install();
         SwingUtilities.invokeLater(() -> {
             JFrame f = new JFrame("Lecturer Portal - Marks");
             f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

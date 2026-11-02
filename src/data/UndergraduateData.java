@@ -24,7 +24,7 @@ public class UndergraduateData {
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
                 "users.dob, users.user_type, " +
-                "undergraduate.dep_id, undergraduate.batch_id, " +
+                "undergraduate.student_number, undergraduate.dep_id, undergraduate.batch_id, " +
                 "undergraduate.profile_picture " +
                 "FROM undergraduate JOIN users USING(user_id) " +
                 "WHERE undergraduate.user_id = ?";
@@ -52,7 +52,7 @@ public class UndergraduateData {
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
                 "users.dob, users.user_type, " +
-                "undergraduate.dep_id, undergraduate.batch_id, " +
+                "undergraduate.student_number, undergraduate.dep_id, undergraduate.batch_id, " +
                 "undergraduate.profile_picture " +
                 "FROM undergraduate JOIN users USING(user_id) " +
                 "ORDER BY users.user_id";
@@ -83,7 +83,7 @@ public class UndergraduateData {
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
                 "users.dob, users.user_type, " +
-                "undergraduate.dep_id, undergraduate.batch_id, " +
+                "undergraduate.student_number, undergraduate.dep_id, undergraduate.batch_id, " +
                 "undergraduate.profile_picture " +
                 "FROM undergraduate JOIN users USING(user_id) " +
                 "WHERE undergraduate.batch_id = ? " +
@@ -118,7 +118,7 @@ public class UndergraduateData {
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
                 "users.dob, users.user_type, " +
-                "undergraduate.dep_id, undergraduate.batch_id, " +
+                "undergraduate.student_number, undergraduate.dep_id, undergraduate.batch_id, " +
                 "undergraduate.profile_picture " +
                 "FROM undergraduate JOIN users USING(user_id) " +
                 "WHERE undergraduate.dep_id = ? " +
@@ -238,6 +238,7 @@ public class UndergraduateData {
         u.setUserType(rs.getString("user_type"));
 
         // Undergraduate details
+        u.setStudent_number(rs.getString("student_number"));
         u.setDep_id(rs.getInt("dep_id"));
         u.setBatch_id(rs.getInt("batch_id"));
         u.setProfile_picture(rs.getString("profile_picture"));

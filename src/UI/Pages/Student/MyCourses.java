@@ -45,6 +45,13 @@ public class MyCourses extends Page {
         coursesTable.setAlignmentX(Component.LEFT_ALIGNMENT);
         body.add(coursesTable);
 
+        body.add(Box.createVerticalStrut(25));
+
+        // Lecture materials uploaded by the lecturers of my courses
+        JComponent materials = new MaterialsCard(user);
+        materials.setAlignmentX(Component.LEFT_ALIGNMENT);
+        body.add(materials);
+
         setScrollBody(body);
     }
 

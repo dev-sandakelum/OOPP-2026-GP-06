@@ -73,9 +73,15 @@ public final class Ui {
         return c;
     }
 
+    // -----------------------------------------------------------------
+    //  Dialogs: every pop-up goes through GlassDialog (frosted wash over the window,
+    //  one glass card, no title bar). Buttons are the only way to close them.
+    // -----------------------------------------------------------------
+
     // Form dialog with one text field per label. Returns the values, or null if cancelled.
     public static String[] form(Component parent, String title, String[] labels, String[] initial) {
         JPanel p = new JPanel(new GridLayout(labels.length * 2, 1, 0, 4));
+        p.setOpaque(false);
         JTextField[] fields = new JTextField[labels.length];
         for (int i = 0; i < labels.length; i++) {
             p.add(label(labels[i]));
@@ -83,21 +89,42 @@ public final class Ui {
             if (initial != null && initial[i] != null) fields[i].setText(initial[i]);
             p.add(fields[i]);
         }
-        int r = JOptionPane.showConfirmDialog(parent, p, title,
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r != JOptionPane.OK_OPTION) return null;
+        if (!ask(parent, title, p)) return null;
 
         String[] out = new String[labels.length];
         for (int i = 0; i < out.length; i++) out[i] = fields[i].getText().trim();
         return out;
     }
 
+    // Any component with OK / Cancel under it. Returns true when OK was pressed.
+    public static boolean ask(Component parent, String title, JComponent content) {
+        JOptionPane pane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+        return Integer.valueOf(JOptionPane.OK_OPTION).equals(GlassDialog.show(parent, title, pane));
+    }
+
+    // Yes / No question. Returns true for Yes.
     public static boolean confirm(Component parent, String message) {
-        return JOptionPane.showConfirmDialog(parent, message, "Please confirm",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
+        JOptionPane pane = new JOptionPane(message, JOptionPane.WARNING_MESSAGE, JOptionPane.YES_NO_OPTION);
+        return Integer.valueOf(JOptionPane.YES_OPTION).equals(GlassDialog.show(parent, null, pane));
     }
 
     public static void info(Component parent, String message) {
-        JOptionPane.showMessageDialog(parent, message, "Notice", JOptionPane.INFORMATION_MESSAGE);
+        info(parent, null, message);
+    }
+
+    public static void info(Component parent, String title, String message) {
+        GlassDialog.show(parent, title, new JOptionPane(message, JOptionPane.INFORMATION_MESSAGE));
+    }
+
+    public static void warn(Component parent, String title, String message) {
+        GlassDialog.show(parent, title, new JOptionPane(message, JOptionPane.WARNING_MESSAGE));
+    }
+
+    public static void error(Component parent, String message) {
+        error(parent, null, message);
+    }
+
+    public static void error(Component parent, String title, String message) {
+        GlassDialog.show(parent, title, new JOptionPane(message, JOptionPane.ERROR_MESSAGE));
     }
 }

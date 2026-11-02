@@ -218,7 +218,7 @@ public class Sidebar extends JPanel implements FrameData {
 
         JPanel avatarWrap = new JPanel(new GridBagLayout());
         avatarWrap.setOpaque(false);
-        avatarWrap.add(new Avatar(name, 46));
+        avatarWrap.add(new Avatar(name, user != null ? user.getPhoto() : null, 46));
 
         JPanel logoutWrap = new JPanel(new GridBagLayout());
         logoutWrap.setOpaque(false);

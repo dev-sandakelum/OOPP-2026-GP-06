@@ -4,13 +4,15 @@ import UI.Pages.Components.Card;
 import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
 import UI.Pages.Components.RoundedButton;
+import data.NoticeData;
+import model.Notice;
 import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.sql.Date;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 import static UI.Kit.Palette.*;
@@ -18,38 +20,11 @@ import static UI.Pages.Components.Ui.*;
 
 /**
  * Admin "Notices" tab: post and delete notices.
- * A notice is stored as String[]: {title, description, audience, date-string}.
- *
- * TODO (team task): replace the in-memory list with AdminData.getAllNotices /
- * insertNotice / deleteNotice once the Notices data layer is delivered.
- * See docs/issue-admin-ui-data-connect.md for the spec.
  */
 public class Notices extends Page {
 
-    // ---------- Placeholder data (swap for services later) ----------
-    private final List<String[]> notices = new ArrayList<>(List.of(
-            new String[]{"Mid-semester examinations",
-                    "Mid-semester exams begin next Monday. Check the timetable for your venue.",
-                    "Everyone", "2026-10-05"},
-            new String[]{"Medical submission deadline",
-                    "Medical certificates must be submitted within 7 days of the absence.",
-                    "Undergraduates", "2026-10-02"},
-            new String[]{"Lab maintenance",
-                    "Computer Lab 2 is closed on Friday for maintenance.",
-                    "Staff", "2026-09-29"},
-            new String[]{"Assignment 2 released",
-                    "Assignment 2 for all level 1 modules is now available.",
-                    "Undergraduates", "2026-09-25"},
-            new String[]{"Staff meeting",
-                    "Faculty staff meeting on Thursday at 3 PM in the main board room.",
-                    "Staff", "2026-09-20"}
-    ));
-    // ---------- end placeholder data ----------
-
+    private final NoticeData noticeData = new NoticeData();
     private final JPanel list = new JPanel();
-
-    /** currentUser is kept for when the real data layer is wired in. */
-    @SuppressWarnings("unused")
     private final User currentUser;
 
     public Notices(User currentUser) {
@@ -81,34 +56,46 @@ public class Notices extends Page {
 
     private void refresh() {
         list.removeAll();
-        if (notices.isEmpty()) {
-            JLabel empty = new JLabel("No notices yet.");
-            empty.setFont(font(Font.PLAIN, 14));
-            empty.setForeground(INK_2);
-            list.add(empty);
-        } else {
-            for (String[] n : notices) {
-                list.add(noticeCard(n));
-                list.add(Box.createVerticalStrut(12));
+        
+        try {
+            List<Notice> notices = noticeData.findAll();
+            if (notices.isEmpty()) {
+                JLabel empty = new JLabel("No notices yet.");
+                empty.setFont(font(Font.PLAIN, 14));
+                empty.setForeground(INK_2);
+                list.add(empty);
+            } else {
+                for (Notice n : notices) {
+                    list.add(noticeCard(n));
+                    list.add(Box.createVerticalStrut(12));
+                }
             }
+        } catch (Exception ex) {
+            JLabel error = new JLabel("Could not load notices: " + ex.getMessage());
+            error.setFont(font(Font.PLAIN, 14));
+            error.setForeground(BAD);
+            list.add(error);
         }
+        
         list.revalidate();
         list.repaint();
     }
 
-    private JComponent noticeCard(String[] n) {
-        // n = {title, description, audience, date}
-        JLabel title = new JLabel(n[0]);
+    private JComponent noticeCard(Notice n) {
+        JLabel title = new JLabel(n.getTitle());
         title.setFont(font(Font.BOLD, 16));
         title.setForeground(INK);
 
-        JLabel date = new JLabel(n[3]);
+        String dateStr = n.getCreated_date() != null 
+            ? n.getCreated_date().toString().substring(0, 10) 
+            : "";
+        JLabel date = new JLabel(dateStr);
         date.setFont(font(Font.PLAIN, 12));
         date.setForeground(INK_2);
 
         JPanel meta = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         meta.setOpaque(false);
-        meta.add(new Chip(n[2], BRAND));
+        meta.add(new Chip(n.getAudience() != null ? n.getAudience() : "Everyone", BRAND));
         meta.add(date);
 
         JPanel head = new JPanel(new BorderLayout(0, 6));
@@ -116,7 +103,7 @@ public class Notices extends Page {
         head.add(title, BorderLayout.NORTH);
         head.add(meta,  BorderLayout.CENTER);
 
-        JTextArea message = new JTextArea(n[1]);
+        JTextArea message = new JTextArea(n.getDescription());
         message.setFont(font(Font.PLAIN, 14));
         message.setForeground(INK);
         message.setOpaque(false);
@@ -147,7 +134,7 @@ public class Notices extends Page {
     }
 
     // -----------------------------------------------------------------
-    //  Actions (in-memory until data layer is delivered)
+    //  Actions
     // -----------------------------------------------------------------
 
     private void postNotice() {
@@ -161,16 +148,36 @@ public class Notices extends Page {
             info(this, "Title and message are required.");
             return;
         }
+
         String audience = v[2].isEmpty() ? "Everyone" : v[2];
-        notices.add(0, new String[]{v[0], v[1], audience,
-                LocalDate.now().toString()});
-        refresh();
+        
+        Notice notice = new Notice();
+        notice.setTitle(v[0]);
+        notice.setDescription(v[1]);
+        notice.setAudience(audience);
+        notice.setStatus("ACTIVE");
+        if (currentUser != null) {
+            notice.setCreated_by(currentUser.getUser_id());
+        }
+        // Expiry date can be set to null or a future date
+        notice.setExpiry_date(null);
+
+        try {
+            noticeData.insert(notice);
+            refresh();
+        } catch (Exception ex) {
+            info(this, "Could not post notice: " + ex.getMessage());
+        }
     }
 
-    private void deleteNotice(String[] n) {
-        if (confirm(this, "Delete \"" + n[0] + "\"?")) {
-            notices.remove(n);
-            refresh();
+    private void deleteNotice(Notice n) {
+        if (confirm(this, "Delete \"" + n.getTitle() + "\"?")) {
+            try {
+                noticeData.delete(n.getNotice_id());
+                refresh();
+            } catch (Exception ex) {
+                info(this, "Could not delete notice: " + ex.getMessage());
+            }
         }
     }
 }

@@ -5,8 +5,10 @@ import UI.Kit.Backdrop;
 import UI.Kit.FrameData;
 import UI.Kit.Palette;
 import UI.Pages.Components.Card;
+import UI.Pages.Components.LoadingOverlay;
 import UI.Pages.Components.PhotoPanel;
 import UI.Pages.Components.RoundedButton;
+import UI.Pages.Components.Ui;
 import data.UserData;
 import database.Database;
 import model.User;
@@ -25,6 +27,14 @@ public class LoginPage extends JFrame implements FrameData {
     private final JTextField emailField    = new JTextField(20);
     private final JPasswordField passField = new JPasswordField(20);
     private final JLabel errorLabel        = new JLabel(" ");
+    private final JButton signInBtn        = new RoundedButton("Sign in", true);
+
+    // spinner shown over the whole window while the login runs
+    private final LoadingOverlay overlay = LoadingOverlay.install(this);
+    private boolean busy;
+
+    // how long the "Welcome" tick stays on screen before the dashboard opens
+    private static final int WELCOME_MS = 900;
 
     public LoginPage() {
         Database.useLoginRole();    // logout lands here too: drop back to the login-only DB account
@@ -91,7 +101,6 @@ public class LoginPage extends JFrame implements FrameData {
         panel.add(Box.createVerticalStrut(14));
 
         // Sign-in button
-        JButton signInBtn = new RoundedButton("Sign in", true);
         signInBtn.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
         signInBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         signInBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -106,6 +115,7 @@ public class LoginPage extends JFrame implements FrameData {
 
     // ── login logic ───────────────────────────────────────────────────────────
     private void doLogin() {
+        if (busy) return;                               // ignore a second click / Enter while running
         String email    = emailField.getText().trim();
         String password = new String(passField.getPassword());
 
@@ -114,65 +124,145 @@ public class LoginPage extends JFrame implements FrameData {
             return;
         }
 
-        try {
-            UserData ud   = new UserData();
-            User     user = ud.login(email, password);
+        errorLabel.setText(" ");
+        setBusy(true);
+        overlay.start("Signing in…", "Checking your details");
 
-            if (user == null) {
-                errorLabel.setText("Incorrect email or password.");
-                passField.setText("");
-                return;
+        // The database call runs off the UI thread so the spinner keeps turning.
+        new SwingWorker<User, Void>() {
+            @Override
+            protected User doInBackground() {
+                return new UserData().login(email, password);
             }
 
-            // From here on, DB access uses the account for this user's role
-            Database.useRoleFor(user.getUserType());
+            @Override
+            protected void done() {
+                User user;
+                try {
+                    user = get();
+                } catch (Exception ex) {
+                    fail("Could not connect to the database.");
+                    ex.printStackTrace();
+                    return;
+                }
+                if (user == null) {
+                    fail("Incorrect email or password.");
+                    passField.setText("");
+                    passField.requestFocusInWindow();
+                    return;
+                }
+                loginSucceeded(user);
+            }
+        }.execute();
+    }
 
-            // Open the right dashboard based on user_type
-            openDashboard(user);
-            dispose();                   // close the login window
+    /** Login failed: drop the overlay, re-enable the form and show the reason. */
+    private void fail(String reason) {
+        overlay.dismiss();
+        setBusy(false);
+        errorLabel.setText(reason);
+    }
 
-        } catch (Exception ex) {
-            errorLabel.setText("Could not connect to the database.");
-            ex.printStackTrace();
-        }
+    /**
+     * Login worked: show the welcome tick while the dashboard is built on a background
+     * thread, then show the dashboard and close this window.
+     *
+     * The dashboard pages load their data in their constructors, which takes a while.
+     * Building the (not yet visible) frame off the event thread keeps the spinner turning;
+     * it is only made visible back on the event thread.
+     */
+    private void loginSucceeded(User user) {
+        // From here on, DB access uses the account for this user's role
+        Database.useRoleFor(user.getUserType());
+
+        String first = user.getName() == null ? "" : user.getName().trim().split("\\s+")[0];
+        overlay.finish(first.isEmpty() ? "Welcome" : "Welcome, " + first, "Opening your dashboard");
+
+        final long welcomeShownAt = System.currentTimeMillis();
+        final boolean[] built = {false};
+
+        // after the welcome moment, go back to the spinner if the dashboard is still loading
+        Timer welcome = new Timer(WELCOME_MS, e -> {
+            if (!built[0]) overlay.start("Opening your dashboard…", "Loading your data");
+        });
+        welcome.setRepeats(false);
+        welcome.start();
+
+        new SwingWorker<JFrame, Void>() {
+            @Override
+            protected JFrame doInBackground() {
+                return buildDashboard(user);
+            }
+
+            @Override
+            protected void done() {
+                built[0] = true;
+                JFrame dashboard;
+                try {
+                    dashboard = get();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    fail("Could not open the dashboard.");
+                    return;
+                }
+                if (dashboard == null) {
+                    fail(" ");                                   // role problem: dialog already shown
+                    return;
+                }
+                // keep the welcome tick on screen for its full moment before switching windows
+                long remaining = WELCOME_MS - (System.currentTimeMillis() - welcomeShownAt);
+                if (remaining > 0) {
+                    Timer t = new Timer((int) remaining, e -> showDashboard(dashboard));
+                    t.setRepeats(false);
+                    t.start();
+                } else {
+                    showDashboard(dashboard);
+                }
+            }
+        }.execute();
+    }
+
+    private void showDashboard(JFrame dashboard) {
+        dashboard.setVisible(true);
+        dispose();                                               // close the login window
+    }
+
+    private void setBusy(boolean b) {
+        busy = b;
+        emailField.setEnabled(!b);
+        passField.setEnabled(!b);
+        signInBtn.setEnabled(!b);
     }
 
 
-    /** Opens the correct dashboard based on userType stored in the DB. */
-    private void openDashboard(User user) {
+    /**
+     * Builds (but does not show) the dashboard for the user's role, or returns null after
+     * showing an error when the role is missing or unknown. Safe to call off the event thread
+     * because the frame is not realised until showDashboard().
+     */
+    private JFrame buildDashboard(User user) {
         String type = user.getUserType();
 
         if (type == null || type.isBlank()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "User role is missing. Please check the database.",
-                    "Login Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-            return;
+            loginError("User role is missing. Please check the database.");
+            return null;
         }
 
-        JFrame dashboard;
         // users.user_type is an ENUM: ADMIN, LECTURER, TECHNICAL_OFFICER, UNDERGRADUATE
-        switch (type.toLowerCase()) {
-            case "lecturer"                      -> dashboard = new LecturerPage(user);
-            case "technical_officer", "officer"  -> dashboard = new OfficerPages(user);
-            case "undergraduate", "student"      -> dashboard = new StudentPages(user);
-            case "admin", "administrator" ->
-                    dashboard = new AdminPages(user);
-
+        return switch (type.toLowerCase()) {
+            case "lecturer"                      -> new LecturerPage(user);
+            case "technical_officer", "officer"  -> new OfficerPages(user);
+            case "undergraduate", "student"      -> new StudentPages(user);
+            case "admin", "administrator"        -> new AdminPages(user);
             default -> {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Unknown user role: " + type,
-                        "Login Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
+                loginError("Unknown user role: " + type);
+                yield null;
             }
-        }
+        };
+    }
 
-        dashboard.setVisible(true);
+    private void loginError(String message) {
+        SwingUtilities.invokeLater(() -> Ui.error(this, "Login Error", message));
     }
 
 

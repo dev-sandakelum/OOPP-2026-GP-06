@@ -218,30 +218,16 @@ final class LecturerUI {
         return c;
     }
 
-    // ---------- Simple form dialog: returns the values, or null if cancelled ----------
+    // ---------- Dialogs: same glass overlay pop-ups as the rest of the app ----------
     static String[] form(Component parent, String title, String[] labels, String[] initial) {
-        JPanel p = new JPanel(new GridLayout(labels.length * 2, 1, 0, 4));
-        JTextField[] fs = new JTextField[labels.length];
-        for (int i = 0; i < labels.length; i++) {
-            p.add(label(labels[i]));
-            fs[i] = field(22);
-            if (initial != null && initial[i] != null) fs[i].setText(initial[i]);
-            p.add(fs[i]);
-        }
-        int r = JOptionPane.showConfirmDialog(parent, p, title,
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r != JOptionPane.OK_OPTION) return null;
-        String[] out = new String[labels.length];
-        for (int i = 0; i < out.length; i++) out[i] = fs[i].getText().trim();
-        return out;
+        return UI.Pages.Components.Ui.form(parent, title, labels, initial);
     }
 
     static boolean confirm(Component parent, String message) {
-        return JOptionPane.showConfirmDialog(parent, message, "Please confirm",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
+        return UI.Pages.Components.Ui.confirm(parent, message);
     }
 
     static void info(Component parent, String message) {
-        JOptionPane.showMessageDialog(parent, message, "Notice", JOptionPane.INFORMATION_MESSAGE);
+        UI.Pages.Components.Ui.info(parent, message);
     }
 }
