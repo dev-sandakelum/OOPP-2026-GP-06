@@ -22,7 +22,7 @@ import static UI.Pages.Components.Ui.*;
 // Officers can post notices and delete the ones they posted.
 public class Notices extends Page {
 
-    private static final List<String> AUDIENCES = List.of("ALL", "STAFF", "UNDERGRADUATE");
+    private static final String[] AUDIENCES = {"ALL", "TECHNICAL OFFICER", "LECTURER", "UNDERGRADUATE"};
 
     private final TechnicalOfficerData officerData = new TechnicalOfficerData();
     private final int officerId;
@@ -142,23 +142,73 @@ public class Notices extends Page {
     }
 
     private void postNotice() {
-        String[] labels = {"Title", "Message", "Audience (ALL / STAFF / UNDERGRADUATE)"};
-        String[] v = form(this, "Post notice", labels, new String[]{"", "", "ALL"});
-        if (v == null) return;
-        if (v[0].isEmpty() || v[1].isEmpty()) {
+        // Use BorderLayout instead of GridLayout to give message area proper space
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+
+        // Title
+        JLabel titleLabel = label("Title");
+        titleLabel.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(titleLabel);
+        p.add(Box.createVerticalStrut(4));
+        
+        JTextField titleField = field(30);
+        titleField.setAlignmentX(LEFT_ALIGNMENT);
+        titleField.setMaximumSize(new Dimension(Integer.MAX_VALUE, titleField.getPreferredSize().height));
+        p.add(titleField);
+        p.add(Box.createVerticalStrut(12));
+
+        // Message
+        JLabel messageLabel = label("Message");
+        messageLabel.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(messageLabel);
+        p.add(Box.createVerticalStrut(4));
+        
+        JTextArea messageArea = new JTextArea(6, 30);
+        messageArea.setFont(font(Font.PLAIN, 14));
+        messageArea.setForeground(INK);
+        messageArea.setBackground(SURFACE);
+        messageArea.setCaretColor(BRAND);
+        messageArea.setLineWrap(true);
+        messageArea.setWrapStyleWord(true);
+        
+        JScrollPane messageScroll = new JScrollPane(messageArea);
+        messageScroll.setAlignmentX(LEFT_ALIGNMENT);
+        messageScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+        messageScroll.setPreferredSize(new Dimension(400, 120));
+        messageScroll.setBorder(javax.swing.BorderFactory.createLineBorder(LINE_2, 1, true));
+        p.add(messageScroll);
+        p.add(Box.createVerticalStrut(12));
+
+        // Audience
+        JLabel audienceLabel = label("Audience");
+        audienceLabel.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(audienceLabel);
+        p.add(Box.createVerticalStrut(4));
+        
+        JComboBox<String> audienceCombo = new JComboBox<>(AUDIENCES);
+        audienceCombo.setFont(font(Font.PLAIN, 14));
+        audienceCombo.setBackground(SURFACE);
+        audienceCombo.setForeground(INK);
+        audienceCombo.setAlignmentX(LEFT_ALIGNMENT);
+        audienceCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, audienceCombo.getPreferredSize().height));
+        p.add(audienceCombo);
+
+        if (!ask(this, "Post notice", p)) return;
+
+        String title   = titleField.getText().trim();
+        String message = messageArea.getText().trim();
+        if (title.isEmpty() || message.isEmpty()) {
             info(this, "Title and message are required.");
             return;
         }
-        String audience = v[2].isEmpty() ? "ALL" : v[2].toUpperCase();
-        if (!AUDIENCES.contains(audience)) {
-            info(this, "Audience must be ALL, STAFF or UNDERGRADUATE.");
-            return;
-        }
+        String audience = (String) audienceCombo.getSelectedItem();
 
         Notice n = new Notice();
         n.setCreated_by(officerId);
-        n.setTitle(v[0]);
-        n.setDescription(v[1]);
+        n.setTitle(title);
+        n.setDescription(message);
         n.setAudience(audience);
         n.setStatus("ACTIVE");
         try {

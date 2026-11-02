@@ -85,7 +85,7 @@ public class SessionData {
             }
             return s;
         } catch (SQLException e) {
-            throw new DataAccessException("Failed to insert session", e);
+            throw new DataAccessException("Failed to insert session: " + e.getMessage(), e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -107,7 +107,7 @@ public class SessionData {
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new DataAccessException("Failed to update session ID: " + s.getSessionId(), e);
+            throw new DataAccessException("Failed to update session ID " + s.getSessionId() + ": " + e.getMessage(), e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -120,7 +120,7 @@ public class SessionData {
             ps.setInt(1, sessionId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new DataAccessException("Failed to delete session ID: " + sessionId, e);
+            throw new DataAccessException("Failed to delete session ID " + sessionId + ": " + e.getMessage(), e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
