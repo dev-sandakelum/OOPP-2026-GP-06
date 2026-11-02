@@ -22,7 +22,7 @@ import static UI.Pages.Components.Ui.*;
 // Officers can post notices and delete the ones they posted.
 public class Notices extends Page {
 
-    private static final String[] AUDIENCES = {"ALL", "TECHNICAL OFFICER", "LECTURER", "UNDERGRADUATE"};
+    private static final String[] AUDIENCES = {"ALL", "TECHNICAL_OFFICER", "LECTURER", "UNDERGRADUATE"};
 
     private final TechnicalOfficerData officerData = new TechnicalOfficerData();
     private final int officerId;
