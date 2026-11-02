@@ -228,58 +228,154 @@ public class AttendanceRegister extends Page {
     // ---------------------------------------------------------------- actions
 
     private void newSession() {
-        if (coursePicker.getSelectedIndex() < 0) {
-            info(this, "Select a course first.");
+        // Build subject dropdown (all available courses)
+        JComboBox<String> subjectCombo = new JComboBox<>();
+        int preselectedIndex = -1;
+        for (int i = 0; i < courses.size(); i++) {
+            String[] c = courses.get(i);
+            subjectCombo.addItem(c[1] + " — " + c[2]);  // code — name
+            if (coursePicker.getSelectedIndex() >= 0 && i == coursePicker.getSelectedIndex()) {
+                preselectedIndex = i;
+            }
+        }
+        if (preselectedIndex >= 0) {
+            subjectCombo.setSelectedIndex(preselectedIndex);
+        }
+        if (courses.isEmpty()) {
+            info(this, "No courses available.");
             return;
         }
 
-        int offering = offeringId();
+        subjectCombo.setFont(font(Font.PLAIN, 14));
+        subjectCombo.setBackground(SURFACE);
+        subjectCombo.setForeground(INK);
+
+        // Date input
+        JTextField dateInput = field(20);
+        dateInput.setText(dateField.getText().trim());
+
+        // Type dropdown
+        JComboBox<String> typeCombo = new JComboBox<>(new String[]{"LECTURE", "PRACTICAL"});
+        typeCombo.setFont(font(Font.PLAIN, 14));
+        typeCombo.setBackground(SURFACE);
+        typeCombo.setForeground(INK);
+
+        // Start time
+        JTextField startInput = field(20);
+        startInput.setText("08:00");
+
+        // End time
+        JTextField endInput = field(20);
+        endInput.setText("10:00");
+
+        // Room dropdown
+        JComboBox<String> roomCombo = new JComboBox<>(new String[]{"", "LH-01", "LH-02", "LH-03", "ICT Lab 1", "ICT Lab 2"});
+        roomCombo.setFont(font(Font.PLAIN, 14));
+        roomCombo.setBackground(SURFACE);
+        roomCombo.setForeground(INK);
+
+        // Build main panel with BoxLayout
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setOpaque(false);
+
+        // Subject (full width)
+        JLabel subjectLabel = label("Subject");
+        subjectLabel.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(subjectLabel);
+        p.add(Box.createVerticalStrut(4));
+        subjectCombo.setAlignmentX(LEFT_ALIGNMENT);
+        subjectCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, subjectCombo.getPreferredSize().height));
+        p.add(subjectCombo);
+        p.add(Box.createVerticalStrut(12));
+
+        // Date and Type row
+        JPanel dateTypeRow = new JPanel(new GridLayout(1, 2, 12, 0));
+        dateTypeRow.setOpaque(false);
+        dateTypeRow.setAlignmentX(LEFT_ALIGNMENT);
+        dateTypeRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+
+        JPanel datePanel = new JPanel();
+        datePanel.setLayout(new BoxLayout(datePanel, BoxLayout.Y_AXIS));
+        datePanel.setOpaque(false);
+        JLabel dateLabel = label("Date (yyyy-MM-dd)");
+        dateLabel.setAlignmentX(LEFT_ALIGNMENT);
+        datePanel.add(dateLabel);
+        datePanel.add(Box.createVerticalStrut(4));
+        dateInput.setAlignmentX(LEFT_ALIGNMENT);
+        datePanel.add(dateInput);
+
+        JPanel typePanel = new JPanel();
+        typePanel.setLayout(new BoxLayout(typePanel, BoxLayout.Y_AXIS));
+        typePanel.setOpaque(false);
+        JLabel typeLabel = label("Type");
+        typeLabel.setAlignmentX(LEFT_ALIGNMENT);
+        typePanel.add(typeLabel);
+        typePanel.add(Box.createVerticalStrut(4));
+        typeCombo.setAlignmentX(LEFT_ALIGNMENT);
+        typePanel.add(typeCombo);
+
+        dateTypeRow.add(datePanel);
+        dateTypeRow.add(typePanel);
+        p.add(dateTypeRow);
+        p.add(Box.createVerticalStrut(12));
+
+        // Start and End time row
+        JPanel timeRow = new JPanel(new GridLayout(1, 2, 12, 0));
+        timeRow.setOpaque(false);
+        timeRow.setAlignmentX(LEFT_ALIGNMENT);
+        timeRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+
+        JPanel startPanel = new JPanel();
+        startPanel.setLayout(new BoxLayout(startPanel, BoxLayout.Y_AXIS));
+        startPanel.setOpaque(false);
+        JLabel startLabel = label("Start time (HH:mm)");
+        startLabel.setAlignmentX(LEFT_ALIGNMENT);
+        startPanel.add(startLabel);
+        startPanel.add(Box.createVerticalStrut(4));
+        startInput.setAlignmentX(LEFT_ALIGNMENT);
+        startPanel.add(startInput);
+
+        JPanel endPanel = new JPanel();
+        endPanel.setLayout(new BoxLayout(endPanel, BoxLayout.Y_AXIS));
+        endPanel.setOpaque(false);
+        JLabel endLabel = label("End time (HH:mm)");
+        endLabel.setAlignmentX(LEFT_ALIGNMENT);
+        endPanel.add(endLabel);
+        endPanel.add(Box.createVerticalStrut(4));
+        endInput.setAlignmentX(LEFT_ALIGNMENT);
+        endPanel.add(endInput);
+
+        timeRow.add(startPanel);
+        timeRow.add(endPanel);
+        p.add(timeRow);
+        p.add(Box.createVerticalStrut(12));
+
+        // Room (full width)
+        JLabel roomLabel = label("Room");
+        roomLabel.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(roomLabel);
+        p.add(Box.createVerticalStrut(4));
+        roomCombo.setAlignmentX(LEFT_ALIGNMENT);
+        roomCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, roomCombo.getPreferredSize().height));
+        p.add(roomCombo);
+
+        if (!ask(this, "New session", p)) return;
+
+        // Get selected course offering ID
+        int selectedCourseIndex = subjectCombo.getSelectedIndex();
+        if (selectedCourseIndex < 0) {
+            info(this, "Select a subject.");
+            return;
+        }
+        int offering = Integer.parseInt(courses.get(selectedCourseIndex)[0]);
+
         try {
-            // Auto-increment session number
+            // Auto-increment session number for this course
             int next = 1;
             for (Session s : sessionData.findByOffering(offering)) {
                 next = Math.max(next, s.getSessionNumber() + 1);
             }
-
-            // Build custom dialog panel
-            JPanel p = new JPanel(new GridLayout(10, 1, 0, 4));
-            p.setOpaque(false);
-
-            // Date
-            JTextField dateInput = field(22);
-            dateInput.setText(dateField.getText().trim());
-            p.add(label("Date (yyyy-MM-dd)"));
-            p.add(dateInput);
-
-            // Type dropdown
-            JComboBox<String> typeCombo = new JComboBox<>(new String[]{"LECTURE", "PRACTICAL"});
-            typeCombo.setFont(font(Font.PLAIN, 14));
-            typeCombo.setBackground(SURFACE);
-            typeCombo.setForeground(INK);
-            p.add(label("Type"));
-            p.add(typeCombo);
-
-            // Start time
-            JTextField startInput = field(22);
-            startInput.setText("08:00");
-            p.add(label("Start time (HH:mm)"));
-            p.add(startInput);
-
-            // End time
-            JTextField endInput = field(22);
-            endInput.setText("10:00");
-            p.add(label("End time (HH:mm)"));
-            p.add(endInput);
-
-            // Room dropdown
-            JComboBox<String> roomCombo = new JComboBox<>(new String[]{"", "LH-01", "LH-02", "LH-03", "ICT Lab 1", "ICT Lab 2"});
-            roomCombo.setFont(font(Font.PLAIN, 14));
-            roomCombo.setBackground(SURFACE);
-            roomCombo.setForeground(INK);
-            p.add(label("Room"));
-            p.add(roomCombo);
-
-            if (!ask(this, "New session on " + dateInput.getText(), p)) return;
 
             // Parse date
             Date sessionDate;
@@ -315,14 +411,19 @@ public class AttendanceRegister extends Page {
             s.setRoom(selectedRoom == null || selectedRoom.isEmpty() ? null : selectedRoom);
 
             Session saved = sessionData.insert(s);
-            // Update the date field to match the session date chosen
+            
+            // Update UI to show the newly created session's course and date
             loading = true;
+            coursePicker.setSelectedIndex(selectedCourseIndex);
             dateField.setText(sessionDate.toString());
             loading = false;
             loadSessions();
+            
+            // Select the newly created session in the dropdown
             for (int i = 0; i < sessions.size(); i++) {
                 if (sessions.get(i).getSessionId() == saved.getSessionId()) {
                     sessionPicker.setSelectedIndex(i);
+                    break;
                 }
             }
             onChanged.run();
