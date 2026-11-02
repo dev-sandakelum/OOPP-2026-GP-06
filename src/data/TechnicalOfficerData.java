@@ -28,7 +28,7 @@ public class TechnicalOfficerData {
 
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
-                "users.dob, users.gender, users.user_type, " +
+                "users.dob, users.gender, users.user_type, users.photo, " +
                 "technical_officer.dep_id " +
                 "FROM technical_officer JOIN users USING(user_id) " +
                 "WHERE technical_officer.user_id = ?";
@@ -55,7 +55,7 @@ public class TechnicalOfficerData {
 
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
-                "users.dob, users.gender, users.user_type, " +
+                "users.dob, users.gender, users.user_type, users.photo, " +
                 "technical_officer.dep_id " +
                 "FROM technical_officer JOIN users USING(user_id) " +
                 "ORDER BY users.user_id";
@@ -652,6 +652,7 @@ public class TechnicalOfficerData {
         t.setDOB(rs.getDate("dob"));
         t.setGender(rs.getString("gender"));
         t.setUserType(rs.getString("user_type"));
+        t.setPhoto(rs.getString("photo"));
 
         // Technical officer details
         t.setDep_id(rs.getInt("dep_id"));

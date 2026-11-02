@@ -69,6 +69,7 @@ public class MyProfile extends Page {
             user.setAddress(fromDb.getAddress());
             user.setGender(fromDb.getGender());
             user.setDep_id(fromDb.getDep_id());
+            user.setPhoto(fromDb.getPhoto());
         } catch (DataAccessException ex) {
             info(this, "Failed to load your profile: " + ex.getMessage());
         }
