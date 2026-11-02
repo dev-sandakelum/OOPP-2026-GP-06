@@ -4,6 +4,7 @@ package UI.Pages.Student;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.RoundedButton;
 import data.MedicalData;
 import Exception.DataAccessException;
 import model.Medical;
@@ -13,9 +14,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.io.File;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 import static UI.Kit.Palette.*;
+import static UI.Pages.Components.Ui.*;
 
 public class Medicals extends Page {
 
@@ -29,7 +33,7 @@ public class Medicals extends Page {
     );
 
     public Medicals(User user) {
-        super("Medicals", "View your medical leave submissions and approvals", null);
+        super("Medicals", "View your medical leave submissions and approvals", addButton());
 
         this.user = user;
 
@@ -50,6 +54,17 @@ public class Medicals extends Page {
         setScrollBody(body);
 
         loadMedicalRecords();
+    }
+
+    private static JComponent addButton() {
+        RoundedButton btn = new RoundedButton("+ Add Medical", true);
+        btn.addActionListener(e -> {
+            Medicals page = (Medicals) SwingUtilities.getAncestorOfClass(Medicals.class, btn);
+            if (page != null) {
+                page.showAddDialog();
+            }
+        });
+        return btn;
     }
 
     private void loadMedicalRecords() {
@@ -113,6 +128,189 @@ public class Medicals extends Page {
 
         list.revalidate();
         list.repaint();
+    }
+
+    private void showAddDialog() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Add Medical", true);
+        dialog.setSize(500, 350);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBackground(Color.WHITE);
+
+        JPanel form = new JPanel(new GridLayout(0, 1, 10, 10));
+        form.setOpaque(false);
+
+        // Show today's date (read-only)
+        JTextField dateField = field(20);
+        dateField.setText(LocalDate.now().toString());
+        dateField.setEditable(false);
+        dateField.setBackground(new Color(245, 245, 245));
+
+        JTextArea reasonArea = new JTextArea(3, 20);
+        reasonArea.setFont(font(Font.PLAIN, 14));
+        reasonArea.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(LINE),
+                new EmptyBorder(5, 5, 5, 5)
+        ));
+        JScrollPane reasonScroll = new JScrollPane(reasonArea);
+
+        JTextField certField = field(20);
+        certField.setEditable(false);
+
+        JButton browseBtn = new JButton("Browse...");
+        browseBtn.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            if (chooser.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                certField.setText(chooser.getSelectedFile().getAbsolutePath());
+            }
+        });
+
+        JPanel certPanel = new JPanel(new BorderLayout(5, 0));
+        certPanel.setOpaque(false);
+        certPanel.add(certField, BorderLayout.CENTER);
+        certPanel.add(browseBtn, BorderLayout.EAST);
+
+        form.add(label("Medical Date (automatically set to today)"));
+        form.add(dateField);
+        form.add(label("Reason"));
+        form.add(reasonScroll);
+        form.add(label("Certificate (optional)"));
+        form.add(certPanel);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttons.setOpaque(false);
+
+        RoundedButton save = new RoundedButton("Submit", true);
+        save.addActionListener(e -> {
+            if (reasonArea.getText().isBlank()) {
+                info(dialog, "Reason is required.");
+                return;
+            }
+
+            Date medDate = Date.valueOf(LocalDate.now());
+
+            Medical m = new Medical();
+            m.setStudentId(user.getUser_id());
+            m.setMedicalDate(medDate);
+            m.setReason(reasonArea.getText().trim());
+            m.setCertificatePath(certField.getText().trim());
+            m.setStatus("PENDING");
+
+            try {
+                medicalData.insert(m);
+                info(dialog, "Medical submitted successfully.");
+                dialog.dispose();
+                loadMedicalRecords();
+            } catch (Exception ex) {
+                info(dialog, "Failed to submit: " + ex.getMessage());
+            }
+        });
+
+        RoundedButton cancel = new RoundedButton("Cancel", false);
+        cancel.addActionListener(e -> dialog.dispose());
+
+        buttons.add(cancel);
+        buttons.add(save);
+
+        panel.add(form, BorderLayout.CENTER);
+        panel.add(buttons, BorderLayout.SOUTH);
+
+        dialog.add(panel);
+        dialog.setVisible(true);
+    }
+
+    private void showEditDialog(Medical medical) {
+        if (!"PENDING".equalsIgnoreCase(medical.getStatus())) {
+            info(this, "Only pending medicals can be edited.");
+            return;
+        }
+
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Medical", true);
+        dialog.setSize(500, 350);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBackground(Color.WHITE);
+
+        JPanel form = new JPanel(new GridLayout(0, 1, 10, 10));
+        form.setOpaque(false);
+
+        // Show medical date (read-only)
+        JTextField dateField = field(20);
+        dateField.setText(medical.getMedicalDate() != null ? medical.getMedicalDate().toString() : "");
+        dateField.setEditable(false);
+        dateField.setBackground(new Color(245, 245, 245));
+
+        JTextArea reasonArea = new JTextArea(3, 20);
+        reasonArea.setFont(font(Font.PLAIN, 14));
+        reasonArea.setText(medical.getReason() != null ? medical.getReason() : "");
+        reasonArea.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(LINE),
+                new EmptyBorder(5, 5, 5, 5)
+        ));
+        JScrollPane reasonScroll = new JScrollPane(reasonArea);
+
+        JTextField certField = field(20);
+        certField.setText(medical.getCertificatePath() != null ? medical.getCertificatePath() : "");
+        certField.setEditable(false);
+
+        JButton browseBtn = new JButton("Browse...");
+        browseBtn.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            if (chooser.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                certField.setText(chooser.getSelectedFile().getAbsolutePath());
+            }
+        });
+
+        JPanel certPanel = new JPanel(new BorderLayout(5, 0));
+        certPanel.setOpaque(false);
+        certPanel.add(certField, BorderLayout.CENTER);
+        certPanel.add(browseBtn, BorderLayout.EAST);
+
+        form.add(label("Medical Date (cannot be changed)"));
+        form.add(dateField);
+        form.add(label("Reason"));
+        form.add(reasonScroll);
+        form.add(label("Certificate (optional)"));
+        form.add(certPanel);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttons.setOpaque(false);
+
+        RoundedButton save = new RoundedButton("Update", true);
+        save.addActionListener(e -> {
+            if (reasonArea.getText().isBlank()) {
+                info(dialog, "Reason is required.");
+                return;
+            }
+
+            medical.setReason(reasonArea.getText().trim());
+            medical.setCertificatePath(certField.getText().trim());
+
+            try {
+                medicalData.update(medical);
+                info(dialog, "Medical updated successfully.");
+                dialog.dispose();
+                loadMedicalRecords();
+            } catch (Exception ex) {
+                info(dialog, "Failed to update: " + ex.getMessage());
+            }
+        });
+
+        RoundedButton cancel = new RoundedButton("Cancel", false);
+        cancel.addActionListener(e -> dialog.dispose());
+
+        buttons.add(cancel);
+        buttons.add(save);
+
+        panel.add(form, BorderLayout.CENTER);
+        panel.add(buttons, BorderLayout.SOUTH);
+
+        dialog.add(panel);
+        dialog.setVisible(true);
     }
 
     private JComponent medicalCard(Medical medical) {
@@ -281,11 +479,27 @@ public class Medicals extends Page {
         infoBlock.add(titleRow);
         infoBlock.add(certificateRow);
 
+        // Edit button (only for pending medicals)
+        if ("PENDING".equalsIgnoreCase(medical.getStatus())) {
+            JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            buttonRow.setOpaque(false);
+            buttonRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            buttonRow.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+            JButton editBtn = new JButton("Edit");
+            editBtn.setFont(font(Font.BOLD, 12));
+            editBtn.setFocusPainted(false);
+            editBtn.addActionListener(e -> showEditDialog(medical));
+
+            buttonRow.add(editBtn);
+            infoBlock.add(buttonRow);
+        }
+
         card.add(dateContainer, BorderLayout.WEST);
         card.add(infoBlock, BorderLayout.CENTER);
 
         card.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 160)
+                new Dimension(Integer.MAX_VALUE, 180)
         );
 
         return card;
