@@ -22,6 +22,14 @@ public final class Theme {
         if (installed) return;
         installed = true;
 
+        // ---------- Default font for every stock Swing component ----------
+        for (Object key : java.util.Collections.list(UIManager.getDefaults().keys())) {
+            if (key instanceof String s && s.endsWith(".font")) {
+                Font old = UIManager.getFont(key);
+                if (old != null) UIManager.put(key, new FontUIResource(font(old.getStyle(), old.getSize2D())));
+            }
+        }
+
         // ---------- Combo boxes (every JComboBox in the app) ----------
         UIManager.put("ComboBoxUI", GlassComboBoxUI.class.getName());
         UIManager.put("ComboBox.font", new FontUIResource(font(Font.PLAIN, 13)));

@@ -47,7 +47,23 @@ public final class Palette {
     public static final int RADIUS_CARD  = 22;   // cards
     public static final int RADIUS_PILL  = 16;   // nav pills, buttons
 
+    private static final String FONT_PATH = "/assets/fonts/Rubik-VariableFont_wght.ttf";
+    private static final Font BASE = loadBase();
+
+    private static Font loadBase() {
+        try (java.io.InputStream in = Palette.class.getResourceAsStream(FONT_PATH)) {
+            if (in != null) {
+                Font f = Font.createFont(Font.TRUETYPE_FONT, in);
+                GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(f);
+                return f;
+            }
+        } catch (Exception ignored) { }
+        return new Font("Segoe UI", Font.PLAIN, 12);   // fallback when the file is missing
+    }
+
     public static Font font(int style, float size) {
-        return new Font("Segoe UI", style, Math.round(size));
+        // The variable font's default instance is Light, which looks thin, so plain text is
+        // rendered with the (synthetic) bold flag to land at a regular/medium weight.
+        return BASE.deriveFont(style | Font.BOLD, (float) Math.round(size));
     }
 }
