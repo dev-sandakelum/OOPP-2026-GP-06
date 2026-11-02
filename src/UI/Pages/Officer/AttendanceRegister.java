@@ -232,38 +232,93 @@ public class AttendanceRegister extends Page {
             info(this, "Select a course first.");
             return;
         }
-        String date = dateField.getText().trim();
-        Date sessionDate;
-        try {
-            sessionDate = Date.valueOf(date);
-        } catch (IllegalArgumentException ex) {
-            info(this, "Enter the session date as yyyy-MM-dd (for example 2026-10-22).");
-            return;
-        }
 
         int offering = offeringId();
         try {
+            // Auto-increment session number
             int next = 1;
             for (Session s : sessionData.findByOffering(offering)) {
                 next = Math.max(next, s.getSessionNumber() + 1);
             }
 
-            String[] labels = {"Session number", "Type (LECTURE / PRACTICAL)",
-                    "Start time (HH:mm)", "End time (HH:mm)", "Room"};
-            String[] v = form(this, "New session on " + date, labels,
-                    new String[]{String.valueOf(next), "LECTURE", "08:00", "10:00", ""});
-            if (v == null) return;
+            // Build custom dialog panel
+            JPanel p = new JPanel(new GridLayout(10, 1, 0, 4));
+            p.setOpaque(false);
+
+            // Date
+            JTextField dateInput = field(22);
+            dateInput.setText(dateField.getText().trim());
+            p.add(label("Date (yyyy-MM-dd)"));
+            p.add(dateInput);
+
+            // Type dropdown
+            JComboBox<String> typeCombo = new JComboBox<>(new String[]{"LECTURE", "PRACTICAL"});
+            typeCombo.setFont(font(Font.PLAIN, 14));
+            typeCombo.setBackground(SURFACE);
+            typeCombo.setForeground(INK);
+            p.add(label("Type"));
+            p.add(typeCombo);
+
+            // Start time
+            JTextField startInput = field(22);
+            startInput.setText("08:00");
+            p.add(label("Start time (HH:mm)"));
+            p.add(startInput);
+
+            // End time
+            JTextField endInput = field(22);
+            endInput.setText("10:00");
+            p.add(label("End time (HH:mm)"));
+            p.add(endInput);
+
+            // Room dropdown
+            JComboBox<String> roomCombo = new JComboBox<>(new String[]{"", "LH-01", "LH-02", "LH-03", "ICT Lab 1", "ICT Lab 2"});
+            roomCombo.setFont(font(Font.PLAIN, 14));
+            roomCombo.setBackground(SURFACE);
+            roomCombo.setForeground(INK);
+            p.add(label("Room"));
+            p.add(roomCombo);
+
+            if (!ask(this, "New session on " + dateInput.getText(), p)) return;
+
+            // Parse date
+            Date sessionDate;
+            try {
+                sessionDate = Date.valueOf(dateInput.getText().trim());
+            } catch (IllegalArgumentException ex) {
+                info(this, "Enter the date as yyyy-MM-dd (for example 2026-10-22).");
+                return;
+            }
+
+            // Parse times
+            String startText = startInput.getText().trim();
+            String endText   = endInput.getText().trim();
+            Time startTime, endTime;
+            try {
+                startTime = startText.isEmpty() ? null : Time.valueOf(startText + ":00");
+                endTime   = endText.isEmpty()   ? null : Time.valueOf(endText   + ":00");
+            } catch (IllegalArgumentException ex) {
+                info(this, "Check the times — use HH:mm format (for example 08:00).");
+                return;
+            }
+
+            String selectedRoom = (String) roomCombo.getSelectedItem();
+            String selectedType = (String) typeCombo.getSelectedItem();
 
             Session s = new Session();
             s.setOfferingId(offering);
-            s.setSessionNumber(Integer.parseInt(v[0]));
-            s.setSessionType(v[1].isEmpty() ? null : v[1].toUpperCase());
+            s.setSessionNumber(next);
+            s.setSessionType(selectedType == null || selectedType.isEmpty() ? null : selectedType);
             s.setSessionDate(sessionDate);
-            s.setStartTime(v[2].isEmpty() ? null : Time.valueOf(v[2] + ":00"));
-            s.setEndTime(v[3].isEmpty() ? null : Time.valueOf(v[3] + ":00"));
-            s.setRoom(v[4].isEmpty() ? null : v[4]);
+            s.setStartTime(startTime);
+            s.setEndTime(endTime);
+            s.setRoom(selectedRoom == null || selectedRoom.isEmpty() ? null : selectedRoom);
 
             Session saved = sessionData.insert(s);
+            // Update the date field to match the session date chosen
+            loading = true;
+            dateField.setText(sessionDate.toString());
+            loading = false;
             loadSessions();
             for (int i = 0; i < sessions.size(); i++) {
                 if (sessions.get(i).getSessionId() == saved.getSessionId()) {
@@ -271,8 +326,6 @@ public class AttendanceRegister extends Page {
                 }
             }
             onChanged.run();
-        } catch (IllegalArgumentException ex) {
-            info(this, "Check the session number and the times (HH:mm).");
         } catch (DataAccessException ex) {
             info(this, "Failed to create the session: " + ex.getMessage());
         }
