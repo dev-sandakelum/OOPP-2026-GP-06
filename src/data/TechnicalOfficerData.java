@@ -5,6 +5,7 @@ import model.Attendance;
 import model.Notice;
 import model.Session;
 import model.TimetableEntity;
+import model.TimetableSlot;
 import model.TechnicalOfficer;
 import Exception.DataAccessException;
 
@@ -12,6 +13,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -269,6 +271,196 @@ public class TechnicalOfficerData {
             return list;
         } catch (SQLException e) {
             throw new DataAccessException("Could not load timetable entities", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Weekly slots of one semester, optionally limited to one department
+     * (depId 0 = every department). Only published/active timetables count.
+     * A slot belongs to a semester through its course offering, so a timetable
+     * that mixes several semesters still shows the right slots.
+     */
+    public List<TimetableSlot> getTimetableSlots(int semesterId, int depId) {
+        String sql = "SELECT te.timetable_entity_id, te.offering_id, te.day, te.start_time, te.end_time, te.lecture_hall, te.session_type, " +
+                "c.course_code, c.course_name " +
+                "FROM timetable_entity te " +
+                "JOIN timetable t ON t.timetable_id = te.timetable_id " +
+                "JOIN course_offering o ON o.offering_id = te.offering_id " +
+                "JOIN course c ON c.course_id = o.course_id " +
+                "WHERE o.semester_id = ? AND t.status IN ('ACTIVE', 'PUBLISHED') " +
+                "AND (? = 0 OR c.dep_id = ?) " +
+                "ORDER BY te.start_time, te.end_time, c.course_code";
+
+        List<TimetableSlot> list = new ArrayList<>();
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setInt(1, semesterId);
+            ps.setInt(2, depId);
+            ps.setInt(3, depId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Time start = rs.getTime("start_time");
+                    Time end = rs.getTime("end_time");
+                    if (start == null || end == null) continue;   // cannot be placed on the grid
+                    list.add(new TimetableSlot(
+                            rs.getInt("timetable_entity_id"),
+                            rs.getInt("offering_id"),
+                            rs.getString("day"),
+                            start.toLocalTime(),
+                            end.toLocalTime(),
+                            rs.getString("lecture_hall"),
+                            rs.getString("session_type"),
+                            rs.getString("course_code"),
+                            rs.getString("course_name")));
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not load the timetable", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** A course offered in a semester, for the add-slot picker. */
+    public record OfferingOption(int offeringId, String code, String name) {
+        @Override public String toString() { return code + "  " + name; }
+    }
+
+    /** Offerings of one semester, optionally limited to one department (depId 0 = all). */
+    public List<OfferingOption> getOfferingOptions(int semesterId, int depId) {
+        String sql = "SELECT o.offering_id, c.course_code, c.course_name " +
+                "FROM course_offering o JOIN course c ON c.course_id = o.course_id " +
+                "WHERE o.semester_id = ? AND (? = 0 OR c.dep_id = ?) " +
+                "ORDER BY c.course_code";
+        List<OfferingOption> list = new ArrayList<>();
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, semesterId);
+            ps.setInt(2, depId);
+            ps.setInt(3, depId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new OfferingOption(rs.getInt(1), rs.getString(2), rs.getString(3)));
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not load the course list", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Course codes already using the same hall on the same day at an overlapping time
+     * in this semester. excludeSlotId is the slot being edited (0 for a new slot).
+     */
+    public List<String> findRoomConflicts(int semesterId, String day, String hall,
+                                          Time start, Time end, int excludeSlotId) {
+        List<String> codes = new ArrayList<>();
+        if (hall == null || hall.isBlank()) return codes;
+        String sql = "SELECT c.course_code FROM timetable_entity te " +
+                "JOIN course_offering o ON o.offering_id = te.offering_id " +
+                "JOIN course c ON c.course_id = o.course_id " +
+                "WHERE o.semester_id = ? AND te.day = ? AND te.lecture_hall = ? " +
+                "AND te.timetable_entity_id <> ? AND te.start_time < ? AND te.end_time > ?";
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, semesterId);
+            ps.setString(2, day);
+            ps.setString(3, hall);
+            ps.setInt(4, excludeSlotId);
+            ps.setTime(5, end);
+            ps.setTime(6, start);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) codes.add(rs.getString(1));
+            }
+            return codes;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not check the room", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Adds a slot. It goes into the published/active timetable of the academic year
+     * of the semester, or the latest published timetable if that year has none.
+     */
+    public void addTimetableSlot(int semesterId, int offeringId, String day, Time start, Time end,
+                                 String hall, String type) {
+        String find = "SELECT COALESCE(" +
+                "(SELECT MAX(t.timetable_id) FROM timetable t JOIN semester s ON s.academic_year = t.academic_year " +
+                " WHERE s.semester_id = ? AND t.status IN ('ACTIVE', 'PUBLISHED'))," +
+                "(SELECT MAX(timetable_id) FROM timetable WHERE status IN ('ACTIVE', 'PUBLISHED')))";
+        String insert = "INSERT INTO timetable_entity " +
+                "(timetable_id, offering_id, day, start_time, end_time, lecture_hall, session_type) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection c = conn()) {
+            int timetableId;
+            try (PreparedStatement ps = c.prepareStatement(find)) {
+                ps.setInt(1, semesterId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    timetableId = rs.getInt(1);
+                    if (rs.wasNull()) throw new DataAccessException("There is no published timetable to add the slot to", null);
+                }
+            }
+            try (PreparedStatement ps = c.prepareStatement(insert)) {
+                ps.setInt(1, timetableId);
+                ps.setInt(2, offeringId);
+                ps.setString(3, day);
+                ps.setTime(4, start);
+                ps.setTime(5, end);
+                ps.setString(6, hall);
+                ps.setString(7, type);
+                ps.executeUpdate();
+            }
+        } catch (DataAccessException e) {
+            throw e;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not add the timetable slot", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Changes day, time, hall and type of an existing slot. */
+    public void updateTimetableSlot(int slotId, String day, Time start, Time end, String hall, String type) {
+        String sql = "UPDATE timetable_entity SET day = ?, start_time = ?, end_time = ?, " +
+                "lecture_hall = ?, session_type = ? WHERE timetable_entity_id = ?";
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, day);
+            ps.setTime(2, start);
+            ps.setTime(3, end);
+            ps.setString(4, hall);
+            ps.setString(5, type);
+            ps.setInt(6, slotId);
+            if (ps.executeUpdate() == 0) throw new DataAccessException("The slot no longer exists", null);
+        } catch (DataAccessException e) {
+            throw e;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not update the timetable slot", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Removes a slot from the timetable. */
+    public void deleteTimetableSlot(int slotId) {
+        String sql = "DELETE FROM timetable_entity WHERE timetable_entity_id = ?";
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, slotId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not delete the timetable slot", e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

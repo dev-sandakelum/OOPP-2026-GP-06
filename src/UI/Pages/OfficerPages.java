@@ -63,7 +63,7 @@ public class OfficerPages extends JFrame implements FrameData {
         cardHost.add(new AttendanceRegister(refreshOverview), officerTabs[1]);
         cardHost.add(new Medicals(refreshOverview), officerTabs[2]);
         cardHost.add(new Notices(user), officerTabs[3]);
-        cardHost.add(new Timetables(), officerTabs[4]);
+        cardHost.add(new Timetables(user), officerTabs[4]);
         cardHost.add(new MyProfile(to), officerTabs[5]);
 
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
