@@ -131,6 +131,31 @@ public class UserData {
         }
     }
 
+    /** Updates only the profile fields available to undergraduate accounts. */
+    public boolean updateStudentProfileDetails(User u) {
+        String sql = "UPDATE " + TABLE + " SET email = ?, phone = ?, address = ? WHERE user_id = ?";
+        try (Connection c = conn()) {
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, u.getEmail());
+                ps.setString(2, u.getContact_number());
+                ps.setString(3, u.getAddress());
+                ps.setInt(4, u.getUser_id());
+                if (ps.executeUpdate() > 0) return true;
+            }
+
+            try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM " + TABLE + " WHERE user_id = ?")) {
+                ps.setInt(1, u.getUser_id());
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next();
+                }
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not update profile details for user " + u.getUser_id(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /** Pass an already-hashed password. */
     public boolean updatePassword(int id, String passwordHash) {
         String sql = "UPDATE " + TABLE + " SET password = ? WHERE user_id = ?";
