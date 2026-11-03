@@ -1,7 +1,10 @@
 
 package UI.Pages.Student;
 
+import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.ReadOnlyTableModel;
+import UI.Pages.Components.Ui;
 import Exception.DataAccessException;
 
 import data.EnrollmentData;
@@ -21,7 +24,6 @@ import model.CourseMaterial;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
 
 import java.awt.*;
 import java.io.File;
@@ -30,6 +32,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static UI.Kit.Palette.*;
 
 public class MyCourses extends Page {
 
@@ -44,8 +48,9 @@ public class MyCourses extends Page {
     private final CourseMaterialData materialData = new CourseMaterialData();
 
     // Table components
-    private DefaultTableModel tableModel;
-    private JTable coursesTable;
+    private final ReadOnlyTableModel tableModel =
+            new ReadOnlyTableModel(new String[]{"CODE", "COURSE NAME", "SEMESTER", "LECTURER"});
+    private final JTable coursesTable = Ui.table(tableModel, null, -1);
 
     // Stores offering IDs in the same order as table model rows
     private final List<Integer> offeringIds = new ArrayList<>();
@@ -62,51 +67,37 @@ public class MyCourses extends Page {
 
         JPanel body = new JPanel();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-        body.setBackground(new Color(245, 247, 250));
+        body.setOpaque(false);
         body.setBorder(new EmptyBorder(20, 20, 20, 20));
 
         // ==============================
         // ENROLLED MODULES KPI CARD
         // ==============================
 
-        JPanel kpiCard = new JPanel(new BorderLayout());
-        kpiCard.setBackground(Color.WHITE);
-
-        kpiCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(225, 230, 235)),
-                new EmptyBorder(18, 20, 18, 20)
-        ));
-
-        kpiCard.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 95)
-        );
+        Card kpiCard = new Card(true);
+        kpiCard.setLayout(new BoxLayout(kpiCard, BoxLayout.Y_AXIS));
+        kpiCard.setBorder(new EmptyBorder(18, 20, 18, 20));
+        kpiCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
 
         JLabel kpiTitle = new JLabel("Enrolled Modules");
+        kpiTitle.setFont(font(Font.BOLD, 13));
+        kpiTitle.setForeground(ON_BRAND_2);
 
-        kpiTitle.setFont(new Font("Arial", Font.PLAIN, 14));
-        kpiTitle.setForeground(new Color(100, 110, 120));
+        moduleCountLabel.setFont(font(Font.BOLD, 34));
+        moduleCountLabel.setForeground(ON_BRAND);
 
-        moduleCountLabel.setFont(
-                new Font("Arial", Font.BOLD, 28)
-        );
+        JLabel kpiSub = new JLabel("Active course registrations");
+        kpiSub.setFont(font(Font.PLAIN, 11));
+        kpiSub.setForeground(ON_BRAND_2);
 
-        moduleCountLabel.setForeground(
-                new Color(35, 90, 65)
-        );
+        kpiTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        moduleCountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        kpiSub.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel kpiContent = new JPanel();
-
-        kpiContent.setLayout(
-                new BoxLayout(kpiContent, BoxLayout.Y_AXIS)
-        );
-
-        kpiContent.setOpaque(false);
-
-        kpiContent.add(kpiTitle);
-        kpiContent.add(Box.createVerticalStrut(5));
-        kpiContent.add(moduleCountLabel);
-
-        kpiCard.add(kpiContent, BorderLayout.CENTER);
+        kpiCard.add(kpiTitle);
+        kpiCard.add(Box.createVerticalGlue());
+        kpiCard.add(moduleCountLabel);
+        kpiCard.add(kpiSub);
 
         body.add(kpiCard);
         body.add(Box.createVerticalStrut(20));
@@ -115,104 +106,24 @@ public class MyCourses extends Page {
         // COURSES TABLE
         // ==============================
 
-        String[] columns = {
-                "CODE",
-                "COURSE NAME",
-                "SEMESTER",
-                "LECTURER"
-        };
+        coursesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        tableModel = new DefaultTableModel(columns, 0) {
-
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        coursesTable = new JTable(tableModel);
-
-        coursesTable.setRowHeight(35);
-
-        coursesTable.setFont(
-                new Font("Arial", Font.PLAIN, 13)
-        );
-
-        coursesTable.setSelectionMode(
-                ListSelectionModel.SINGLE_SELECTION
-        );
-
-        coursesTable.setFillsViewportHeight(true);
-
-        // Enable table sorting
-        coursesTable.setAutoCreateRowSorter(true);
-
-        coursesTable.getTableHeader().setFont(
-                new Font("Arial", Font.BOLD, 12)
-        );
-
-        coursesTable.getTableHeader().setBackground(
-                new Color(235, 240, 237)
-        );
-
-        coursesTable.getTableHeader().setForeground(
-                new Color(40, 60, 50)
-        );
-
-        JScrollPane scrollPane = new JScrollPane(coursesTable);
-
-        scrollPane.setPreferredSize(
-                new Dimension(750, 300)
-        );
-
-        // Table card
-        JPanel tableCard = new JPanel(
-                new BorderLayout(10, 10)
-        );
-
-        tableCard.setBackground(Color.WHITE);
-
-        tableCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(
-                        new Color(225, 230, 235)
-                ),
-                new EmptyBorder(20, 20, 20, 20)
-        ));
-
-        JLabel tableTitle = new JLabel(
-                "My Registered Courses"
-        );
-
-        tableTitle.setFont(
-                new Font("Arial", Font.BOLD, 17)
-        );
-
-        JLabel instruction = new JLabel(
-                "Select a course to view its learning materials."
-        );
-
-        instruction.setFont(
-                new Font("Arial", Font.PLAIN, 12)
-        );
-
-        instruction.setForeground(Color.GRAY);
-
-        JPanel titlePanel = new JPanel();
-
-        titlePanel.setLayout(
-                new BoxLayout(titlePanel, BoxLayout.Y_AXIS)
-        );
-
-        titlePanel.setOpaque(false);
-
-        titlePanel.add(tableTitle);
-        titlePanel.add(Box.createVerticalStrut(5));
-        titlePanel.add(instruction);
-
-        tableCard.add(titlePanel, BorderLayout.NORTH);
-        tableCard.add(scrollPane, BorderLayout.CENTER);
+        JComponent tableCard = Ui.tableCard(coursesTable);
+        tableCard.setAlignmentX(Component.LEFT_ALIGNMENT);
+        tableCard.setPreferredSize(new Dimension(0, 320));
+        tableCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
 
         body.add(tableCard);
+
+        // ==============================
+        // ASSESSMENTS CARD
+        // ==============================
+
+        body.add(Box.createVerticalStrut(25));
+
+        JComponent assignments = new AssessmentsCard(user);
+        assignments.setAlignmentX(Component.LEFT_ALIGNMENT);
+        body.add(assignments);
 
         // ==============================
         // LECTURER UPLOADED MATERIALS CARD
@@ -393,35 +304,14 @@ public class MyCourses extends Page {
 
             // Display message when no enrolled courses exist
             if (enrolledCount == 0) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "You currently have no enrolled courses.",
-                        "My Courses",
-                        JOptionPane.INFORMATION_MESSAGE
-                );
+                Ui.info(this, "My Courses", "You currently have no enrolled courses.");
             }
 
         } catch (DataAccessException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Unable to load your courses.\n" +
-                            e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+            Ui.warn(this, "Database Error", "Unable to load your courses.\n" + e.getMessage());
 
         } catch (Exception e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "An unexpected error occurred.\n" +
-                            e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
+            Ui.warn(this, "Error", "An unexpected error occurred.\n" + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -434,153 +324,55 @@ public class MyCourses extends Page {
 
         try {
 
-            // Get materials belonging to selected offering
             List<CourseMaterial> materials =
                     materialData.findByOffering(offeringId);
 
             if (materials == null || materials.isEmpty()) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "No learning materials available for this course.",
-                        "Course Materials",
-                        JOptionPane.INFORMATION_MESSAGE
-                );
-
+                Ui.info(this, "No learning materials available for this course.");
                 return;
             }
 
-            // Create list model
-            DefaultListModel<CourseMaterial> listModel =
-                    new DefaultListModel<>();
-
+            DefaultListModel<CourseMaterial> listModel = new DefaultListModel<>();
             for (CourseMaterial material : materials) {
-
-                if (material != null) {
-                    listModel.addElement(material);
-                }
+                if (material != null) listModel.addElement(material);
             }
 
             if (listModel.isEmpty()) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "No learning materials available for this course.",
-                        "Course Materials",
-                        JOptionPane.INFORMATION_MESSAGE
-                );
-
+                Ui.info(this, "No learning materials available for this course.");
                 return;
             }
 
-            // Create materials list
-            JList<CourseMaterial> materialsList =
-                    new JList<>(listModel);
-
-            materialsList.setSelectionMode(
-                    ListSelectionModel.SINGLE_SELECTION
-            );
-
-            materialsList.setFont(
-                    new Font("Arial", Font.PLAIN, 13)
-            );
-
+            JList<CourseMaterial> materialsList = new JList<>(listModel);
+            materialsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            materialsList.setFont(font(Font.PLAIN, 13));
             materialsList.setFixedCellHeight(35);
+            materialsList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
+                String title = value.getTitle() != null ? value.getTitle() : "Untitled Material";
+                String type  = value.getMaterial_type() != null ? value.getMaterial_type() : "File";
+                JLabel label = new JLabel(title + "  (" + type + ")");
+                label.setOpaque(true);
+                label.setBorder(new EmptyBorder(5, 10, 5, 10));
+                label.setBackground(isSelected ? BRAND_SOFT : SURFACE);
+                label.setForeground(INK);
+                return label;
+            });
 
-            // Custom list renderer
-            materialsList.setCellRenderer(
-                    (list, value, index, isSelected, cellHasFocus) -> {
+            JScrollPane sp = new JScrollPane(materialsList);
+            sp.setPreferredSize(new Dimension(450, 220));
 
-                        String title = value.getTitle() != null
-                                ? value.getTitle()
-                                : "Untitled Material";
-
-                        String type = value.getMaterial_type() != null
-                                ? value.getMaterial_type()
-                                : "File";
-
-                        JLabel label = new JLabel(
-                                title + " (" + type + ")"
-                        );
-
-                        label.setOpaque(true);
-
-                        label.setBorder(
-                                new EmptyBorder(5, 10, 5, 10)
-                        );
-
-                        if (isSelected) {
-
-                            label.setBackground(
-                                    new Color(220, 235, 225)
-                            );
-
-                        } else {
-
-                            label.setBackground(Color.WHITE);
-                        }
-
-                        return label;
-                    }
-            );
-
-            JScrollPane materialScrollPane =
-                    new JScrollPane(materialsList);
-
-            materialScrollPane.setPreferredSize(
-                    new Dimension(450, 220)
-            );
-
-            // Show materials dialog
-            int result = JOptionPane.showConfirmDialog(
-                    this,
-                    materialScrollPane,
-                    "Course Learning Materials",
-                    JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.PLAIN_MESSAGE
-            );
-
-            // Open selected material
-            if (result == JOptionPane.OK_OPTION) {
-
-                CourseMaterial selectedMaterial =
-                        materialsList.getSelectedValue();
-
-                if (selectedMaterial != null) {
-
-                    openMaterial(selectedMaterial);
-
+            if (Ui.ask(this, "Course Learning Materials", sp)) {
+                CourseMaterial selected = materialsList.getSelectedValue();
+                if (selected != null) {
+                    openMaterial(selected);
                 } else {
-
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "Please select a learning material.",
-                            "Course Materials",
-                            JOptionPane.INFORMATION_MESSAGE
-                    );
+                    Ui.info(this, "Please select a learning material.");
                 }
             }
 
         } catch (DataAccessException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Unable to load course materials.\n" +
-                            e.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
+            Ui.warn(this, "Database Error", "Unable to load course materials.\n" + e.getMessage());
         } catch (Exception e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "An unexpected error occurred while loading materials.\n" +
-                            e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
+            Ui.warn(this, "Error", "An unexpected error occurred while loading materials.\n" + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -634,14 +426,7 @@ public class MyCourses extends Page {
                 File file = new File(filePath);
 
                 if (!file.exists() || !file.isFile()) {
-
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "The material file could not be found.",
-                            "File Not Found",
-                            JOptionPane.WARNING_MESSAGE
-                    );
-
+                    Ui.info(this, "The material file could not be found.");
                     return;
                 }
 
@@ -667,25 +452,11 @@ public class MyCourses extends Page {
 
             // No link or file path available
             else {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "No file path or external link is available.",
-                        "Material Unavailable",
-                        JOptionPane.WARNING_MESSAGE
-                );
+                Ui.info(this, "No file path or external link is available.");
             }
 
         } catch (Exception e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Unable to open the selected material.\n" +
-                            e.getMessage(),
-                    "Open Material Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
+            Ui.warn(this, "Open Material Error", "Unable to open the selected material.\n" + e.getMessage());
             e.printStackTrace();
         }
     }
