@@ -13,35 +13,39 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Saves and loads the marks of the Grades & GPA page (Quiz 1, 2, 3, Mid Exam, Assignments, Project).
+ * Saves and loads the marks of the Grades & GPA page.
  *
- * Every assessment of a course is one row in the exam table (exam.type = "Quiz 1", "Mid Exam", ...),
- * and the mark of a student is one row in the result table:
- *   result.student_id, result.exam_id  -> which student and which assessment
- *   result.ca_result                   -> the mark entered by the lecturer
- *   result.total_mark                  -> same mark (these are not the final exam)
- *   result.result_status               -> "ENTERED"
- *   final_exam_mark, sgpa, cgpa, published_date are left empty (they are set later)
+ * All the marks of one student in one course are stored in ONE row of the result table
+ * (the row of the course's first exam), in these columns (see sql/15.add_result_assessment_marks.sql):
+ *   quiz1_mark, quiz2_mark, quiz3_mark, mid_mark, assignment1_mark, assignment2_mark, project_mark
+ * A mark that was not entered is NULL. The other result columns (ca_result, final_exam_mark,
+ * total_mark, sgpa, ...) are not changed here.
  */
 public class MarksData {
+
+    // The names used by the page, in the same order as the result columns below
+    public static final String[] NAMES = {"Quiz 1", "Quiz 2", "Quiz 3", "Mid Exam", "Assignment 1", "Assignment 2", "Project"};
+    private static final String[] COLUMNS = {"quiz1_mark", "quiz2_mark", "quiz3_mark", "mid_mark",
+            "assignment1_mark", "assignment2_mark", "project_mark"};
 
     private Connection conn() throws Exception {
         return Database.getConnection();
     }
 
-    /** All saved marks of a course: student id -> (assessment name -> mark). */
+    /** All saved marks of a course: student id -> (name such as "Quiz 1" -> mark). */
     public Map<Integer, Map<String, BigDecimal>> findByOffering(int offeringId) {
-        String sql = "SELECT r.student_id, e.type, r.ca_result " +
-                "FROM result r JOIN exam e ON e.exam_id = r.exam_id " +
-                "WHERE e.offering_id = ? AND r.ca_result IS NOT NULL";
+        String sql = "SELECT r.* FROM result r WHERE r.exam_id = (SELECT MIN(exam_id) FROM exam WHERE offering_id = ?)";
         Map<Integer, Map<String, BigDecimal>> all = new HashMap<>();
         try (Connection c = conn();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, offeringId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    all.computeIfAbsent(rs.getInt("student_id"), k -> new HashMap<>())
-                            .put(rs.getString("type"), rs.getBigDecimal("ca_result"));
+                    Map<String, BigDecimal> marks = new HashMap<>();
+                    for (int i = 0; i < NAMES.length; i++) {
+                        marks.put(NAMES[i], rs.getBigDecimal(COLUMNS[i]));
+                    }
+                    all.put(rs.getInt("student_id"), marks);
                 }
             }
             return all;
@@ -54,24 +58,24 @@ public class MarksData {
 
     /**
      * Saves the marks of one student in one course.
-     * marks: assessment name -> mark (a null mark means "not entered", so that saved result is removed).
+     * marks: name -> mark. A missing name or a null mark is saved as NULL (not entered).
      */
     public void save(int studentId, int offeringId, Map<String, BigDecimal> marks) {
+        String sql = "INSERT INTO result (student_id, exam_id, " + String.join(", ", COLUMNS) + ") " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE " +
+                "quiz1_mark = VALUES(quiz1_mark), quiz2_mark = VALUES(quiz2_mark), quiz3_mark = VALUES(quiz3_mark), " +
+                "mid_mark = VALUES(mid_mark), assignment1_mark = VALUES(assignment1_mark), " +
+                "assignment2_mark = VALUES(assignment2_mark), project_mark = VALUES(project_mark)";
         try (Connection c = conn()) {
-            c.setAutoCommit(false);   // save all marks of the student together
-            try {
-                for (Map.Entry<String, BigDecimal> entry : marks.entrySet()) {
-                    int examId = findOrCreateExam(c, offeringId, entry.getKey());
-                    if (entry.getValue() == null) {
-                        deleteResult(c, studentId, examId);
-                    } else {
-                        saveResult(c, studentId, examId, entry.getValue());
-                    }
+            int examId = findOrCreateExam(c, offeringId);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setInt(1, studentId);
+                ps.setInt(2, examId);
+                for (int i = 0; i < NAMES.length; i++) {
+                    ps.setBigDecimal(3 + i, marks.get(NAMES[i]));
                 }
-                c.commit();
-            } catch (SQLException e) {
-                c.rollback();
-                throw e;
+                ps.executeUpdate();
             }
         } catch (SQLException e) {
             throw new DataAccessException("Failed to save marks of student " + studentId, e);
@@ -80,48 +84,23 @@ public class MarksData {
         }
     }
 
-    // The exam row of an assessment (e.g. "Quiz 1" of this course). It is created the first time.
-    private int findOrCreateExam(Connection c, int offeringId, String type) throws SQLException {
-        String find = "SELECT exam_id FROM exam WHERE offering_id = ? AND type = ?";
-        try (PreparedStatement ps = c.prepareStatement(find)) {
+    // The exam that holds the marks of a course (its first exam). It is created if the course has none.
+    private int findOrCreateExam(Connection c, int offeringId) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("SELECT MIN(exam_id) FROM exam WHERE offering_id = ?")) {
             ps.setInt(1, offeringId);
-            ps.setString(2, type);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getInt(1);
+                if (rs.next() && rs.getInt(1) > 0) return rs.getInt(1);
             }
         }
 
-        String insert = "INSERT INTO exam (offering_id, type) VALUES (?, ?)";
-        try (PreparedStatement ps = c.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement ps = c.prepareStatement(
+                "INSERT INTO exam (offering_id, type) VALUES (?, 'Final')", Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, offeringId);
-            ps.setString(2, type);
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 keys.next();
                 return keys.getInt(1);
             }
-        }
-    }
-
-    // Insert the result, or update it if this student already has a result for this exam
-    private void saveResult(Connection c, int studentId, int examId, BigDecimal mark) throws SQLException {
-        String sql = "INSERT INTO result (student_id, exam_id, ca_result, final_exam_mark, total_mark, sgpa, result_status, published_date, cgpa) " +
-                "VALUES (?, ?, ?, NULL, ?, NULL, 'ENTERED', NULL, NULL) " +
-                "ON DUPLICATE KEY UPDATE ca_result = VALUES(ca_result), total_mark = VALUES(total_mark), result_status = VALUES(result_status)";
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, studentId);
-            ps.setInt(2, examId);
-            ps.setBigDecimal(3, mark);
-            ps.setBigDecimal(4, mark);
-            ps.executeUpdate();
-        }
-    }
-
-    private void deleteResult(Connection c, int studentId, int examId) throws SQLException {
-        try (PreparedStatement ps = c.prepareStatement("DELETE FROM result WHERE student_id = ? AND exam_id = ?")) {
-            ps.setInt(1, studentId);
-            ps.setInt(2, examId);
-            ps.executeUpdate();
         }
     }
 }
