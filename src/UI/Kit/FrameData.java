@@ -15,7 +15,7 @@ public interface FrameData {
             "Attendance", "Grades & GPA", "Medicals", "Notices", "My Profile"};
 
     String[] officerTabs  = {"Overview", "Attendance Register", "Medicals",
-            "Notices", "Timetables", "My Profile"};
+            "Courses", "Notices", "Timetables", "My Profile"};
 
     String[] studentTabs  = {"Overview", "My Courses", "My Attendance", "Marks & GPA",
             "Medicals", "Notices", "Timetables", "My Profile"};
