@@ -1,30 +1,32 @@
 package UI.Pages.lecturer;
 
 import UI.Pages.Components.Card;
-import UI.Pages.Components.ReadOnlyTableModel;
 import UI.Pages.Components.SimpleDocListener;
+import UI.Pages.Components.Ui;
+import data.AssessmentData;
 import data.CourseData;
 import data.CourseOfferingData;
 import data.EnrollmentData;
-import data.ExamData;
-import data.ResultData;
+import data.MarksData;
 import data.UserData;
+import model.Assessment;
 import model.Course;
 import model.CourseOffering;
 import model.Enrollment;
-import model.Exam;
-import model.Result;
 import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -35,58 +37,52 @@ import static UI.Pages.Components.Ui.table;
 
 /**
  * Lecturer - Grades & GPA page
- * - Lecturer selects a course and sees every student's marks, grade and grade point for that course.
+ * - Lecturer selects a course and enters the marks of each student:
+ *   Quiz 1, Quiz 2, Quiz 3, Mid Exam and, if the course has them, its scheduled Assignments and Project.
+ * - Every row has its own "Save" button.
  * - Lecturer can search students by name or student ID.
  *
- * Courses and marks come from the database (CourseOfferingData, CourseData, EnrollmentData,
- * ExamData, ResultData and UserData).
+ * Courses, students and marks come from the database (see MarksData for how marks are stored).
  */
 public class Grades_GPA extends LecturerUI.Page {
 
-    // grade scale (same grades as the Marks page) and the grade point of each grade
-    private static final String[] GRADES = {"A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "E"};
-    private static final double[] POINTS = {4.0, 4.0, 3.7, 3.3, 3.0, 2.7, 2.3, 2.0, 1.7, 1.3, 1.0, 0.0};
+    // marks every course has; assignments and project are added from the course's scheduled assessments
+    private static final String[] FIXED_MARKS = {"Quiz 1", "Quiz 2", "Quiz 3", "Mid Exam"};
 
-    // chip color of every grade: A = green, B = light green, C = amber, D/E = red
-    private static final Map<String, Color> GRADE_COLORS = new HashMap<>();
-    static {
-        for (String g : GRADES) {
-            if (g.startsWith("A"))      GRADE_COLORS.put(g, OK);
-            else if (g.startsWith("B")) GRADE_COLORS.put(g, BRAND_LT);
-            else if (g.startsWith("C")) GRADE_COLORS.put(g, WARN);
-            else                        GRADE_COLORS.put(g, BAD);
-        }
-    }
-    private static final int GRADE_COL = 5;
-
-    JComboBox<String> courseBox = new JComboBox<>();
-    JTextField searchField = field(20);
-    JLabel footer = new JLabel(" ");
-
-    DefaultTableModel model = new ReadOnlyTableModel(
-            new String[]{"Student ID", "Student Name", "Marks Obtained", "Total Marks", "Percentage", "Grade", "Grade Point"});
-    JTable table = table(model, GRADE_COLORS, GRADE_COL);   // shared flat table, grade shown as a chip
-
-    // The sorter is used to hide rows that do not match the search text
-    TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+    // first two columns are the student, then the marks, the last column is the Save button
+    private static final int FIRST_MARK_COL = 2;
 
     // ---------- Data layers ----------
     private final CourseOfferingData offeringData = new CourseOfferingData();
     private final CourseData courseData = new CourseData();
     private final EnrollmentData enrollmentData = new EnrollmentData();
-    private final ExamData examData = new ExamData();
-    private final ResultData resultData = new ResultData();
+    private final AssessmentData assessmentData = new AssessmentData();
     private final UserData userData = new UserData();
+    private final MarksData marksData = new MarksData();
     private final int lecturerId;
     private List<CourseOffering> offerings = new ArrayList<>();
 
+    JComboBox<String> courseBox = new JComboBox<>();
+    JTextField searchField = field(20);
+    JLabel footer = new JLabel(" ");
+
+    // only the mark columns can be edited (not the student ID, name or the Save button)
+    DefaultTableModel model = new DefaultTableModel() {
+        @Override
+        public boolean isCellEditable(int row, int col) {
+            return col >= FIRST_MARK_COL && col < getColumnCount() - 1;
+        }
+    };
+    JTable table = table(model, null, -1);
+
+    // The sorter is used to hide rows that do not match the search text
+    TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+
     public Grades_GPA(User user) {
-        super("Grades & GPA", "Grades and GPA for your modules", null);
+        super("Grades & GPA", "Enter the marks of your students", null);
         this.lecturerId = user == null ? 0 : user.getUser_id();
 
         table.setRowSorter(sorter);
-        table.setFocusable(false);
-        table.getTableHeader().setBorder(new MatteBorder(0, 0, 1, 0, LINE));
 
         // ----- Main body: toolbar on top, table card below -----
         JPanel body = new JPanel(new BorderLayout(0, 16));
@@ -95,11 +91,21 @@ public class Grades_GPA extends LecturerUI.Page {
         body.add(buildTableCard(), BorderLayout.CENTER);
         setScrollBody(body);
 
-        // When the course changes, load the marks of that course
-        courseBox.addActionListener(e -> loadMarks());
+        // When the course changes, build the table again for that course
+        courseBox.addActionListener(e -> loadTable());
 
         // When the lecturer types in the search box, filter the table
         searchField.getDocument().addDocumentListener(new SimpleDocListener(this::search));
+
+        // When the lecturer clicks the Save button of a row, save that student's marks
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
+                if (row >= 0 && col == table.getColumnCount() - 1) saveRow(row);
+            }
+        });
 
         loadCourses();
     }
@@ -169,51 +175,124 @@ public class Grades_GPA extends LecturerUI.Page {
     }
 
     // =====================================================================
-    // LOAD STUDENT MARKS FOR THE SELECTED COURSE
+    // LOAD THE TABLE FOR THE SELECTED COURSE
     // =====================================================================
-    private void loadMarks() {
-        model.setRowCount(0);
+    private void loadTable() {
         searchField.setText("");
 
-        String course = (String) courseBox.getSelectedItem();
-        if (course == null) return;
-
-        // total mark (out of 100) comes from the student's result in this course's exams
         int index = courseBox.getSelectedIndex();
-        if (index >= 0) {
-            int offeringId = offerings.get(index).getOffering_id();
-            List<Exam> exams = examData.findByOffering(offeringId);
+        if (index < 0) return;
+        int offeringId = offerings.get(index).getOffering_id();
 
-            for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
-                Result r = null;
-                for (Exam exam : exams) {
-                    r = resultData.find(en.getStudent_id(), exam.getExamId());
-                    if (r != null) break;
-                }
-                if (r == null || r.getTotalMark() == null) continue;   // no marks entered yet
+        // columns: ID, Name, Quiz 1-3, Mid Exam, then the course's assignments / project, then Save
+        List<String> columns = new ArrayList<>();
+        columns.add("Student ID");
+        columns.add("Student Name");
+        for (String name : FIXED_MARKS) columns.add(name);
+        boolean hasAssignment = false, hasProject = false;
+        for (Assessment a : assessmentData.findByOffering(offeringId)) {
+            if ("ASSIGNMENT".equalsIgnoreCase(a.getAssessmentType())) hasAssignment = true;
+            if ("PROJECT".equalsIgnoreCase(a.getAssessmentType())) hasProject = true;
+        }
+        if (hasAssignment) {
+            columns.add("Assignment 1");   // two separate fields for the assignments
+            columns.add("Assignment 2");
+        }
+        if (hasProject) columns.add("Project");
+        columns.add("Save");
 
-                User student = userData.findById(en.getStudent_id());
-                addRow(String.valueOf(en.getStudent_id()), student == null ? "" : student.getName(),
-                        r.getTotalMark().doubleValue(), 100);
+        model.setRowCount(0);
+        model.setColumnIdentifiers(columns.toArray());
+
+        // one row per enrolled student, with the marks already saved in the database
+        Map<Integer, Map<String, BigDecimal>> saved = marksData.findByOffering(offeringId);
+        for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
+            User student = userData.findById(en.getStudent_id());
+            Map<String, BigDecimal> marks = saved.getOrDefault(en.getStudent_id(), new HashMap<>());
+
+            Object[] row = new Object[columns.size()];
+            row[0] = String.valueOf(en.getStudent_id());
+            row[1] = student == null ? "" : student.getName();
+            for (int i = FIRST_MARK_COL; i < row.length - 1; i++) {
+                BigDecimal mark = marks.get(columns.get(i));
+                row[i] = mark == null ? "" : mark.stripTrailingZeros().toPlainString();
             }
+            row[row.length - 1] = "Save";
+            model.addRow(row);
         }
 
+        // show the last column as a button (setting the columns again removes old renderers)
+        table.getColumnModel().getColumn(columns.size() - 1).setCellRenderer(saveButtonRenderer());
         updateFooter();
     }
 
-    private void addRow(String id, String name, double marks, int total) {
-        double percent = marks * 100.0 / total;
-        String grade = Marks.gradeOf(percent)[0];
-        model.addRow(new Object[]{id, name, Marks.fmt(marks), total,
-                String.format("%.1f%%", percent), grade, String.format("%.2f", pointOf(grade))});
+    // Draws a "Save" button inside the cell
+    private TableCellRenderer saveButtonRenderer() {
+        // flat rounded blue button (no shadow), small enough to fit the 44px row
+        JButton button = new JButton("Action") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(BRAND);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.dispose();
+                super.paintComponent(g);   // draws the "Save" text
+            }
+        };
+        button.setFont(font(Font.BOLD, 12));
+        button.setForeground(ON_BRAND);
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setOpaque(false);
+        button.setBorder(new EmptyBorder(6, 14, 6, 14));
+
+        // transparent panel around it gives some space inside the cell
+        JPanel cell = new JPanel(new GridBagLayout());
+        cell.setOpaque(false);
+        cell.add(button);
+        return (t, value, selected, focused, row, col) -> cell;
     }
 
-    // Grade point of a grade, e.g. "B+" -> 3.3
-    private double pointOf(String grade) {
-        for (int i = 0; i < GRADES.length; i++) {
-            if (GRADES[i].equals(grade)) return POINTS[i];
+    // =====================================================================
+    // SAVE ONE STUDENT'S MARKS
+    // =====================================================================
+    private void saveRow(int viewRow) {
+        // the lecturer may still be typing in a cell, so finish that first
+        if (table.isEditing()) table.getCellEditor().stopCellEditing();
+
+        int studentId = Integer.parseInt((String) table.getValueAt(viewRow, 0));
+        String name = (String) table.getValueAt(viewRow, 1);
+
+        // read every mark: empty = not entered, otherwise a number from 0 to 100
+        Map<String, BigDecimal> marks = new HashMap<>();
+        for (int col = FIRST_MARK_COL; col < table.getColumnCount() - 1; col++) {
+            String text = String.valueOf(table.getValueAt(viewRow, col)).trim();
+            if (text.isEmpty()) {
+                marks.put(table.getColumnName(col), null);
+                continue;
+            }
+            try {
+                BigDecimal mark = new BigDecimal(text);
+                if (mark.signum() < 0 || mark.compareTo(BigDecimal.valueOf(100)) > 0) throw new NumberFormatException();
+                marks.put(table.getColumnName(col), mark);
+            } catch (NumberFormatException ex) {
+                Ui.error(this, "Invalid mark", table.getColumnName(col) + " of " + name
+                        + " must be a number from 0 to 100.");
+                return;
+            }
         }
-        return 0;
+
+        try {
+            int offeringId = offerings.get(courseBox.getSelectedIndex()).getOffering_id();
+            marksData.save(studentId, offeringId, marks);
+        } catch (Exception ex) {
+            Ui.error(this, "Marks", "Could not save marks: " + ex.getMessage());
+            return;
+        }
+
+        Ui.info(this, "Marks of " + name + " (" + studentId + ") saved.");
     }
 
     // =====================================================================
@@ -231,15 +310,8 @@ public class Grades_GPA extends LecturerUI.Page {
         updateFooter();
     }
 
-    // "Showing 5 of 5 students  ·  Class average GPA: 3.00"
+    // "Showing 5 of 5 students"
     private void updateFooter() {
-        double sum = 0;
-        for (int i = 0; i < model.getRowCount(); i++) {
-            sum += Double.parseDouble((String) model.getValueAt(i, 6));
-        }
-        double avg = model.getRowCount() == 0 ? 0 : sum / model.getRowCount();
-
-        footer.setText("Showing " + table.getRowCount() + " of " + model.getRowCount() + " students"
-                + "   ·   Class average GPA: " + String.format("%.2f", avg));
+        footer.setText("Showing " + table.getRowCount() + " of " + model.getRowCount() + " students");
     }
 }

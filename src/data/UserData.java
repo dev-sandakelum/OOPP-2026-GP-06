@@ -131,26 +131,32 @@ public class UserData {
         }
     }
 
-    /** Updates only the profile fields available to undergraduate accounts. */
-    public boolean updateStudentProfileDetails(User u) {
-        String sql = "UPDATE " + TABLE + " SET email = ?, phone = ?, address = ? WHERE user_id = ?";
-        try (Connection c = conn()) {
-            try (PreparedStatement ps = c.prepareStatement(sql)) {
-                ps.setString(1, u.getEmail());
-                ps.setString(2, u.getContact_number());
-                ps.setString(3, u.getAddress());
-                ps.setInt(4, u.getUser_id());
-                if (ps.executeUpdate() > 0) return true;
-            }
-
-            try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM " + TABLE + " WHERE user_id = ?")) {
-                ps.setInt(1, u.getUser_id());
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next();
-                }
-            }
+    /** Updates only name, email, phone and address (gender and dob are never changed here). */
+    public boolean updateContact(User u) {
+        String sql = "UPDATE " + TABLE + " SET name = ?, email = ?, phone = ?, address = ? WHERE user_id = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, u.getName());
+            ps.setString(2, u.getEmail());
+            ps.setString(3, u.getContact_number());
+            ps.setString(4, u.getAddress());
+            ps.setInt(5, u.getUser_id());
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new DataAccessException("Could not update profile details for user " + u.getUser_id(), e);
+            throw new DataAccessException("Could not update user " + u.getUser_id(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Updates only the profile photo filename. */
+    public boolean updatePhoto(int id, String photo) {
+        String sql = "UPDATE " + TABLE + " SET photo = ? WHERE user_id = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, photo);
+            ps.setInt(2, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not update photo of user " + id, e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

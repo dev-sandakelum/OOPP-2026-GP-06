@@ -9,8 +9,11 @@ import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.imageio.ImageIO;
 import java.awt.*;
-import java.sql.Date;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
@@ -26,6 +29,7 @@ public class MyProfile extends Page {
     private final JTextField dob = field(20);
     private final JTextField address = field(20);
     private final JTextField gender = field(20);
+    private Avatar avatar;
 
     public MyProfile(User user) {
         super("My Profile", "Your account details", null);
@@ -43,6 +47,8 @@ public class MyProfile extends Page {
         wrap.add(card, BorderLayout.NORTH);
         setScrollBody(wrap);
 
+        dob.setEditable(false);
+        gender.setEditable(false);
         load();
     }
 
@@ -82,8 +88,16 @@ public class MyProfile extends Page {
 
         JPanel row = new JPanel(new BorderLayout(16, 0));
         row.setOpaque(false);
-        row.add(new Avatar(shown, user != null ? user.getPhoto() : null, 64), BorderLayout.WEST);
+        avatar = new Avatar(shown, user != null ? user.getPhoto() : null, 64);
+        row.add(avatar, BorderLayout.WEST);
         row.add(text, BorderLayout.CENTER);
+
+        RoundedButton change = new RoundedButton("Change photo", false);
+        change.addActionListener(e -> changePhoto());
+        JPanel east = new JPanel(new GridBagLayout());
+        east.setOpaque(false);
+        east.add(change);
+        row.add(east, BorderLayout.EAST);
         return row;
     }
 
@@ -93,9 +107,9 @@ public class MyProfile extends Page {
         addField(grid, "Full name", name);
         addField(grid, "Email", email);
         addField(grid, "Contact number", contact);
-        addField(grid, "Date of birth (yyyy-mm-dd)", dob);
+        addField(grid, "Date of birth (read only)", dob);
         addField(grid, "Address", address);
-        addField(grid, "Gender (MALE/FEMALE/OTHER)", gender);
+        addField(grid, "Gender (read only)", gender);
         return grid;
     }
 
@@ -126,27 +140,56 @@ public class MyProfile extends Page {
             info(this, "Name and email are required.");
             return;
         }
-        Date d = null;
-        if (!dob.getText().isBlank()) {
-            try {
-                d = Date.valueOf(dob.getText().trim());
-            } catch (IllegalArgumentException ex) {
-                info(this, "Date of birth must look like 1985-03-21.");
-                return;
-            }
-        }
         user.setName(name.getText().trim());
         user.setEmail(email.getText().trim());
         user.setContact_number(contact.getText().trim());
-        user.setDOB(d);
         user.setAddress(address.getText().trim());
-        user.setGender(gender.getText().trim());
         
         try {
-            boolean ok = userData.update(user);
+            boolean ok = userData.updateContact(user);
             info(this, ok ? "Profile saved successfully." : "Save failed — check the console.");
         } catch (Exception ex) {
-            info(this, "Could not save profile: " + ex.getMessage());
+            Throwable root = ex;
+            while (root.getCause() != null) root = root.getCause();
+            info(this, "Could not save profile: " + root.getMessage());
+        }
+    }
+
+    // lets the lecturer pick an image, stores a copy in uploads/photos and saves its filename
+    private void changePhoto() {
+        if (user == null) return;
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Choose a profile picture");
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Images (jpg, jpeg, png)", "jpg", "jpeg", "png"));
+        if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File src = fc.getSelectedFile();
+        String lower = src.getName().toLowerCase();
+        String ext = lower.endsWith(".png") ? ".png" : ".jpg";
+        String oldPhoto = user.getPhoto();
+        try {
+            if (ImageIO.read(src) == null) {
+                info(this, "That file is not a valid image.");
+                return;
+            }
+            Avatar.UPLOAD_DIR.mkdirs();
+            // unique name so the avatar cache never shows a stale picture
+            String filename = "u" + user.getUser_id() + "_" + System.currentTimeMillis() + ext;
+            Files.copy(src.toPath(), new File(Avatar.UPLOAD_DIR, filename).toPath(),
+                    StandardCopyOption.REPLACE_EXISTING);
+
+            user.setPhoto(filename);
+            if (userData.updatePhoto(user.getUser_id(), filename)) {
+                avatar.set(user.getName(), filename);
+                info(this, "Profile picture updated.");
+            } else {
+                user.setPhoto(oldPhoto);
+                info(this, "Could not update the profile picture.");
+            }
+        } catch (Exception ex) {
+            user.setPhoto(oldPhoto);
+            info(this, "Could not update the profile picture: " + ex.getMessage());
         }
     }
 }
