@@ -131,6 +131,37 @@ public class UserData {
         }
     }
 
+    /** Updates only name, email, phone and address (gender and dob are never changed here). */
+    public boolean updateContact(User u) {
+        String sql = "UPDATE " + TABLE + " SET name = ?, email = ?, phone = ?, address = ? WHERE user_id = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, u.getName());
+            ps.setString(2, u.getEmail());
+            ps.setString(3, u.getContact_number());
+            ps.setString(4, u.getAddress());
+            ps.setInt(5, u.getUser_id());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not update user " + u.getUser_id(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Updates only the profile photo filename. */
+    public boolean updatePhoto(int id, String photo) {
+        String sql = "UPDATE " + TABLE + " SET photo = ? WHERE user_id = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, photo);
+            ps.setInt(2, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not update photo of user " + id, e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /** Pass an already-hashed password. */
     public boolean updatePassword(int id, String passwordHash) {
         String sql = "UPDATE " + TABLE + " SET password = ? WHERE user_id = ?";

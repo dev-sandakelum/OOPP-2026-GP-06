@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -20,6 +21,8 @@ import static UI.Kit.Palette.*;
 public class Avatar extends JComponent {
 
     private static final String PHOTO_DIR = "/assets/photo/";
+    /** Folder (relative to the working directory) where user-uploaded photos are stored. */
+    public static final File UPLOAD_DIR = new File("uploads/photos");
     private static final Map<String, BufferedImage> CACHE = new HashMap<>();
     private static final BufferedImage MISSING = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
 
@@ -56,11 +59,17 @@ public class Avatar extends JComponent {
         BufferedImage img = CACHE.get(filename);
         if (img == null) {
             img = MISSING;
-            try (InputStream in = Avatar.class.getResourceAsStream(PHOTO_DIR + filename)) {
-                if (in != null) {
-                    BufferedImage loaded = ImageIO.read(in);
-                    if (loaded != null) img = loaded;
+            try {
+                File uploaded = new File(UPLOAD_DIR, filename);
+                BufferedImage loaded = null;
+                if (uploaded.isFile()) {
+                    loaded = ImageIO.read(uploaded);
+                } else {
+                    try (InputStream in = Avatar.class.getResourceAsStream(PHOTO_DIR + filename)) {
+                        if (in != null) loaded = ImageIO.read(in);
+                    }
                 }
+                if (loaded != null) img = loaded;
             } catch (Exception ignored) { }
             if (img == MISSING) System.err.println("Profile photo not found: " + PHOTO_DIR + filename);
             CACHE.put(filename, img);
