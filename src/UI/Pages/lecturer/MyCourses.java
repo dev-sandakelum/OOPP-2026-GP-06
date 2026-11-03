@@ -51,7 +51,7 @@ import static UI.Pages.Components.Ui.tableCard;
 public class MyCourses extends LecturerUI.Page {
 
     // tab names (also used as the CardLayout keys)
-    private static final String[] TABS = {"Lecture Materials", "Schedule Quiz", "Assignments", "Student Marks"};
+    private static final String[] TABS = {"Lecture Materials", "Schedule Quiz", "Student Marks"};
 
     // colors of the "Result" chips in the marks table
     private static final Map<String, Color> RESULT_COLORS = Map.of("Pass", OK, "Fail", BAD);
@@ -87,13 +87,6 @@ public class MyCourses extends LecturerUI.Page {
     DefaultTableModel quizModel =
             new ReadOnlyTableModel(new String[]{"Quiz Title", "Date"});
 
-    // ---------- Tab 3: Assignments ----------
-    JTextField assignTitleField    = field(15);
-    JTextField assignStartField    = field(12);   // assessment_date = release/start date
-    JTextField assignDueField      = field(12);   // submitted_date  = due date
-    DefaultTableModel assignModel  =
-            new ReadOnlyTableModel(new String[]{"Assignment", "Start Date", "Due Date"});
-
     // ---------- Tab 3: Marks ----------
     JLabel summaryLabel = new JLabel(" ");
     DefaultTableModel marksModel =
@@ -104,15 +97,12 @@ public class MyCourses extends LecturerUI.Page {
         this.lecturerId = user == null ? 0 : user.getUser_id();
 
         quizDateField.setText(java.time.LocalDate.now().plusDays(7).toString());
-        assignStartField.setText(java.time.LocalDate.now().toString());
-        assignDueField.setText(java.time.LocalDate.now().plusDays(14).toString());
 
         // ----- Tab contents (only one is shown at a time) -----
         cards.setOpaque(false);
         cards.add(buildMaterialsTab(), TABS[0]);
-        cards.add(buildQuizTab(),      TABS[1]);
-        cards.add(buildAssignmentTab(), TABS[2]);
-        cards.add(buildMarksTab(),     TABS[3]);
+        cards.add(buildQuizTab(), TABS[1]);
+        cards.add(buildMarksTab(), TABS[2]);
 
         // ----- Main body: top bar + tab contents -----
         JPanel body = new JPanel(new BorderLayout(0, 16));
@@ -415,81 +405,7 @@ public class MyCourses extends LecturerUI.Page {
     }
 
     // =====================================================================
-    // TAB 3 : ASSIGNMENTS
-    // =====================================================================
-    private JPanel buildAssignmentTab() {
-        RoundedButton addBtn = new RoundedButton("Add Assignment", true);
-        addBtn.addActionListener(e -> addAssignment());
-
-        JPanel form = new JPanel(new GridLayout(2, 4, 12, 6));
-        form.setOpaque(false);
-        form.add(label("ASSIGNMENT TITLE"));
-        form.add(label("START DATE (yyyy-MM-dd)"));
-        form.add(label("DUE DATE (yyyy-MM-dd)"));
-        form.add(new JLabel());
-        form.add(assignTitleField);
-        form.add(assignStartField);
-        form.add(assignDueField);
-        form.add(addBtn);
-
-        return tabPanel(formCard("Add a new assignment", form),
-                table(assignModel, null, -1));
-    }
-
-    private void addAssignment() {
-        int index = courseBox.getSelectedIndex();
-        String title = assignTitleField.getText().trim();
-
-        if (index < 0 || title.isEmpty()) {
-            UI.Pages.Components.Ui.info(this, "Please select a course and enter an assignment title.");
-            return;
-        }
-
-        try {
-            java.sql.Date startDate = java.sql.Date.valueOf(assignStartField.getText().trim());
-            java.sql.Date dueDate   = java.sql.Date.valueOf(assignDueField.getText().trim());
-
-            if (dueDate.before(startDate)) {
-                UI.Pages.Components.Ui.info(this, "Due date must be on or after the start date.");
-                return;
-            }
-
-            Assessment a = new Assessment();
-            a.setOfferingId(offerings.get(index).getOffering_id());
-            a.setAssessmentName(title);
-            a.setAssessmentType("ASSIGNMENT");
-            a.setAssessmentDate(startDate);   // start / release date
-            a.setSubmittedDate(dueDate);       // due date
-            assessmentData.insert(a);
-
-            assignTitleField.setText("");
-            loadAssignments();
-            UI.Pages.Components.Ui.info(this, "Assignment added.");
-
-        } catch (IllegalArgumentException ex) {
-            UI.Pages.Components.Ui.info(this, "Dates must look like 2026-11-10.");
-        } catch (Exception ex) {
-            UI.Pages.Components.Ui.info(this, "Could not add assignment: " + ex.getMessage());
-        }
-    }
-
-    private void loadAssignments() {
-        assignModel.setRowCount(0);
-        int index = courseBox.getSelectedIndex();
-        if (index < 0) return;
-
-        for (Assessment a : assessmentData.findByOffering(offerings.get(index).getOffering_id())) {
-            if (!"ASSIGNMENT".equalsIgnoreCase(a.getAssessmentType())) continue;
-            assignModel.addRow(new Object[]{
-                    a.getAssessmentName(),
-                    a.getAssessmentDate()  == null ? "" : a.getAssessmentDate().toString(),
-                    a.getSubmittedDate()   == null ? "" : a.getSubmittedDate().toString()
-            });
-        }
-    }
-
-    // =====================================================================
-    // TAB 4 : STUDENT MARKS
+    // TAB 3 : STUDENT MARKS
     // =====================================================================
     private JPanel buildMarksTab() {
         summaryLabel.setFont(font(Font.BOLD, 13));
@@ -597,7 +513,6 @@ public class MyCourses extends LecturerUI.Page {
     private void loadCourseData() {
         loadMaterials();
         loadQuizzes();
-        loadAssignments();
         loadMarks();
     }
 

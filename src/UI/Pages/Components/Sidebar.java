@@ -236,8 +236,11 @@ public class Sidebar extends JPanel implements FrameData {
     private static JLabel tracked(String text, float size, Color color) {
         JLabel l = new JLabel(text);
         Map<TextAttribute, Object> a = new HashMap<>();
+        a.put(TextAttribute.FAMILY, "Segoe UI");
+        a.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD);
+        a.put(TextAttribute.SIZE, size);
         a.put(TextAttribute.TRACKING, 0.14f);
-        l.setFont(UI.Kit.Palette.font(Font.BOLD, size).deriveFont(a));
+        l.setFont(new Font(a));
         l.setForeground(color);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
