@@ -8,15 +8,17 @@ import data.BatchData;
 import data.CourseData;
 import data.CourseOfferingData;
 import data.EnrollmentData;
+import data.LecturerData;
 import data.MarksData;
 import data.UndergraduateData;
 import data.UserData;
 import model.Assessment;
 import model.Batch;
-import model.Undergraduate;
 import model.Course;
 import model.CourseOffering;
 import model.Enrollment;
+import model.Lecturer;
+import model.Undergraduate;
 import model.User;
 
 import javax.swing.*;
@@ -45,7 +47,6 @@ import static UI.Pages.Components.Ui.table;
  *   Quiz 1, Quiz 2, Quiz 3, Mid Exam and (only if the course has them) Assignment 1, 2 (if the course has assignments)
  *   and Project (only if the course has a project weight).
  * - Every row has its own "Save" button.
- * - Lecturer can pick a batch to show only the students of that batch (or all batches).
  * - Lecturer can search students by name or student ID.
  *
  * Marks are saved in the result table by MarksData.
@@ -55,7 +56,7 @@ public class Grades_GPA extends LecturerUI.Page {
     // first two columns are the student, then the marks, the last column is the Save button
     private static final int FIRST_MARK_COL = 2;
 
-    JComboBox<String> batchBox = new JComboBox<>();    // first item = all batches
+    JComboBox<String> batchBox = new JComboBox<>();
     JComboBox<String> courseBox = new JComboBox<>();
     JTextField searchField = field(20);
     JLabel footer = new JLabel(" ");
@@ -78,12 +79,13 @@ public class Grades_GPA extends LecturerUI.Page {
     private final EnrollmentData enrollmentData = new EnrollmentData();
     private final AssessmentData assessmentData = new AssessmentData();
     private final UserData userData = new UserData();
-    private final MarksData marksData = new MarksData();
+    private final LecturerData lecturerData = new LecturerData();
     private final BatchData batchData = new BatchData();
     private final UndergraduateData undergraduateData = new UndergraduateData();
-    private List<Batch> batches = new ArrayList<>();   // same order as batchBox items (after "All batches")
+    private final MarksData marksData = new MarksData();
     private final int lecturerId;
     private List<CourseOffering> offerings = new ArrayList<>();
+    private List<Batch> batches = new ArrayList<>();   // batches of the lecturer's department (same order as batchBox, after "All batches")
 
     public Grades_GPA(User user) {
         super("Grades & GPA", "Enter the marks of your students", null);
@@ -100,8 +102,6 @@ public class Grades_GPA extends LecturerUI.Page {
 
         // When the course changes, build the table again for that course
         courseBox.addActionListener(e -> loadTable());
-
-        // When the batch changes, show only the students of that batch
         batchBox.addActionListener(e -> loadTable());
 
         // When the lecturer types in the search box, filter the table
@@ -135,7 +135,7 @@ public class Grades_GPA extends LecturerUI.Page {
         batchBox.setFont(font(Font.PLAIN, 13));
         batchBox.setForeground(INK);
         batchBox.setBackground(SURFACE);
-        batchBox.setPreferredSize(new Dimension(180, 38));
+        batchBox.setPreferredSize(new Dimension(200, 38));
 
         searchField.setFont(font(Font.PLAIN, 13));
         searchField.setToolTipText("Search by student name or ID");
@@ -144,6 +144,7 @@ public class Grades_GPA extends LecturerUI.Page {
         left.setOpaque(false);
         left.add(label("BATCH"));
         left.add(batchBox);
+        left.add(Box.createHorizontalStrut(8));
         left.add(label("COURSE"));
         left.add(courseBox);
         left.add(Box.createHorizontalStrut(8));
@@ -181,12 +182,17 @@ public class Grades_GPA extends LecturerUI.Page {
     }
 
     // =====================================================================
-    // LOAD BATCHES
+    // LOAD BATCHES (only the batches of the lecturer's department)
     // =====================================================================
     private void loadBatches() {
-        batchBox.addItem("All batches");
-        batches = batchData.findAll();
-        for (Batch b : batches) batchBox.addItem(b.getBatch_name());
+        
+        Lecturer lecturer = lecturerData.findById(lecturerId);
+        if (lecturer == null) return;
+
+        batches = batchData.findByDepartment(lecturer.getDep_id());
+        for (Batch b : batches) {
+            batchBox.addItem(b.getBatch_name() + " (" + b.getIntake_year() + ")");
+        }
     }
 
     // =====================================================================
@@ -241,8 +247,14 @@ public class Grades_GPA extends LecturerUI.Page {
 
         // one row per enrolled student, with the marks already saved in the database
         Map<Integer, Map<String, BigDecimal>> saved = marksData.findByOffering(offeringId);
+        // batch filter: 0 = "All batches" (still only the department's batches), otherwise one batch
+        int batchIndex = batchBox.getSelectedIndex();
+
         for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
-            if (!inSelectedBatch(en.getStudent_id())) continue;
+            // skip students that are not in the selected batch, or not in one of the department's batches
+            Undergraduate undergraduate = undergraduateData.findById(en.getStudent_id());
+            if (undergraduate == null || !inBatch(undergraduate.getBatch_id(), batchIndex)) continue;
+
             User student = userData.findById(en.getStudent_id());
             Map<String, BigDecimal> studentMarks = saved.getOrDefault(en.getStudent_id(), new HashMap<>());
 
@@ -262,12 +274,13 @@ public class Grades_GPA extends LecturerUI.Page {
         updateFooter();
     }
 
-    // true if no batch is selected ("All batches"), or the student belongs to the selected batch
-    private boolean inSelectedBatch(int studentId) {
-        int selected = batchBox.getSelectedIndex();
-        if (selected <= 0) return true;
-        Undergraduate u = undergraduateData.findById(studentId);
-        return u != null && u.getBatch_id() == batches.get(selected - 1).getBatch_id();
+    // true if the batch is the selected one (or, for "All batches", any batch of the lecturer's department)
+    private boolean inBatch(int batchId, int batchIndex) {
+        if (batchIndex > 0) return batches.get(batchIndex - 1).getBatch_id() == batchId;
+        for (Batch b : batches) {
+            if (b.getBatch_id() == batchId) return true;
+        }
+        return false;
     }
 
     // Draws a "Save" button inside the cell
