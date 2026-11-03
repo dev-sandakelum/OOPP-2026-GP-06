@@ -3,6 +3,7 @@ package UI.Pages.Student;
 
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.ShapeIcon;
 import UI.Pages.Components.ReadOnlyTableModel;
 
 import data.ResultData;
@@ -754,6 +755,8 @@ public class MarksGPA extends Page {
                 "", SwingConstants.CENTER
         );
 
+        private static final ShapeIcon GRADE_DOT = ShapeIcon.dot(OK, 6);
+
         GradeRenderer() {
 
             setLayout(
@@ -787,11 +790,10 @@ public class MarksGPA extends Page {
                 int column
         ) {
 
-            badge.setText(
-                    value == null || value.toString().isEmpty()
-                            ? "-"
-                            : "●  " + value
-            );
+            boolean empty = value == null || value.toString().isEmpty();
+            badge.setText(empty ? "-" : value.toString());
+            badge.setIcon(empty ? null : GRADE_DOT);   // painted dot (Rubik has no "●" glyph)
+            badge.setIconTextGap(6);
 
             setBackground(selected ? BRAND_SOFT : SURFACE);
 
