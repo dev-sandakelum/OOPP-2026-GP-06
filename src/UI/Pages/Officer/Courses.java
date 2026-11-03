@@ -27,7 +27,9 @@ import java.util.Objects;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Officer "Courses" tab: the list of scheduled courses with an "Add new course" button.
+// "Courses" tab for the technical officer AND the admin (AdminPages reuses this page):
+// the list of scheduled courses. Both can view / edit / delete; only the admin gets the
+// "Add new course" button (the officer DB account has no INSERT on course either, see sql/19).
 // Add, View and Edit each open in their own window (the form lives in CourseForm).
 public class Courses extends Page {
 
@@ -50,11 +52,16 @@ public class Courses extends Page {
 
         loadLookups();
 
-        RoundedButton add = new RoundedButton("+ Add new course", true);
-        add.addActionListener(e -> openForm(null));
+        // only admins may create courses; officers manage existing ones
+        boolean canCreate = user != null && "ADMIN".equalsIgnoreCase(user.getUserType());
+
         JPanel top = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         top.setOpaque(false);
-        top.add(add);
+        if (canCreate) {
+            RoundedButton add = new RoundedButton("+ Add new course", true);
+            add.addActionListener(e -> openForm(null));
+            top.add(add);
+        }
 
         table = table(model, Map.of("Theory", BRAND, "Practical", OK), COL_TYPE);
         table.getColumnModel().getColumn(1).setPreferredWidth(200);
