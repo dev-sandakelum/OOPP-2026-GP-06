@@ -18,7 +18,7 @@ public class OfficerPages extends JFrame implements FrameData {
     // one icon per entry in officerTabs, same order
     private static final NavIcon[] ICONS = {
             NavIcon.GRID, NavIcon.REGISTER, NavIcon.MEDICAL,
-            NavIcon.MEGA, NavIcon.CAL, NavIcon.USER
+            NavIcon.BOOK, NavIcon.MEGA, NavIcon.CAL, NavIcon.USER
     };
 
     private final Sidebar sidebar;
@@ -62,9 +62,10 @@ public class OfficerPages extends JFrame implements FrameData {
         cardHost.add(overview, officerTabs[0]);
         cardHost.add(new AttendanceRegister(refreshOverview), officerTabs[1]);
         cardHost.add(new Medicals(refreshOverview), officerTabs[2]);
-        cardHost.add(new Notices(user), officerTabs[3]);
-        cardHost.add(new Timetables(), officerTabs[4]);
-        cardHost.add(new MyProfile(to), officerTabs[5]);
+        cardHost.add(new Courses(user), officerTabs[3]);
+        cardHost.add(new Notices(user), officerTabs[4]);
+        cardHost.add(new Timetables(), officerTabs[5]);
+        cardHost.add(new MyProfile(to), officerTabs[6]);
 
         return new ContentCard(cardHost, PAGE_BG).withGaps(PAGE_BG);
     }

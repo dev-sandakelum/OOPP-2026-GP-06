@@ -15,7 +15,9 @@ import java.util.List;
 public class CourseData {
 
     private static final String TABLE = "course";
-    private static final String COLUMNS = "course_id, course_name, course_code, credit, dep_id";
+    private static final String COLUMNS = "course_id, course_name, course_code, credit, dep_id, "
+            + "course_type, lecturer_id, batch, gpa_type, end_weight, ca_weight, "
+            + "quiz_weight, assignment_weight, project_weight, mid_weight";
 
     // ---------- CREATE ----------
 
@@ -40,6 +42,56 @@ public class CourseData {
         } catch (Exception e) {
             throw new DataAccessException("Could not insert course", e);
         }
+    }
+
+    /** Inserts a course including type, lecturer, batch, GPA type and evaluation weights. */
+    public Course insertFull(Course c) {
+        String sql = "INSERT INTO " + TABLE + " (course_name, course_code, credit, dep_id, course_type, lecturer_id, "
+                + "batch, gpa_type, end_weight, ca_weight, quiz_weight, assignment_weight, project_weight, mid_weight) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection con = Database.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            bindFull(ps, c);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) c.setCourse_id(keys.getInt(1));
+            }
+            return c;
+        } catch (Exception e) {
+            throw new DataAccessException("Could not insert course: " + e.getMessage(), e);
+        }
+    }
+
+    /** Updates every editable column of the course. */
+    public boolean updateFull(Course c) {
+        String sql = "UPDATE " + TABLE + " SET course_name = ?, course_code = ?, credit = ?, dep_id = ?, "
+                + "course_type = ?, lecturer_id = ?, batch = ?, gpa_type = ?, end_weight = ?, ca_weight = ?, "
+                + "quiz_weight = ?, assignment_weight = ?, project_weight = ?, mid_weight = ? WHERE course_id = ?";
+        try (Connection con = Database.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            bindFull(ps, c);
+            ps.setInt(15, c.getCourse_id());
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            throw new DataAccessException("Could not update course " + c.getCourse_id() + ": " + e.getMessage(), e);
+        }
+    }
+
+    private void bindFull(PreparedStatement ps, Course c) throws SQLException {
+        ps.setString(1, c.getCourse_name());
+        ps.setString(2, c.getCourse_code());
+        ps.setDouble(3, c.getCredit());
+        if (c.getDep_id() != null) ps.setInt(4, c.getDep_id()); else ps.setNull(4, Types.INTEGER);
+        ps.setString(5, c.getCourse_type());
+        if (c.getLecturer_id() != null) ps.setInt(6, c.getLecturer_id()); else ps.setNull(6, Types.INTEGER);
+        ps.setString(7, c.getBatch());
+        ps.setString(8, c.getGpa_type());
+        ps.setInt(9, c.getEnd_weight());
+        ps.setInt(10, c.getCa_weight());
+        ps.setInt(11, c.getQuiz_weight());
+        ps.setInt(12, c.getAssignment_weight());
+        ps.setInt(13, c.getProject_weight());
+        ps.setInt(14, c.getMid_weight());
     }
 
     // ---------- READ ----------
@@ -153,6 +205,17 @@ public class CourseData {
         c.setCredit(rs.getDouble("credit"));
         int dep = rs.getInt("dep_id");
         c.setDep_id(rs.wasNull() ? null : dep);
+        c.setCourse_type(rs.getString("course_type"));
+        int lec = rs.getInt("lecturer_id");
+        c.setLecturer_id(rs.wasNull() ? null : lec);
+        c.setBatch(rs.getString("batch"));
+        c.setGpa_type(rs.getString("gpa_type"));
+        c.setEnd_weight(rs.getInt("end_weight"));
+        c.setCa_weight(rs.getInt("ca_weight"));
+        c.setQuiz_weight(rs.getInt("quiz_weight"));
+        c.setAssignment_weight(rs.getInt("assignment_weight"));
+        c.setProject_weight(rs.getInt("project_weight"));
+        c.setMid_weight(rs.getInt("mid_weight"));
         return c;
     }
 }
