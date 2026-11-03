@@ -223,4 +223,8 @@ public class UserData {
         u.setPhoto(rs.getString("photo"));
         return u;
     }
+
+    public boolean updateStudentProfileDetails(User updatedProfile) {
+        return false;
+    }
 }

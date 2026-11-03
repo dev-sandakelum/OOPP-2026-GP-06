@@ -56,6 +56,30 @@ public final class Ui {
         return t;
     }
 
+    // Flat rounded blue button without a shadow (used in the marks pages)
+    public static JButton flatButton(String text, int vertical, int horizontal) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(BRAND);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.dispose();
+                super.paintComponent(g);   // draws the text
+            }
+        };
+        button.setFont(font(Font.BOLD, 12));
+        button.setForeground(ON_BRAND);
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setOpaque(false);
+        button.setBorder(new EmptyBorder(vertical, horizontal, vertical, horizontal));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return button;
+    }
+
     // Table inside a rounded glass card
     public static JComponent tableCard(JTable table) {
         Card c = new Card(false);
