@@ -11,14 +11,20 @@ import java.awt.*;
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
 
-// Admin "Timetables" tab: weekly grid (5 days x 4 slots). Click a cell to edit it.
+/**
+ * Admin "Timetables" tab: weekly grid (5 days × 4 slots). Click a cell to edit it.
+ *
+ * TODO (team task): replace the in-memory grid with AdminData timetable methods
+ * once the Timetable data layer is delivered.
+ * See docs/issue-admin-ui-data-connect.md for the spec.
+ */
 public class Timetables extends Page {
 
     private static final String[] DAYS  = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"};
     private static final String[] SLOTS = {"8:00 - 10:00", "10:00 - 12:00", "1:00 - 3:00", "3:00 - 5:00"};
 
     // ---------- Placeholder data (swap for services later) ----------
-    // [slot][day] = {course code, room}; empty code = free slot
+    // grid[slot][day] = {course_code, room};  empty code = free slot
     private final String[][][] grid = new String[SLOTS.length][DAYS.length][];
     // ---------- end placeholder data ----------
 
@@ -27,9 +33,11 @@ public class Timetables extends Page {
     public Timetables() {
         super("Timetables", "Click a slot to assign or clear a course", null);
 
-        for (String[][] row : grid) {
-            for (int d = 0; d < row.length; d++) row[d] = new String[]{"", ""};
-        }
+        // initialise all cells to empty then fill seed data
+        for (String[][] row : grid)
+            for (int d = 0; d < row.length; d++)
+                row[d] = new String[]{"", ""};
+
         grid[0][0] = new String[]{"TICT1113", "Lab 1"};
         grid[1][0] = new String[]{"TICT1142", "Hall A"};
         grid[0][1] = new String[]{"TICT1123", "Lab 2"};
@@ -44,18 +52,22 @@ public class Timetables extends Page {
         card.setBorder(new EmptyBorder(16, 16, 16, 16));
         gridPanel.setOpaque(false);
         card.add(gridPanel, BorderLayout.CENTER);
-
         setScrollBody(card);
+
         rebuild();
     }
+
+    // -----------------------------------------------------------------
+    //  Grid rendering
+    // -----------------------------------------------------------------
 
     private void rebuild() {
         gridPanel.removeAll();
         GridBagConstraints gc = new GridBagConstraints();
-        gc.fill = GridBagConstraints.BOTH;
+        gc.fill   = GridBagConstraints.BOTH;
         gc.insets = new Insets(5, 5, 5, 5);
 
-        // top-left corner and day headers
+        // top-left corner spacer + day headers
         gc.gridx = 0; gc.gridy = 0; gc.weightx = 0; gc.weighty = 0;
         gridPanel.add(Box.createHorizontalStrut(110), gc);
         for (int d = 0; d < DAYS.length; d++) {
@@ -78,12 +90,18 @@ public class Timetables extends Page {
             for (int d = 0; d < DAYS.length; d++) {
                 final int slot = s, day = d;
                 gc.gridx = d + 1; gc.weightx = 1;
-                gridPanel.add(new TimetableCell(grid[s][d][0], grid[s][d][1], () -> edit(slot, day)), gc);
+                gridPanel.add(
+                        new TimetableCell(grid[s][d][0], grid[s][d][1],
+                                () -> edit(slot, day)), gc);
             }
         }
         gridPanel.revalidate();
         gridPanel.repaint();
     }
+
+    // -----------------------------------------------------------------
+    //  Edit a slot (in-memory until data layer is delivered)
+    // -----------------------------------------------------------------
 
     private void edit(int slot, int day) {
         String[] labels = {"Course code (leave empty to clear)", "Room"};
