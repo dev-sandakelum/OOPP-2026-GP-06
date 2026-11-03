@@ -3,11 +3,13 @@ package UI.Pages.lecturer;
 import UI.Pages.Components.Avatar;
 import UI.Pages.Components.AvatarCellRenderer;
 import UI.Pages.Components.Card;
+import UI.Pages.Components.ReadOnlyTableModel;
 import data.AttendanceData;
 import data.BatchData;
 import data.CourseData;
 import data.CourseOfferingData;
 import data.EnrollmentData;
+import data.RepeatStudentData;
 import data.ResultData;
 import data.UndergraduateData;
 import data.UserData;
@@ -16,6 +18,7 @@ import model.Batch;
 import model.Course;
 import model.CourseOffering;
 import model.Enrollment;
+import model.RepeatStudent;
 import model.Result;
 import model.Undergraduate;
 import model.User;
@@ -34,6 +37,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import static UI.Kit.Palette.*;
+import static UI.Pages.Components.Ui.table;
 
 public class Undergraduates extends LecturerUI.Page {
 
@@ -54,6 +58,13 @@ public class Undergraduates extends LecturerUI.Page {
     private final TableRowSorter<StudentModel> sorter = new TableRowSorter<>(model);
     private final JLabel countLbl = new JLabel(" ");
 
+    // Repeat students section (students of the selected course(s) who repeat a course)
+    private final DefaultTableModel repeatModel = new ReadOnlyTableModel(
+            new String[]{"Reg. no", "Name", "Batch", "Course", "Repeat year", "Attempt", "Review"});
+    private final JTable repeatTable = table(repeatModel, null, -1);
+    private final TableRowSorter<DefaultTableModel> repeatSorter = new TableRowSorter<>(repeatModel);
+    private final JLabel repeatCountLbl = new JLabel(" ");
+
     private final Avatar avatar = new Avatar("", 84);
     private final JLabel nameLbl  = new JLabel(" ");
     private final JLabel subLbl   = new JLabel(" ");
@@ -73,6 +84,7 @@ public class Undergraduates extends LecturerUI.Page {
     private final BatchData batchData = new BatchData();
     private final AttendanceData attendanceData = new AttendanceData();
     private final ResultData resultData = new ResultData();
+    private final RepeatStudentData repeatData = new RepeatStudentData();
     private final int lecturerId;
     private List<CourseOffering> offerings = new ArrayList<>();
 
@@ -84,7 +96,13 @@ public class Undergraduates extends LecturerUI.Page {
         JPanel content = new JPanel(new BorderLayout(0, 16));
         content.setOpaque(false);
         content.add(buildToolbar(), BorderLayout.NORTH);
-        content.add(buildBody(), BorderLayout.CENTER);
+
+        // student list + details, then the repeat students section under them
+        JPanel main = new JPanel(new BorderLayout(0, 16));
+        main.setOpaque(false);
+        main.add(buildBody(), BorderLayout.NORTH);
+        main.add(buildRepeatCard(), BorderLayout.CENTER);
+        content.add(main, BorderLayout.CENTER);
         setScrollBody(content);
 
         // ===== load data =====
@@ -142,10 +160,47 @@ public class Undergraduates extends LecturerUI.Page {
         }
 
         model.setRows(list);
+        loadRepeatStudents(selected);
         reloadBatchOptions();
         applyFilters();
         if (table.getRowCount() > 0) table.setRowSelectionInterval(0, 0);
         else showStudent(null);
+    }
+
+    /** Fills the repeat students table: students who repeat one of the selected courses. */
+    private void loadRepeatStudents(List<CourseOffering> selected) {
+        repeatModel.setRowCount(0);
+
+        for (CourseOffering o : selected) {
+            Course c = courseData.findById(o.getCourse_id());
+            if (c == null) continue;
+
+            // repeat_student.subject_id is the course id
+            for (RepeatStudent r : repeatData.findBySubject(c.getCourse_id())) {
+                User u = userData.findById(r.getStudentId());
+                repeatModel.addRow(new Object[]{String.valueOf(r.getStudentId()), u == null ? "" : u.getName(),
+                        batchName(r.getStudentId()), c.getCourse_code() + " - " + c.getCourse_name(),
+                        r.getRepeatYear(), r.getRepeatShy() == null ? "" : r.getRepeatShy(),
+                        r.getReview() == null ? "" : r.getReview()});
+            }
+        }
+        applyRepeatFilter();
+    }
+
+    /** The search box and the batch drop-down also filter the repeat students. */
+    private void applyRepeatFilter() {
+        List<RowFilter<Object, Object>> fs = new ArrayList<>();
+
+        String q = searchField.getText().trim();
+        if (!q.isEmpty()) {
+            fs.add(RowFilter.regexFilter("(?i)" + Pattern.quote(q), 0, 1));   // reg. no or name
+        }
+        String batch = (String) batchBox.getSelectedItem();
+        if (batch != null && !batch.equals(ALL_BATCHES)) {
+            fs.add(RowFilter.regexFilter("^" + Pattern.quote(batch) + "$", 2));
+        }
+        repeatSorter.setRowFilter(fs.isEmpty() ? null : RowFilter.andFilter(fs));
+        repeatCountLbl.setText(repeatTable.getRowCount() + (repeatTable.getRowCount() == 1 ? " student" : " students"));
     }
 
     /** Batch name of a student ("" if the student has no batch). */
@@ -322,6 +377,40 @@ public class Undergraduates extends LecturerUI.Page {
         return card;
     }
 
+    /** Card with the repeat students table (same style as the student list). */
+    private JComponent buildRepeatCard() {
+        repeatTable.setRowSorter(repeatSorter);
+        repeatTable.setFocusable(false);
+
+        JLabel title = new JLabel("Repeat students");
+        title.setFont(font(Font.BOLD, 15));
+        title.setForeground(INK);
+        repeatCountLbl.setFont(font(Font.PLAIN, 12));
+        repeatCountLbl.setForeground(INK_2);
+        JPanel titleBar = new JPanel(new BorderLayout());
+        titleBar.setOpaque(false);
+        titleBar.setBorder(new EmptyBorder(4, 12, 12, 12));
+        titleBar.add(title, BorderLayout.WEST);
+        titleBar.add(repeatCountLbl, BorderLayout.EAST);
+
+        // header + rows without a scroll pane, so the card grows with the rows
+        JPanel grid = new JPanel(new BorderLayout());
+        grid.setOpaque(false);
+        grid.add(repeatTable.getTableHeader(), BorderLayout.NORTH);
+        grid.add(repeatTable, BorderLayout.CENTER);
+
+        Card card = new Card(false);
+        card.setLayout(new BorderLayout());
+        card.setBorder(new EmptyBorder(16, 8, 12, 8));
+        card.add(titleBar, BorderLayout.NORTH);
+        card.add(grid, BorderLayout.CENTER);
+
+        JPanel top = new JPanel(new BorderLayout());   // keeps the card at its natural height
+        top.setOpaque(false);
+        top.add(card, BorderLayout.NORTH);
+        return top;
+    }
+
     private JComponent buildDetailCard() {
         Card card = new Card(false);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
@@ -421,6 +510,7 @@ public class Undergraduates extends LecturerUI.Page {
             fs.add(RowFilter.regexFilter("^" + Pattern.quote(batch) + "$", 2));
         }
         sorter.setRowFilter(fs.isEmpty() ? null : RowFilter.andFilter(fs));
+        applyRepeatFilter();
         countLbl.setText("Showing " + table.getRowCount() + " of " + model.getRowCount() + " students");
 
         if (table.getRowCount() > 0 && table.getSelectedRow() < 0) table.setRowSelectionInterval(0, 0);
