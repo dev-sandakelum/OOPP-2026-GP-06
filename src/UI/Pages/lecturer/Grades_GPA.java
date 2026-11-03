@@ -3,16 +3,15 @@ package UI.Pages.lecturer;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.SimpleDocListener;
 import UI.Pages.Components.Ui;
-import data.AssessmentData;
 import data.BatchData;
 import data.CourseData;
 import data.CourseOfferingData;
 import data.EnrollmentData;
+import data.Grades_Gpa_Data;
 import data.LecturerData;
 import data.MarksData;
 import data.UndergraduateData;
 import data.UserData;
-import model.Assessment;
 import model.Batch;
 import model.Course;
 import model.CourseOffering;
@@ -24,11 +23,8 @@ import model.User;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,34 +34,31 @@ import java.util.regex.Pattern;
 
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.field;
+import static UI.Pages.Components.Ui.flatButton;
 import static UI.Pages.Components.Ui.label;
 import static UI.Pages.Components.Ui.table;
 
 /**
  * Lecturer - Grades & GPA page
- * - Lecturer selects a course and enters the marks of each student:
- *   Quiz 1, Quiz 2, Quiz 3, Mid Exam and (only if the course has them) Assignment 1, 2 (if the course has assignments)
- *   and Project (only if the course has a project weight).
- * - Every row has its own "Save" button.
+ * - Lecturer selects a batch and a course and sees the grade, grade point, SGPA and CGPA of each student.
+ * - "Calculate Grades" calculates and saves them (Grades_Gpa_Data). It uses the CA marks and the end exam
+ *   marks that were saved in the Marks page.
  * - Lecturer can search students by name or student ID.
- *
- * Marks are saved in the result table by MarksData.
  */
 public class Grades_GPA extends LecturerUI.Page {
-
-    // first two columns are the student, then the marks, the last column is the Save button
-    private static final int FIRST_MARK_COL = 2;
 
     JComboBox<String> batchBox = new JComboBox<>();
     JComboBox<String> courseBox = new JComboBox<>();
     JTextField searchField = field(20);
     JLabel footer = new JLabel(" ");
 
-    // only the mark columns can be edited (not the student ID, name or the Save button)
-    DefaultTableModel model = new DefaultTableModel() {
+    // read-only table, filled by loadTable()
+    DefaultTableModel model = new DefaultTableModel(
+            new Object[]{"Student ID", "Student Name", "CA Marks", "End Exam", "Total",
+                    "Grade", "Grade Point", "SGPA", "CGPA", "Status"}, 0) {
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col >= FIRST_MARK_COL && col < getColumnCount() - 1;
+            return false;
         }
     };
     JTable table = table(model, null, -1);
@@ -77,18 +70,18 @@ public class Grades_GPA extends LecturerUI.Page {
     private final CourseOfferingData offeringData = new CourseOfferingData();
     private final CourseData courseData = new CourseData();
     private final EnrollmentData enrollmentData = new EnrollmentData();
-    private final AssessmentData assessmentData = new AssessmentData();
     private final UserData userData = new UserData();
     private final LecturerData lecturerData = new LecturerData();
     private final BatchData batchData = new BatchData();
     private final UndergraduateData undergraduateData = new UndergraduateData();
     private final MarksData marksData = new MarksData();
+    private final Grades_Gpa_Data gpaData = new Grades_Gpa_Data();
     private final int lecturerId;
     private List<CourseOffering> offerings = new ArrayList<>();
-    private List<Batch> batches = new ArrayList<>();   // batches of the lecturer's department (same order as batchBox, after "All batches")
+    private List<Batch> batches = new ArrayList<>();   // batches of the lecturer's department (same order as batchBox)
 
     public Grades_GPA(User user) {
-        super("Grades & GPA", "Enter the marks of your students", null);
+        super("Grades & GPA", "Grades and GPA of your students", null);
         this.lecturerId = user == null ? 0 : user.getUser_id();
 
         table.setRowSorter(sorter);
@@ -100,22 +93,12 @@ public class Grades_GPA extends LecturerUI.Page {
         body.add(buildTableCard(), BorderLayout.CENTER);
         setScrollBody(body);
 
-        // When the course changes, build the table again for that course
+        // When the batch or the course changes, load the table again
         courseBox.addActionListener(e -> loadTable());
         batchBox.addActionListener(e -> loadTable());
 
         // When the lecturer types in the search box, filter the table
         searchField.getDocument().addDocumentListener(new SimpleDocListener(this::search));
-
-        // When the lecturer clicks the Save button of a row, save that student's marks
-        table.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int row = table.rowAtPoint(e.getPoint());
-                int col = table.columnAtPoint(e.getPoint());
-                if (row >= 0 && col == table.getColumnCount() - 1) saveRow(row);
-            }
-        });
 
         loadBatches();
         loadCourses();
@@ -125,7 +108,7 @@ public class Grades_GPA extends LecturerUI.Page {
     // UI
     // =====================================================================
 
-    // Course selector on the left, search box filling the rest
+    // Batch and course selectors on the left, search box filling the rest
     private JComponent buildToolbar() {
         courseBox.setFont(font(Font.PLAIN, 13));
         courseBox.setForeground(INK);
@@ -157,11 +140,25 @@ public class Grades_GPA extends LecturerUI.Page {
         return bar;
     }
 
-    // Table inside a white rounded card, with the student count at the bottom
+    // Table inside a white rounded card, with a title + "Calculate Grades" button on top
+    // and the student count at the bottom
     private JComponent buildTableCard() {
         footer.setFont(font(Font.PLAIN, 12));
         footer.setForeground(INK_2);
         footer.setBorder(new EmptyBorder(10, 16, 6, 16));
+
+        JLabel title = new JLabel("Grades & GPA");
+        title.setFont(font(Font.BOLD, 15));
+        title.setForeground(INK);
+        title.setBorder(new EmptyBorder(8, 12, 10, 12));
+
+        JButton calcButton = flatButton("Calculate Grades", 8, 16);
+        calcButton.addActionListener(e -> calculateGrades());
+
+        JPanel titleBar = new JPanel(new BorderLayout());
+        titleBar.setOpaque(false);
+        titleBar.add(title, BorderLayout.WEST);
+        titleBar.add(calcButton, BorderLayout.EAST);
 
         // header + rows without a scroll pane, so the card grows with the rows
         JPanel grid = new JPanel(new BorderLayout());
@@ -172,6 +169,7 @@ public class Grades_GPA extends LecturerUI.Page {
         Card card = new Card(false);
         card.setLayout(new BorderLayout());
         card.setBorder(new EmptyBorder(8, 8, 4, 8));   // keeps header/rows inside the rounded corners
+        card.add(titleBar, BorderLayout.NORTH);
         card.add(grid, BorderLayout.CENTER);
         card.add(footer, BorderLayout.SOUTH);
 
@@ -185,7 +183,6 @@ public class Grades_GPA extends LecturerUI.Page {
     // LOAD BATCHES (only the batches of the lecturer's department)
     // =====================================================================
     private void loadBatches() {
-        
         Lecturer lecturer = lecturerData.findById(lecturerId);
         if (lecturer == null) return;
 
@@ -208,149 +205,91 @@ public class Grades_GPA extends LecturerUI.Page {
     }
 
     // =====================================================================
-    // LOAD THE TABLE FOR THE SELECTED COURSE
+    // LOAD THE TABLE FOR THE SELECTED BATCH AND COURSE
     // =====================================================================
     private void loadTable() {
         int index = courseBox.getSelectedIndex();
         if (index < 0) return;
         int offeringId = offerings.get(index).getOffering_id();
+        Course course = courseData.findById(offerings.get(index).getCourse_id());
 
         searchField.setText("");
-
-        // scheduled assignments of the course (max 2)
-        int assignments = 0;
-        for (Assessment a : assessmentData.findByOffering(offeringId)) {
-            if ("ASSIGNMENT".equalsIgnoreCase(a.getAssessmentType())) assignments++;
-        }
-
-        // the Project column is only for courses that have a project weight
-        Course course = courseData.findById(offerings.get(index).getCourse_id());
-        boolean hasProject = course != null && course.getProject_weight() > 0;
-
-        // columns: ID, Name, 3 quizzes, Mid Exam, then Assignment 1, 2 / Project only if the course has them, then Save
-        List<String> marks = new ArrayList<>();
-        marks.add("Quiz 1");
-        marks.add("Quiz 2");
-        marks.add("Quiz 3");
-        marks.add("Mid Exam");
-        for (int i = 1; i <= Math.min(assignments, 2); i++) marks.add("Assignment " + i);
-        if (hasProject) marks.add("Project");
-
-        List<String> columns = new ArrayList<>();
-        columns.add("Student ID");
-        columns.add("Student Name");
-        columns.addAll(marks);
-        columns.add("Action");
-
         model.setRowCount(0);
-        model.setColumnIdentifiers(columns.toArray());
 
-        // one row per enrolled student, with the marks already saved in the database
         Map<Integer, Map<String, BigDecimal>> saved = marksData.findByOffering(offeringId);
-        // batch filter: 0 = "All batches" (still only the department's batches), otherwise one batch
         int batchIndex = batchBox.getSelectedIndex();
 
         for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
-            // skip students that are not in the selected batch, or not in one of the department's batches
+            // only the students of the selected batch
             Undergraduate undergraduate = undergraduateData.findById(en.getStudent_id());
             if (undergraduate == null || !inBatch(undergraduate.getBatch_id(), batchIndex)) continue;
 
             User student = userData.findById(en.getStudent_id());
-            Map<String, BigDecimal> studentMarks = saved.getOrDefault(en.getStudent_id(), new HashMap<>());
-
-            Object[] row = new Object[columns.size()];
-            row[0] = String.valueOf(en.getStudent_id());
-            row[1] = student == null ? "" : student.getName();
-            for (int i = 0; i < marks.size(); i++) {
-                BigDecimal mark = studentMarks.get(marks.get(i));
-                row[FIRST_MARK_COL + i] = mark == null ? "" : mark.stripTrailingZeros().toPlainString();
-            }
-            row[row.length - 1] = "Action";
-            model.addRow(row);
+            Map<String, BigDecimal> marks = saved.getOrDefault(en.getStudent_id(), new HashMap<>());
+            model.addRow(buildRow(course, String.valueOf(en.getStudent_id()),
+                    student == null ? "" : student.getName(), marks));
         }
-
-        // show the last column as a button (setting the columns again removes old renderers)
-        table.getColumnModel().getColumn(columns.size() - 1).setCellRenderer(saveButtonRenderer());
         updateFooter();
     }
 
-    // true if the batch is the selected one (or, for "All batches", any batch of the lecturer's department)
-    private boolean inBatch(int batchId, int batchIndex) {
-        if (batchIndex > 0) return batches.get(batchIndex - 1).getBatch_id() == batchId;
-        for (Batch b : batches) {
-            if (b.getBatch_id() == batchId) return true;
+    // One row. The total, grade, SGPA and CGPA stay empty until "Calculate Grades" saved them.
+    private Object[] buildRow(Course course, String id, String name, Map<String, BigDecimal> marks) {
+        BigDecimal ca = marks.get("CA");
+        BigDecimal end = marks.get("End Exam");
+        BigDecimal total = marks.get("Total");
+        BigDecimal sgpa = marks.get("SGPA");
+        BigDecimal cgpa = marks.get("CGPA");
+
+        String endPart = "";   // end exam mark out of the course's end exam weight
+        if (course != null && end != null) {
+            endPart = String.format("%.2f", Grades_Gpa_Data.endExamPart(course, end.doubleValue()));
         }
-        return false;
+
+        String totalText = "", grade = "", point = "", status = "";
+        if (total != null) {
+            totalText = total.toPlainString();
+            grade = Grades_Gpa_Data.gradeOf(total.doubleValue());
+            point = String.format("%.1f", Grades_Gpa_Data.pointOf(total.doubleValue()));
+            status = Grades_Gpa_Data.statusOf(total.doubleValue());
+        }
+
+        return new Object[]{id, name, ca == null ? "" : ca.toPlainString(), endPart, totalText, grade, point,
+                sgpa == null ? "" : sgpa.toPlainString(), cgpa == null ? "" : cgpa.toPlainString(), status};
     }
 
-    // Draws a "Save" button inside the cell
-    private TableCellRenderer saveButtonRenderer() {
-        // flat rounded blue button (no shadow), small enough to fit the 44px row
-        JButton button = new JButton("Save") {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(BRAND);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
-                g2.dispose();
-                super.paintComponent(g);   // draws the "Save" text
-            }
-        };
-        button.setFont(font(Font.BOLD, 12));
-        button.setForeground(ON_BRAND);
-        button.setContentAreaFilled(false);
-        button.setBorderPainted(false);
-        button.setFocusPainted(false);
-        button.setOpaque(false);
-        button.setBorder(new EmptyBorder(6, 14, 6, 14));
-
-        // transparent panel around it gives some space inside the cell
-        JPanel cell = new JPanel(new GridBagLayout());
-        cell.setOpaque(false);
-        cell.add(button);
-        return (t, value, selected, focused, row, col) -> cell;
+    // true if the student's batch is the batch selected in the drop-down
+    private boolean inBatch(int batchId, int batchIndex) {
+        return batchIndex >= 0 && batches.get(batchIndex).getBatch_id() == batchId;
     }
 
     // =====================================================================
-    // SAVE ONE STUDENT'S MARKS
+    // CALCULATE GRADES (button on the table card)
     // =====================================================================
-    private void saveRow(int viewRow) {
-        // the lecturer may still be typing in a cell, so finish that first
-        if (table.isEditing()) table.getCellEditor().stopCellEditing();
-
+    // total mark, grade, SGPA and CGPA of the students shown in the table
+    private void calculateGrades() {
         int index = courseBox.getSelectedIndex();
         if (index < 0) return;
-        int offeringId = offerings.get(index).getOffering_id();
-        int studentId = Integer.parseInt((String) table.getValueAt(viewRow, 0));
-        String name = (String) table.getValueAt(viewRow, 1);
 
-        // every mark must be empty or a number from 0 to 100; empty = not entered (null)
-        Map<String, BigDecimal> marks = new HashMap<>();
-        for (int col = FIRST_MARK_COL; col < table.getColumnCount() - 1; col++) {
-            String text = String.valueOf(table.getValueAt(viewRow, col)).trim();
-            if (text.isEmpty()) {
-                marks.put(table.getColumnName(col), null);
-                continue;
-            }
-            try {
-                BigDecimal mark = new BigDecimal(text);
-                if (mark.signum() < 0 || mark.compareTo(BigDecimal.valueOf(100)) > 0) throw new NumberFormatException();
-                marks.put(table.getColumnName(col), mark);
-            } catch (NumberFormatException ex) {
-                Ui.error(this, "Invalid mark", table.getColumnName(col) + " of " + name
-                        + " must be a number from 0 to 100.");
-                return;
-            }
+        CourseOffering offering = offerings.get(index);
+        Course course = courseData.findById(offering.getCourse_id());
+        if (course == null) return;
+
+        List<Integer> studentIds = new ArrayList<>();
+        for (int i = 0; i < model.getRowCount(); i++) {
+            studentIds.add(Integer.parseInt((String) model.getValueAt(i, 0)));
         }
 
+        int done;
         try {
-            marksData.save(studentId, offeringId, marks);
+            done = gpaData.calculateAndSave(offering.getOffering_id(), offering.getSemester_id(), course, studentIds);
         } catch (Exception ex) {
-            Ui.error(this, "Marks", "Could not save marks: " + ex.getMessage());
+            Ui.error(this, "Grades", "Could not calculate grades: " + ex.getMessage());
             return;
         }
-        Ui.info(this, "Student No: " + studentId + "marks saved.");
+
+        loadTable();   // shows the new grades
+        Ui.info(this, "Grades calculated for " + done + " student(s).\n"
+                + "A student needs saved CA marks and a saved end exam mark, otherwise the student is skipped.");
     }
 
     // =====================================================================

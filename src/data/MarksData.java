@@ -32,7 +32,7 @@ public class MarksData {
         return Database.getConnection();
     }
 
-    /** All saved marks of a course: student id -> (name such as "Quiz 1" -> mark). */
+    /** All saved marks of a course: student id -> (name such as "Quiz 1" -> mark; "CA" -> calculated CA marks). */
     public Map<Integer, Map<String, BigDecimal>> findByOffering(int offeringId) {
         String sql = "SELECT r.* FROM result r WHERE r.exam_id = (SELECT MIN(exam_id) FROM exam WHERE offering_id = ?)";
         Map<Integer, Map<String, BigDecimal>> all = new HashMap<>();
@@ -45,6 +45,11 @@ public class MarksData {
                     for (int i = 0; i < NAMES.length; i++) {
                         marks.put(NAMES[i], rs.getBigDecimal(COLUMNS[i]));
                     }
+                    marks.put("End Exam", rs.getBigDecimal("final_exam_mark"));
+                    marks.put("CA", rs.getBigDecimal("ca_result"));
+                    marks.put("Total", rs.getBigDecimal("total_mark"));   // saved by Grades_Gpa_Data
+                    marks.put("SGPA", rs.getBigDecimal("sgpa"));
+                    marks.put("CGPA", rs.getBigDecimal("cgpa"));   // calculated by calc_CA_Data
                     all.put(rs.getInt("student_id"), marks);
                 }
             }
@@ -79,6 +84,23 @@ public class MarksData {
             }
         } catch (SQLException e) {
             throw new DataAccessException("Failed to save marks of student " + studentId, e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Saves the end exam mark (result.final_exam_mark) of one student. null = not entered. */
+    public void saveEndExam(int studentId, int offeringId, BigDecimal mark) {
+        String sql = "INSERT INTO result (student_id, exam_id, final_exam_mark) VALUES (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE final_exam_mark = VALUES(final_exam_mark)";
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, studentId);
+            ps.setInt(2, findOrCreateExam(c, offeringId));
+            ps.setBigDecimal(3, mark);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new DataAccessException("Failed to save end exam mark of student " + studentId, e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
