@@ -12,7 +12,7 @@ import model.User;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.sql.SQLException;
+import java.sql.Date;
 
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
@@ -36,7 +36,7 @@ public class MyProfile extends Page {
     private final JTextField genderField = field(20);
 
     public MyProfile(User user) {
-        super("My profile", "Undergraduates may update email, phone, and address", null);
+        super("My profile", "Undergraduates may update contact details and profile picture only", null);
         this.user = user;
 
         Card card = new Card(false);
@@ -138,12 +138,12 @@ public class MyProfile extends Page {
         grid.add(createFieldPanel("Email", emailField, false));
         grid.add(createFieldPanel("Phone", phoneField, false));
 
-        // Row 4: Date of birth cannot be changed by undergraduate accounts.
-        grid.add(createFieldPanel("Date of birth (yyyy-mm-dd)", dobField, true));
+        // Row 4: Editable
+        grid.add(createFieldPanel("Date of birth (yyyy-mm-dd)", dobField, false));
         grid.add(createFieldPanel("Address", addressField, false));
 
-        // Row 5: Gender is restricted for undergraduate accounts.
-        grid.add(createFieldPanel("Gender (MALE/FEMALE/OTHER)", genderField, true));
+        // Row 5: Editable
+        grid.add(createFieldPanel("Gender (MALE/FEMALE/OTHER)", genderField, false));
         grid.add(new JPanel()); // Empty cell
 
         return grid;
@@ -179,7 +179,7 @@ public class MyProfile extends Page {
         footer.setOpaque(false);
         footer.setBorder(new EmptyBorder(25, 0, 0, 0));
 
-        JLabel info = new JLabel("Email, phone, and address can be changed.");
+        JLabel info = new JLabel("Only contact details and the photo can be changed, per faculty rules.");
         info.setFont(font(Font.PLAIN, 12));
         info.setForeground(Color.GRAY);
 
@@ -200,39 +200,27 @@ public class MyProfile extends Page {
             return;
         }
 
-        User updatedProfile = new User();
-        updatedProfile.setUser_id(user.getUser_id());
-        updatedProfile.setEmail(emailField.getText().trim());
-        updatedProfile.setContact_number(phoneField.getText().trim());
-        updatedProfile.setAddress(addressField.getText().trim());
-        try {
-            boolean ok = userData.updateStudentProfileDetails(updatedProfile);
-            if (ok) {
-                user.setEmail(updatedProfile.getEmail());
-                user.setContact_number(updatedProfile.getContact_number());
-                user.setAddress(updatedProfile.getAddress());
-            }
-            info(this, ok ? "Profile updated successfully." : "No profile details were saved — the record may not exist.");
-        } catch (Exception ex) {
-            SQLException sqlException = findSqlException(ex);
-            if (sqlException != null && sqlException.getErrorCode() == 1062) {
-                info(this, "That email address is already in use. Enter a different email address.");
-            } else if (sqlException != null
-                    && (sqlException.getErrorCode() == 1142 || sqlException.getErrorCode() == 1143)) {
-                info(this, "The student database account lacks permission to update profile details. "
-                        + "Run sql/7.student_profile_permissions.sql on afms-db-2.mysql.database.azure.com "
-                        + "as a database administrator.");
-            } else {
-                info(this, "Could not save profile: " + ex.getMessage()
-                        + (sqlException == null ? "" : " (database error " + sqlException.getErrorCode() + ")"));
+        Date d = null;
+        if (!dobField.getText().isBlank()) {
+            try {
+                d = Date.valueOf(dobField.getText().trim());
+            } catch (IllegalArgumentException ex) {
+                info(this, "Date of birth must look like 1985-03-21.");
+                return;
             }
         }
-    }
 
-    private static SQLException findSqlException(Throwable error) {
-        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-            if (cause instanceof SQLException sqlException) return sqlException;
+        user.setEmail(emailField.getText().trim());
+        user.setContact_number(phoneField.getText().trim());
+        user.setDOB(d);
+        user.setAddress(addressField.getText().trim());
+        user.setGender(genderField.getText().trim());
+
+        try {
+            boolean ok = userData.update(user);
+            info(this, ok ? "Profile updated successfully." : "Save failed — check the console.");
+        } catch (Exception ex) {
+            info(this, "Could not save profile: " + ex.getMessage());
         }
-        return null;
     }
 }

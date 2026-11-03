@@ -66,14 +66,14 @@ public class LoginPage extends JFrame implements FrameData {
 
         // Title
         JLabel title = new JLabel("Sign in to AFMS");
-        title.setFont(UI.Kit.Palette.font(Font.BOLD, 24));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
         title.setForeground(Palette.INK);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(title);
         panel.add(Box.createVerticalStrut(6));
 
         JLabel subtitle = new JLabel("Academic & Faculty Management System");
-        subtitle.setFont(UI.Kit.Palette.font(Font.PLAIN, 11));
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         subtitle.setForeground(Palette.INK_2);
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(subtitle);
@@ -94,7 +94,7 @@ public class LoginPage extends JFrame implements FrameData {
         panel.add(Box.createVerticalStrut(6));
 
         // Error message
-        errorLabel.setFont(UI.Kit.Palette.font(Font.PLAIN, 11));
+        errorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         errorLabel.setForeground(Palette.BAD);
         errorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(errorLabel);
@@ -269,14 +269,14 @@ public class LoginPage extends JFrame implements FrameData {
     // ── helpers ───────────────────────────────────────────────────────────────
     private static JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
-        l.setFont(UI.Kit.Palette.font(Font.PLAIN, 12));
+        l.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         l.setForeground(Palette.INK_2);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }
 
     private static void styleField(JTextField field) {
-        field.setFont(UI.Kit.Palette.font(Font.PLAIN, 13));
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
         field.setBorder(BorderFactory.createCompoundBorder(

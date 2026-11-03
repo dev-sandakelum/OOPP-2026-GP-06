@@ -142,22 +142,6 @@ public class MedicalData {
         }
     }
 
-    public boolean update(Medical m) {
-        String sql = "UPDATE medical SET medical_date = ?, reason = ?, certificate_path = ? WHERE medical_id = ?";
-        try (Connection c = conn();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setDate(1, m.getMedicalDate());
-            ps.setString(2, m.getReason());
-            ps.setString(3, m.getCertificatePath());
-            ps.setInt(4, m.getMedicalId());
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to update medical record ID: " + m.getMedicalId(), e);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public boolean delete(int medicalId) {
         String sql = "DELETE FROM medical WHERE medical_id = ?";
         try (Connection c = conn();
