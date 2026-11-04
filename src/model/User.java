@@ -14,6 +14,7 @@ public class User {
     private String gender ;
     private String userType;
     private String photo;  // photo filename (e.g., "b1.jpg", "g5.jpg")
+    private String username;  // login name, e.g. "tg1001" / "le1003" (set by DB trigger)
 
 
     // No-arg constructor (needed by many frameworks)
@@ -123,4 +124,7 @@ public class User {
 
     public String getPhoto() { return photo; }
     public void setPhoto(String photo) { this.photo = photo; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 }

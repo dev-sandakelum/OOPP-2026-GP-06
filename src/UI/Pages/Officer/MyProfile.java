@@ -9,6 +9,7 @@ import data.DepartmentData;
 import data.TechnicalOfficerData;
 import model.Department;
 import model.TechnicalOfficer;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -34,7 +35,7 @@ public class MyProfile extends Page {
 
     public MyProfile(User user) {
         super("My Profile", "Your account details", null);
-        this.user = user;
+        this.user = (TechnicalOfficer) user;
         refreshFromDb();
 
         department.setFont(font(Font.PLAIN, 14));

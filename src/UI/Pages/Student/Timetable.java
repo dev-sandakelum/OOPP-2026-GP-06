@@ -1,8 +1,11 @@
 
 package UI.Pages.Student;
 
+import UI.Kit.Glass;
 import UI.Pages.Components.Card;
+import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.ShapeIcon;
 
 import data.EnrollmentData;
 import data.TimetableData;
@@ -21,6 +24,7 @@ import model.Lecturer;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
 import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -36,6 +40,10 @@ public class Timetable extends Page {
     private static final String[] DAYS = {
             "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"
     };
+
+    // cell tints: theory = same soft blue as the officer timetable, practical = a stronger blue
+    private static final Color THEORY_FILL    = BRAND_SOFT;
+    private static final Color PRACTICAL_FILL = Glass.alpha(BRAND_LT, 70);
 
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm");
@@ -61,14 +69,14 @@ public class Timetable extends Page {
 
         loadTimetable(user);
 
-        JPanel container = new JPanel(new BorderLayout(0, 10));
+        JPanel container = new JPanel(new BorderLayout(0, 12));
         container.setOpaque(false);
 
         container.add(createLegend(), BorderLayout.NORTH);
 
         Card card = new Card(false);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(0, 0, 0, 0));
+        card.setBorder(new EmptyBorder(16, 16, 16, 16));
 
         gridPanel.setOpaque(false);
         card.add(gridPanel, BorderLayout.CENTER);
@@ -242,32 +250,27 @@ public class Timetable extends Page {
         }
     }
 
-    // Theory and Practical legend
+    // Theory / Practical legend (same tints as the cells)
     private JPanel createLegend() {
 
-        JPanel legend = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 15, 0)
-        );
-
+        JPanel legend = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 0));
         legend.setOpaque(false);
 
-        JLabel theoryLbl = new JLabel(" Theory");
-        theoryLbl.setIcon(new LegendIcon(false));
-        theoryLbl.setFont(font(Font.PLAIN, 12));
-        theoryLbl.setForeground(INK_2);
-
-        JLabel practicalLbl = new JLabel(" Practical");
-        practicalLbl.setIcon(new LegendIcon(true));
-        practicalLbl.setFont(font(Font.PLAIN, 12));
-        practicalLbl.setForeground(INK_2);
-
-        legend.add(theoryLbl);
-        legend.add(practicalLbl);
+        legend.add(legendItem("Theory", THEORY_FILL));
+        legend.add(legendItem("Practical", PRACTICAL_FILL));
 
         return legend;
     }
 
-    // Rebuild timetable grid
+    private JLabel legendItem(String text, Color color) {
+        JLabel l = new JLabel(text, ShapeIcon.square(color, 12), SwingConstants.LEFT);
+        l.setIconTextGap(7);
+        l.setFont(font(Font.BOLD, 12));
+        l.setForeground(INK_2);
+        return l;
+    }
+
+    // Rebuild timetable grid (same layout as the officer Timetables page)
     private void rebuild() {
 
         gridPanel.removeAll();
@@ -283,105 +286,32 @@ public class Timetable extends Page {
         }
 
         GridBagConstraints gc = new GridBagConstraints();
-
         gc.fill = GridBagConstraints.BOTH;
-        gc.insets = new Insets(1, 1, 1, 1);
+        gc.insets = new Insets(5, 5, 5, 5);
 
-        // Empty top-left corner
-        gc.gridx = 0;
-        gc.gridy = 0;
-        gc.weightx = 0;
-        gc.weighty = 0;
+        // top-left corner spacer + day headers
+        gc.gridx = 0; gc.gridy = 0; gc.weightx = 0; gc.weighty = 0;
+        gridPanel.add(Box.createHorizontalStrut(110), gc);
 
-        gridPanel.add(Box.createHorizontalStrut(100), gc);
-
-        // Day headers
         for (int d = 0; d < DAYS.length; d++) {
-
-            gc.gridx = d + 1;
-            gc.gridy = 0;
-            gc.weightx = 1;
-
-            String day = DAYS[d];
-
-            boolean isToday = isToday(day);
-
-            JPanel headerCell = new JPanel(new BorderLayout());
-
-            headerCell.setBackground(
-                    isToday ? BRAND : Color.WHITE
-            );
-
-            headerCell.setBorder(
-                    BorderFactory.createMatteBorder(
-                            0, 0, 1, 0, LINE
-                    )
-            );
-
-            headerCell.setPreferredSize(new Dimension(120, 45));
-
-            JLabel label = new JLabel(
-                    isToday ? shortDay(day) + " · TODAY" : shortDay(day),
-                    SwingConstants.CENTER
-            );
-
-            label.setFont(font(Font.BOLD, 12));
-
-            label.setForeground(
-                    isToday ? Color.WHITE : INK_2
-            );
-
-            headerCell.add(label, BorderLayout.CENTER);
-
-            gridPanel.add(headerCell, gc);
+            gc.gridx = d + 1; gc.gridy = 0; gc.weightx = 1;
+            gridPanel.add(dayHeader(DAYS[d]), gc);
         }
 
-        // Dynamic time slots
+        // one row per time slot
         int row = 1;
-
         for (TimeSlot slot : timeSlots) {
 
-            gc.gridx = 0;
-            gc.gridy = row;
-            gc.weightx = 0;
-            gc.weighty = 1;
-
-            JPanel timeCell = new JPanel(new BorderLayout());
-
-            timeCell.setBackground(Color.WHITE);
-
-            timeCell.setBorder(
-                    BorderFactory.createMatteBorder(
-                            0, 0, 1, 1, LINE
-                    )
-            );
-
-            JLabel timeLabel = new JLabel(
-                    slot.toString(),
-                    SwingConstants.CENTER
-            );
-
-            timeLabel.setFont(font(Font.PLAIN, 12));
+            gc.gridx = 0; gc.gridy = row; gc.weightx = 0; gc.weighty = 1;
+            JLabel timeLabel = new JLabel(slot.toString());
+            timeLabel.setFont(font(Font.BOLD, 13));
             timeLabel.setForeground(INK_2);
+            gridPanel.add(timeLabel, gc);
 
-            timeCell.add(timeLabel, BorderLayout.CENTER);
-
-            gridPanel.add(timeCell, gc);
-
-            // Course cells for each day
             for (int d = 0; d < DAYS.length; d++) {
-
-                String day = DAYS[d];
-
-                List<CourseEntry> entries =
-                        timetableGrid.get(day).get(slot);
-
-                gc.gridx = d + 1;
-                gc.weightx = 1;
-
-                gridPanel.add(createCourseCell(entries), gc);
+                gc.gridx = d + 1; gc.weightx = 1;
+                gridPanel.add(slotCell(timetableGrid.get(DAYS[d]).get(slot)), gc);
             }
-
             row++;
         }
 
@@ -389,98 +319,49 @@ public class Timetable extends Page {
         gridPanel.repaint();
     }
 
-    // Create a cell containing one or more courses
-    private JPanel createCourseCell(List<CourseEntry> entries) {
+    // "Monday"; today's column is shown in brand blue with a "Today" chip
+    private JComponent dayHeader(String day) {
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        String name = day.charAt(0) + day.substring(1).toLowerCase();
 
-        panel.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(
-                                0, 0, 1, 1, LINE
-                        ),
-                        new EmptyBorder(8, 8, 8, 8)
-                )
-        );
+        JLabel l = new JLabel(name);
+        l.setFont(font(Font.BOLD, 13));
 
-        panel.setBackground(Color.WHITE);
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        p.setOpaque(false);
+        p.add(l);
+
+        if (isToday(day)) {
+            l.setForeground(BRAND);
+            p.add(new Chip("Today", BRAND));
+        } else {
+            l.setForeground(INK_2);
+        }
+
+        // vertically centre the row
+        JPanel wrap = new JPanel(new GridBagLayout());
+        wrap.setOpaque(false);
+        wrap.setPreferredSize(new Dimension(100, 30));
+        wrap.add(p);
+        return wrap;
+    }
+
+    // One grid slot: dashed "Free" box, or one tile per course in that slot
+    private JComponent slotCell(List<CourseEntry> entries) {
 
         if (entries == null || entries.isEmpty()) {
-            return panel;
+            return new SessionTile(null);
+        }
+        if (entries.size() == 1) {
+            return new SessionTile(entries.get(0));
         }
 
+        JPanel stack = new JPanel(new GridLayout(0, 1, 0, 6));
+        stack.setOpaque(false);
         for (CourseEntry entry : entries) {
-
-            boolean isPractical =
-                    "PRACTICAL".equalsIgnoreCase(entry.sessionType);
-
-            JPanel coursePanel = new JPanel(
-                    new BorderLayout(5, 5)
-            );
-
-            coursePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            coursePanel.setBorder(
-                    new EmptyBorder(5, 5, 8, 5)
-            );
-
-            coursePanel.setBackground(
-                    isPractical ? BRAND_SOFT : Color.WHITE
-            );
-
-            // Course code and type badge
-            JPanel top = new JPanel(
-                    new FlowLayout(FlowLayout.LEFT, 6, 0)
-            );
-
-            top.setOpaque(false);
-
-            JLabel code = new JLabel(entry.courseCode);
-            code.setFont(font(Font.BOLD, 12));
-            code.setForeground(INK);
-
-            top.add(code);
-
-            String badgeText = isPractical ? "P" : "T";
-
-            JLabel badge = new JLabel(
-                    badgeText,
-                    SwingConstants.CENTER
-            );
-
-            badge.setFont(font(Font.BOLD, 10));
-            badge.setPreferredSize(new Dimension(20, 20));
-            badge.setOpaque(true);
-
-            if (isPractical) {
-                badge.setBackground(BRAND);
-                badge.setForeground(Color.WHITE);
-            } else {
-                badge.setBackground(Color.WHITE);
-                badge.setForeground(Color.DARK_GRAY);
-                badge.setBorder(
-                        BorderFactory.createLineBorder(Color.GRAY)
-                );
-            }
-
-            top.add(badge);
-
-            // Room and lecturer
-            String details = (entry.room == null ? "Room not assigned" : entry.room)
-                    + " · " + entry.lecturerName;
-
-            JLabel location = new JLabel(details);
-            location.setFont(font(Font.PLAIN, 11));
-            location.setForeground(Color.GRAY);
-
-            coursePanel.add(top, BorderLayout.NORTH);
-            coursePanel.add(location, BorderLayout.CENTER);
-
-            panel.add(coursePanel);
+            stack.add(new SessionTile(entry));
         }
-
-        return panel;
+        return stack;
     }
 
     private void showMessage(String message) {
@@ -496,6 +377,7 @@ public class Timetable extends Page {
 
         label.setFont(font(Font.PLAIN, 14));
         label.setForeground(INK_2);
+        label.setBorder(new EmptyBorder(30, 10, 30, 10));
 
         gridPanel.add(label, BorderLayout.CENTER);
 
@@ -505,14 +387,7 @@ public class Timetable extends Page {
 
     // Check actual current day
     private boolean isToday(String day) {
-
-        DayOfWeek today = LocalDate.now().getDayOfWeek();
-
-        return day.equals(today.name());
-    }
-
-    private String shortDay(String day) {
-        return day.substring(0, 3);
+        return day.equals(LocalDate.now().getDayOfWeek().name());
     }
 
     // Time slot model
@@ -586,55 +461,91 @@ public class Timetable extends Page {
         }
     }
 
-    // Custom legend icon
-    private static class LegendIcon implements Icon {
 
-        private final boolean filled;
+    // Read-only timetable tile, painted like the officer TimetableCell:
+    // rounded tinted box when a course is booked, dashed "Free" box otherwise.
+    private static class SessionTile extends JComponent {
 
-        public LegendIcon(boolean filled) {
-            this.filled = filled;
+        private final CourseEntry entry;   // null = free slot
+
+        SessionTile(CourseEntry entry) {
+            this.entry = entry;
+            setOpaque(false);
+            setPreferredSize(new Dimension(100, entry == null ? 76 : 92));
+            if (entry != null) {
+                String type = isPractical(entry) ? "Practical" : "Theory";
+                setToolTipText(entry.courseCode + " · " + type + " · "
+                        + roomOf(entry) + " · " + entry.lecturerName);
+            }
         }
 
         @Override
-        public void paintIcon(
-                Component c,
-                Graphics g,
-                int x,
-                int y
-        ) {
+        protected void paintComponent(Graphics g) {
 
-            Graphics2D g2 = (Graphics2D) g.create();
+            Graphics2D g2 = Glass.aa(g);
+            Shape shape = new RoundRectangle2D.Float(0.5f, 0.5f, getWidth() - 2, getHeight() - 2, 18, 18);
+            int w = getWidth();
 
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON
-            );
+            if (entry == null) {
+                g2.setColor(GLASS_FAINT);
+                g2.fill(shape);
+                g2.setColor(LINE_2);
+                g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
+                        10f, new float[]{4f, 4f}, 0f));
+                g2.draw(shape);
 
-            if (filled) {
-
-                g2.setColor(BRAND);
-                g2.fillRoundRect(x, y + 2, 12, 12, 4, 4);
-
-            } else {
-
-                g2.setColor(Color.WHITE);
-                g2.fillRoundRect(x, y + 2, 12, 12, 4, 4);
-
-                g2.setColor(Color.GRAY);
-                g2.drawRoundRect(x, y + 2, 12, 12, 4, 4);
+                g2.setFont(font(Font.PLAIN, 12));
+                FontMetrics fm = g2.getFontMetrics();
+                g2.setColor(INK_2);
+                g2.drawString("Free", (w - fm.stringWidth("Free")) / 2,
+                        (getHeight() + fm.getAscent()) / 2 - 2);
+                g2.dispose();
+                return;
             }
+
+            boolean practical = isPractical(entry);
+            g2.setColor(practical ? PRACTICAL_FILL : THEORY_FILL);
+            g2.fill(shape);
+            g2.setColor(GLASS_LINE);
+            g2.draw(shape);
+
+            // three centred lines: code / room · type / lecturer
+            int cy = getHeight() / 2;
+
+            g2.setFont(font(Font.BOLD, 14));
+            g2.setColor(BRAND);
+            drawCentred(g2, entry.courseCode, w, cy - 14);
+
+            g2.setFont(font(Font.PLAIN, 12));
+            g2.setColor(INK_2);
+            drawCentred(g2, roomOf(entry) + "  ·  " + (practical ? "Practical" : "Theory"), w, cy + 4);
+
+            g2.setFont(font(Font.PLAIN, 11));
+            drawCentred(g2, entry.lecturerName, w, cy + 22);
 
             g2.dispose();
         }
 
-        @Override
-        public int getIconWidth() {
-            return 12;
+        /** Draws text centred horizontally, cut with "…" if it does not fit. */
+        private static void drawCentred(Graphics2D g2, String text, int width, int baseline) {
+            if (text == null) return;
+            FontMetrics fm = g2.getFontMetrics();
+            int max = width - 16;
+            if (fm.stringWidth(text) > max) {
+                while (text.length() > 1 && fm.stringWidth(text + "…") > max) {
+                    text = text.substring(0, text.length() - 1);
+                }
+                text = text + "…";
+            }
+            g2.drawString(text, (width - fm.stringWidth(text)) / 2, baseline);
         }
 
-        @Override
-        public int getIconHeight() {
-            return 16;
+        private static boolean isPractical(CourseEntry e) {
+            return "PRACTICAL".equalsIgnoreCase(e.sessionType);
+        }
+
+        private static String roomOf(CourseEntry e) {
+            return e.room == null || e.room.isBlank() ? "Room TBA" : e.room;
         }
     }
 }

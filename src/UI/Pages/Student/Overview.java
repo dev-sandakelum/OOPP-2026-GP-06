@@ -4,6 +4,7 @@ package UI.Pages.Student;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.ShapeIcon;
 import UI.Pages.Components.RoundedButton;
 
 import data.EligibilityData;
@@ -606,9 +607,9 @@ public class Overview extends Page {
         if (!hasAttendance) {
             attendanceChip.add(new Chip("N/A", WARN));
         } else if (attendance >= 80) {
-            attendanceChip.add(new Chip("● Eligible", OK));
+            attendanceChip.add(new Chip("Eligible", OK, true));
         } else {
-            attendanceChip.add(new Chip("● Below 80%", WARN));
+            attendanceChip.add(new Chip("Below 80%", WARN, true));
         }
 
         row.add(wrapCell(attendanceChip, widths[3]));
@@ -619,12 +620,12 @@ public class Overview extends Page {
         caChip.setOpaque(false);
 
         if (!hasCA) {
-            caChip.add(new Chip("● Pending", WARN));
+            caChip.add(new Chip("Pending", WARN, true));
         } else if (caValue.compareTo(
                 new BigDecimal("40")) >= 0) {
-            caChip.add(new Chip("● CA ≥ 40", OK));
+            caChip.add(new Chip("CA ≥ 40", OK, true));
         } else {
-            caChip.add(new Chip("● Below 40", WARN));
+            caChip.add(new Chip("Below 40", WARN, true));
         }
 
         row.add(wrapCell(caChip, widths[4]));
@@ -635,9 +636,9 @@ public class Overview extends Page {
         verdictPanel.setOpaque(false);
 
         if (eligible) {
-            verdictPanel.add(new Chip("● Eligible", OK));
+            verdictPanel.add(new Chip("Eligible", OK, true));
         } else if (pending) {
-            verdictPanel.add(new Chip("● Pending", WARN));
+            verdictPanel.add(new Chip("Pending", WARN, true));
         } else {
             verdictPanel.add(new Chip(
                     status != null ? status : "Unknown", WARN));
@@ -679,9 +680,7 @@ public class Overview extends Page {
                 new FlowLayout(FlowLayout.LEFT, 5, 0));
         panel.setOpaque(false);
 
-        JLabel dot = new JLabel("■");
-        dot.setForeground(color);
-        dot.setFont(font(Font.PLAIN, 10));
+        JLabel dot = new JLabel(ShapeIcon.square(color, 9));
 
         JLabel label = new JLabel(text);
         label.setFont(font(Font.PLAIN, 12));

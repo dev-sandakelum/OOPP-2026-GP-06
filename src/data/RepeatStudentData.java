@@ -19,7 +19,7 @@ public class RepeatStudentData {
                 rs.getInt("student_id"),
                 rs.getInt("subject_id"),
                 rs.getInt("repeat_year"),
-                rs.getInt("repeat_shy"),
+                rs.getString("repeat_shy"),
                 rs.getString("review")
         );
     }
@@ -62,6 +62,25 @@ public class RepeatStudentData {
         }
     }
 
+    public List<RepeatStudent> findBySubject(int subjectId) {
+        String sql = "SELECT * FROM repeat_student WHERE subject_id = ? ORDER BY repeat_year DESC, student_id";
+        List<RepeatStudent> list = new ArrayList<>();
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, subjectId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(map(rs));
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DataAccessException("Failed to find repeat students for subject ID: " + subjectId, e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public boolean save(RepeatStudent r) {
         String sql = "INSERT INTO repeat_student (student_id, subject_id, repeat_year, repeat_shy, review) " +
                 "VALUES (?, ?, ?, ?, ?) " +
@@ -71,7 +90,7 @@ public class RepeatStudentData {
             ps.setInt(1, r.getStudentId());
             ps.setInt(2, r.getSubjectId());
             ps.setInt(3, r.getRepeatYear());
-            ps.setInt(4, r.getRepeatShy());
+            ps.setString(4, r.getRepeatShy());
             ps.setString(5, r.getReview());
 
             return ps.executeUpdate() > 0;

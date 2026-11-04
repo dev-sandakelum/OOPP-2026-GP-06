@@ -79,8 +79,8 @@ public class LoginPage extends JFrame implements FrameData {
         panel.add(subtitle);
         panel.add(Box.createVerticalStrut(28));
 
-        // Email
-        panel.add(fieldLabel("Email address"));
+        // Username or email
+        panel.add(fieldLabel("Username or email"));
         panel.add(Box.createVerticalStrut(4));
         styleField(emailField);
         panel.add(emailField);
@@ -120,7 +120,7 @@ public class LoginPage extends JFrame implements FrameData {
         String password = new String(passField.getPassword());
 
         if (email.isEmpty() || password.isEmpty()) {
-            errorLabel.setText("Please enter your email and password.");
+            errorLabel.setText("Please enter your username (or email) and password.");
             return;
         }
 
@@ -146,7 +146,7 @@ public class LoginPage extends JFrame implements FrameData {
                     return;
                 }
                 if (user == null) {
-                    fail("Incorrect email or password.");
+                    fail("Incorrect username/email or password.");
                     passField.setText("");
                     passField.requestFocusInWindow();
                     return;
