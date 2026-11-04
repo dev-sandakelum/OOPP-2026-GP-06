@@ -4,12 +4,12 @@ public class RepeatStudent {
     private int studentId;
     private int subjectId;
     private int repeatYear;
-    private int repeatShy;
+    private String repeatShy;
     private String review;
 
     public RepeatStudent() {}
 
-    public RepeatStudent(int studentId, int subjectId, int repeatYear, int repeatShy, String review) {
+    public RepeatStudent(int studentId, int subjectId, int repeatYear, String repeatShy, String review) {
         this.studentId = studentId;
         this.subjectId = subjectId;
         this.repeatYear = repeatYear;
@@ -26,8 +26,8 @@ public class RepeatStudent {
     public int getRepeatYear() { return repeatYear; }
     public void setRepeatYear(int repeatYear) { this.repeatYear = repeatYear; }
 
-    public int getRepeatShy() { return repeatShy; }
-    public void setRepeatShy(int repeatShy) { this.repeatShy = repeatShy; }
+    public String getRepeatShy() { return repeatShy; }
+    public void setRepeatShy(String repeatShy) { this.repeatShy = repeatShy; }
 
     public String getReview() { return review; }
     public void setReview(String review) { this.review = review; }

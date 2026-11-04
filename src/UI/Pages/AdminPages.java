@@ -4,7 +4,7 @@ import UI.Kit.FrameData;
 import UI.Pages.Components.ContentCard;
 import UI.Pages.Components.NavIcon;
 import UI.Pages.Components.Sidebar;
-import UI.Pages.admin.Courses;
+import UI.Pages.Officer.Courses;   // same Courses page as the technical officer
 import UI.Pages.admin.MyProfile;
 import UI.Pages.admin.Notices;
 import UI.Pages.admin.Overview;
@@ -61,7 +61,7 @@ public class AdminPages extends JFrame implements FrameData {
         // same order as adminTabs
         cardHost.add(new Overview(user),       adminTabs[0]);
         cardHost.add(new UserProfiles(),       adminTabs[1]);
-        cardHost.add(new Courses(),            adminTabs[2]);
+        cardHost.add(new Courses(user),        adminTabs[2]);
         cardHost.add(new Notices(user),        adminTabs[3]);
         cardHost.add(new Timetables(),         adminTabs[4]);
         cardHost.add(new MyProfile(user),      adminTabs[5]);

@@ -15,7 +15,7 @@ import java.util.List;
 public class UserData {
 
     private static final String TABLE = "users";
-    private static final String COLUMNS = "user_id, name, email, password, phone, address, dob, gender, user_type, photo";
+    private static final String COLUMNS = "user_id, name, email, username, password, phone, address, dob, gender, user_type, photo";
 
     private Connection conn() throws Exception {
         return Database.getConnection();
@@ -131,26 +131,32 @@ public class UserData {
         }
     }
 
-    /** Updates only the profile fields available to undergraduate accounts. */
-    public boolean updateStudentProfileDetails(User u) {
-        String sql = "UPDATE " + TABLE + " SET email = ?, phone = ?, address = ? WHERE user_id = ?";
-        try (Connection c = conn()) {
-            try (PreparedStatement ps = c.prepareStatement(sql)) {
-                ps.setString(1, u.getEmail());
-                ps.setString(2, u.getContact_number());
-                ps.setString(3, u.getAddress());
-                ps.setInt(4, u.getUser_id());
-                if (ps.executeUpdate() > 0) return true;
-            }
-
-            try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM " + TABLE + " WHERE user_id = ?")) {
-                ps.setInt(1, u.getUser_id());
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next();
-                }
-            }
+    /** Updates only name, email, phone and address (gender and dob are never changed here). */
+    public boolean updateContact(User u) {
+        String sql = "UPDATE " + TABLE + " SET name = ?, email = ?, phone = ?, address = ? WHERE user_id = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, u.getName());
+            ps.setString(2, u.getEmail());
+            ps.setString(3, u.getContact_number());
+            ps.setString(4, u.getAddress());
+            ps.setInt(5, u.getUser_id());
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new DataAccessException("Could not update profile details for user " + u.getUser_id(), e);
+            throw new DataAccessException("Could not update user " + u.getUser_id(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Updates only the profile photo filename. */
+    public boolean updatePhoto(int id, String photo) {
+        String sql = "UPDATE " + TABLE + " SET photo = ? WHERE user_id = ?";
+        try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, photo);
+            ps.setInt(2, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DataAccessException("Could not update photo of user " + id, e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -184,12 +190,17 @@ public class UserData {
         }
     }
 
-    /** Returns the user matching email + password, or null if no match. */
-    public User login(String email, String password) {
+    /**
+     * Returns the user matching (username OR email) + password, or null if no match.
+     * Username is case-insensitive ("TG1001" == "tg1001"); a full number such as
+     * "TG/2024/1001" is also accepted and turned into "tg1001".
+     */
+    public User login(String usernameOrEmail, String password) {
+        String id = normalizeLoginId(usernameOrEmail);
         String sql = "SELECT " + COLUMNS + " FROM " + TABLE
-                + " WHERE email = ? AND password = ?";
+                + " WHERE " + (id.contains("@") ? "email" : "username") + " = ? AND password = ?";
         try (Connection c = conn(); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, email);
+            ps.setString(1, id);
             ps.setString(2, password);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? map(rs) : null;
@@ -203,11 +214,22 @@ public class UserData {
 
 
 
+    /** "  TG/2024/1001 " -> "tg1001", "TG1001" -> "tg1001"; emails are only trimmed. */
+    static String normalizeLoginId(String raw) {
+        String s = raw == null ? "" : raw.trim();
+        if (s.contains("@")) return s;
+        if (s.matches("[A-Za-z]{2}/\\d{4}/\\d+")) {
+            s = s.substring(0, 2) + s.substring(s.lastIndexOf('/') + 1);
+        }
+        return s.toLowerCase();
+    }
+
     private User map(ResultSet rs) throws SQLException {
         User u = new User();
         u.setUser_id(rs.getInt("user_id"));
         u.setName(rs.getString("name"));
         u.setEmail(rs.getString("email"));
+        u.setUsername(rs.getString("username"));
         u.setPassword(rs.getString("password"));
         u.setContact_number(rs.getString("phone"));
         u.setAddress(rs.getString("address"));
@@ -216,5 +238,9 @@ public class UserData {
         u.setUserType(rs.getString("user_type"));
         u.setPhoto(rs.getString("photo"));
         return u;
+    }
+
+    public boolean updateStudentProfileDetails(User updatedProfile) {
+        return false;
     }
 }

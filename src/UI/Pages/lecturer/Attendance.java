@@ -1,28 +1,40 @@
 package UI.Pages.lecturer;
 
 import UI.Pages.Components.Card;
+import UI.Pages.Components.ReadOnlyTableModel;
 import data.AttendanceData;
+import data.BatchData;
 import data.CourseData;
 import data.CourseOfferingData;
 import data.EnrollmentData;
+import data.LecturerData;
 import data.SessionData;
+import data.UndergraduateData;
 import data.UserData;
+import model.Batch;
 import model.Course;
 import model.CourseOffering;
 import model.Enrollment;
+import model.Lecturer;
 import model.Session;
+import model.Undergraduate;
 import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.text.SimpleDateFormat;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static UI.Kit.Palette.*;
+import static UI.Pages.Components.Ui.table;
 
 public class Attendance extends LecturerUI.Page {
 
@@ -31,15 +43,24 @@ public class Attendance extends LecturerUI.Page {
     private static final int ROW_H = 52;
 
     // ---------- Components ----------
+    private JComboBox<String> batchBox;
     private JComboBox<String> courseBox;
     private JSpinner dateSpinner;
-    private JComboBox<String> sessionBox;
+    private JComboBox<String> startBox;   // start of the session time range
+    private JComboBox<String> endBox;     // end of the session time range
 
     private final JLabel enrolledValue = new JLabel("0");
     private final JLabel presentValue  = new JLabel("0");
     private final JLabel absentValue   = new JLabel("0");
     private final JLabel rateValue     = new JLabel("0%");
     private final JLabel studentCount  = new JLabel();
+
+    // Eligibility table: attendance above 80% = Eligible, otherwise Not eligible
+    private static final double ELIGIBLE_ABOVE = 80;
+    private static final int STATUS_COL = 5;
+    private final DefaultTableModel eligibilityModel = new ReadOnlyTableModel(
+            new String[]{"Reg. No", "Student", "Attended", "Total Sessions", "Attendance %", "Status"});
+    private final JTable eligibilityTable = table(eligibilityModel, statusColors(), STATUS_COL);
 
     private JPanel rowsPanel;
     private final List<StudentRow> studentRows = new ArrayList<>();
@@ -50,9 +71,13 @@ public class Attendance extends LecturerUI.Page {
     private final UserData userData = new UserData();
     private final SessionData sessionData = new SessionData();
     private final AttendanceData attendanceData = new AttendanceData();
+    private final LecturerData lecturerData = new LecturerData();
+    private final BatchData batchData = new BatchData();
     private final int lecturerId;
+    private List<Batch> batches = new ArrayList<>();   // batches of the lecturer's department (same order as batchBox)
     private List<CourseOffering> offerings = new ArrayList<>();
-    private List<Session> sessions = new ArrayList<>();   // sessions shown in sessionBox
+    private boolean updating = false;   // true while a dropdown is being refilled (its listeners are skipped)
+    private final UndergraduateData undergraduateData = new UndergraduateData();
 
     public Attendance(User user) {
         super("Attendance", "Mark attendance for a session", null);
@@ -67,9 +92,11 @@ public class Attendance extends LecturerUI.Page {
         body.add(stretch(buildStats()));
         body.add(Box.createVerticalStrut(16));
         body.add(stretch(buildTable()));
+        body.add(Box.createVerticalStrut(16));
+        body.add(stretch(buildEligibilityCard()));
         setScrollBody(body);
 
-        loadCourses();
+        loadBatches();   // selecting the first batch loads its courses
     }
 
     // =====================================================================
@@ -78,26 +105,53 @@ public class Attendance extends LecturerUI.Page {
 
     /** Card with Course / Date / Session on the left and the two actions on the right. */
     private JComponent buildControls() {
+        batchBox = new JComboBox<>();
+        styleInput(batchBox, 200);
+        batchBox.addActionListener(e -> {   // a new batch has other courses and other students
+            loadCourses();
+            loadEligibility();
+            loadStudents();
+        });
+
         courseBox = new JComboBox<>();
         styleInput(courseBox, 280);
-        courseBox.addActionListener(e -> onCourseOrDateChanged());
+        courseBox.addActionListener(e -> {
+            if (updating) return;
+            loadEligibility();   // eligibility of the chosen course
+            loadStudents();      // the saved attendance of this course
+        });
 
         dateSpinner = new JSpinner(new SpinnerDateModel(new Date(), null, null, java.util.Calendar.DAY_OF_MONTH));
         dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd"));
         styleInput(dateSpinner, 150);
-        dateSpinner.addChangeListener(e -> onCourseOrDateChanged());
 
-        sessionBox = new JComboBox<>();
-        styleInput(sessionBox, 170);
-        sessionBox.addActionListener(e -> loadStudents());
+        // start and end time: 08:00 to 16:00, every 30 minutes
+        startBox = new JComboBox<>(timeOptions());
+        styleInput(startBox, 100);
+        startBox.removeItemAt(startBox.getItemCount() - 1);   // 16:00 can only be an end time
+        endBox = new JComboBox<>();
+        styleInput(endBox, 100);
+        startBox.addActionListener(e -> {
+            fillEndBox();
+            loadStudents();
+        });
+        endBox.addActionListener(e -> {
+            if (!updating) loadStudents();
+        });
+        dateSpinner.addChangeListener(e -> loadStudents());
+        fillEndBox();
 
         JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         filters.setOpaque(false);
+        filters.add(labelled("Batch", batchBox));
+        filters.add(Box.createHorizontalStrut(12));
         filters.add(labelled("Course", courseBox));
         filters.add(Box.createHorizontalStrut(12));
         filters.add(labelled("Date", dateSpinner));
         filters.add(Box.createHorizontalStrut(12));
-        filters.add(labelled("Session", sessionBox));
+        filters.add(labelled("Start session", startBox));
+        filters.add(Box.createHorizontalStrut(12));
+        filters.add(labelled("End session", endBox));
 
         LecturerUI.Btn markAll = new LecturerUI.Btn("Mark all present", false);
         markAll.addActionListener(e -> markAllPresent());
@@ -190,68 +244,188 @@ public class Attendance extends LecturerUI.Page {
         return card;
     }
 
+    /** Card with the eligibility table: every enrolled student of the selected course. */
+    private JComponent buildEligibilityCard() {
+        JLabel title = new JLabel("Attendance eligibility");
+        title.setFont(font(Font.BOLD, 15));
+        title.setForeground(INK);
+        JLabel hint = new JLabel("Eligible when attendance is above " + (int) ELIGIBLE_ABOVE + "%");
+        hint.setFont(font(Font.PLAIN, 12));
+        hint.setForeground(INK_2);
+
+        JPanel titleBar = new JPanel(new BorderLayout());
+        titleBar.setOpaque(false);
+        titleBar.setBorder(new EmptyBorder(4, 12, 12, 12));
+        titleBar.add(title, BorderLayout.WEST);
+        titleBar.add(hint, BorderLayout.EAST);
+
+        // header + rows without a scroll pane, so the card grows with the rows
+        JPanel grid = new JPanel(new BorderLayout());
+        grid.setOpaque(false);
+        grid.add(eligibilityTable.getTableHeader(), BorderLayout.NORTH);
+        grid.add(eligibilityTable, BorderLayout.CENTER);
+
+        Card card = new Card(false);
+        card.setLayout(new BorderLayout());
+        card.setBorder(new EmptyBorder(16, 8, 8, 8));
+        card.add(titleBar, BorderLayout.NORTH);
+        card.add(grid, BorderLayout.CENTER);
+        return card;
+    }
+
+    // chip colors of the Status column
+    private static Map<String, Color> statusColors() {
+        Map<String, Color> colors = new HashMap<>();
+        colors.put("Eligible", OK);
+        colors.put("Not eligible", BAD);
+        return colors;
+    }
+
     // =====================================================================
     //  DATA LOADING  (loaded through the data layers)
     // =====================================================================
 
-    /** Fills the course dropdown. */
-    private void loadCourses() {
-        offerings = offeringData.findByLecturer(lecturerId);
-        courseBox.removeAllItems();
-        for (CourseOffering o : offerings) {
-            Course c = courseData.findById(o.getCourse_id());
-            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
-                    : c.getCourse_code() + " - " + c.getCourse_name());
+    /** Fills the batch dropdown with the batches of the lecturer's department only. */
+    private void loadBatches() {
+        Lecturer lecturer = lecturerData.findById(lecturerId);
+        if (lecturer == null) return;
+
+        batches = batchData.findByDepartment(lecturer.getDep_id());
+        for (Batch b : batches) {
+            batchBox.addItem(b.getBatch_name() + " (" + b.getIntake_year() + ")");
         }
     }
 
-    /** Called when the course or date changes: reload the session list. */
-    private void onCourseOrDateChanged() {
-        if (courseBox == null || sessionBox == null || dateSpinner == null) return;
-        loadSessions();
+    /**
+     * Fills the course dropdown with the lecturer's courses of the selected batch.
+     * A course belongs to a batch when its batch (e.g. "2025/26") starts with the intake year of the batch (2025).
+     */
+    private void loadCourses() {
+        updating = true;
+        offerings = new ArrayList<>();
+        courseBox.removeAllItems();
+
+        int batchIndex = batchBox.getSelectedIndex();
+        if (batchIndex < 0) {
+            updating = false;
+            return;
+        }
+        String intakeYear = String.valueOf(batches.get(batchIndex).getIntake_year());
+
+        for (CourseOffering o : offeringData.findByLecturer(lecturerId)) {
+            Course c = courseData.findById(o.getCourse_id());
+            if (c == null || c.getBatch() == null || !c.getBatch().startsWith(intakeYear)) continue;
+            offerings.add(o);
+            courseBox.addItem(c.getCourse_code() + " - " + c.getCourse_name());
+        }
+        updating = false;
     }
 
-    /** Fills the session dropdown with the sessions of the selected course on the selected date. */
-    private void loadSessions() {
-        sessions.clear();
-        sessionBox.removeAllItems();
+    // The end session list only has the times after the start session (the old end time is kept if it is still valid)
+    private void fillEndBox() {
+        updating = true;
+        Object oldEnd = endBox.getSelectedItem();
+        endBox.removeAllItems();
+
+        LocalTime start = LocalTime.parse((String) startBox.getSelectedItem());
+        for (String time : timeOptions()) {
+            if (LocalTime.parse(time).isAfter(start)) endBox.addItem(time);
+        }
+        endBox.setSelectedItem(oldEnd);                          // does nothing if oldEnd is not in the list
+        if (endBox.getSelectedItem() == null || oldEnd == null) {
+            endBox.setSelectedIndex(endBox.getItemCount() - 1);   // default: 16:00
+        }
+        updating = false;
+    }
+
+    // "08:00", "08:30", ... "16:00"
+    private static String[] timeOptions() {
+        List<String> times = new ArrayList<>();
+        for (LocalTime t = LocalTime.of(8, 0); !t.isAfter(LocalTime.of(16, 0)); t = t.plusMinutes(30)) {
+            times.add(t.toString());   // LocalTime prints as HH:mm
+        }
+        return times.toArray(new String[0]);
+    }
+
+    /**
+     * Fills the eligibility table for the selected course.
+     * Attendance % = sessions the student was PRESENT / sessions that have attendance recorded for the student.
+     */
+    private void loadEligibility() {
+        eligibilityModel.setRowCount(0);
 
         int index = courseBox.getSelectedIndex();
-        if (index >= 0) {
-            String date = new SimpleDateFormat("yyyy-MM-dd").format((Date) dateSpinner.getValue());
-            for (Session s : sessionData.findByOffering(offerings.get(index).getOffering_id())) {
-                if (s.getSessionDate() != null && s.getSessionDate().toString().equals(date)) {
-                    sessions.add(s);
-                    String time = s.getStartTime() == null ? "" : " " + s.getStartTime().toString().substring(0, 5);
-                    sessionBox.addItem(s.getSessionType() + time);
-                }
+        if (index < 0) return;
+        int offeringId = offerings.get(index).getOffering_id();
+
+        for (Enrollment en : enrollmentData.findByOffering(offeringId)) {
+            User student = userData.findById(en.getStudent_id());
+
+            int total = 0, attended = 0;
+            for (model.Attendance a : attendanceData.findByStudentAndOffering(en.getStudent_id(), offeringId)) {
+                total++;
+                if ("PRESENT".equals(a.getAttendStatus())) attended++;
             }
+
+            double percentage = total == 0 ? 0 : attended * 100.0 / total;
+            String status = percentage > ELIGIBLE_ABOVE ? "Eligible" : "Not eligible";
+            eligibilityModel.addRow(new Object[]{String.valueOf(en.getStudent_id()),
+                    student == null ? "" : student.getName(), attended, total,
+                    String.format("%.1f%%", percentage), status});
         }
-        loadStudents();
     }
 
-    /** Fills the student list for the selected session. */
+    /** The saved session of the selected course, date, start and end time (null if it does not exist yet). */
+    private Session findSession() {
+        int courseIndex = courseBox.getSelectedIndex();
+        if (courseIndex < 0 || startBox.getSelectedItem() == null || endBox.getSelectedItem() == null) return null;
+
+        java.sql.Date date = selectedDate();
+        LocalTime start = LocalTime.parse((String) startBox.getSelectedItem());
+        LocalTime end = LocalTime.parse((String) endBox.getSelectedItem());
+
+        for (Session s : sessionData.findByOffering(offerings.get(courseIndex).getOffering_id())) {
+            if (s.getSessionDate() != null && s.getSessionDate().toString().equals(date.toString())
+                    && s.getStartTime() != null && s.getStartTime().toLocalTime().equals(start)
+                    && s.getEndTime() != null && s.getEndTime().toLocalTime().equals(end)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    // the date picked in the date spinner
+    private java.sql.Date selectedDate() {
+        Date picked = (Date) dateSpinner.getValue();
+        return java.sql.Date.valueOf(picked.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+    }
+
+    /**
+     * Lists ALL the students of the selected batch.
+     * If attendance was already saved for the selected course, date and time, it is shown;
+     * otherwise every student is PRESENT by default.
+     */
     private void loadStudents() {
         if (rowsPanel == null) return;
 
         rowsPanel.removeAll();
         studentRows.clear();
 
-        int courseIndex = courseBox.getSelectedIndex();
-        int sessionIndex = sessionBox.getSelectedIndex();
-        if (courseIndex >= 0 && sessionIndex >= 0 && sessionIndex < sessions.size()) {
-            // students already saved for this session (id -> status)
-            java.util.Map<Integer, String> saved = new java.util.HashMap<>();
-            for (model.Attendance a : attendanceData.findBySession(sessions.get(sessionIndex).getSessionId())) {
-                saved.put(a.getStudentId(), a.getAttendStatus());
+        int batchIndex = batchBox.getSelectedIndex();
+        if (batchIndex >= 0) {
+            // saved attendance of this session (student id -> status)
+            Map<Integer, String> saved = new HashMap<>();
+            Session session = findSession();
+            if (session != null) {
+                for (model.Attendance a : attendanceData.findBySession(session.getSessionId())) {
+                    saved.put(a.getStudentId(), a.getAttendStatus());
+                }
             }
 
-            // every enrolled student; PRESENT by default when nothing is saved yet
-            for (Enrollment en : enrollmentData.findByOffering(offerings.get(courseIndex).getOffering_id())) {
-                User student = userData.findById(en.getStudent_id());
-                String regNo = String.valueOf(en.getStudent_id());
-                StudentRow row = new StudentRow(studentRows.size() + 1, regNo, student == null ? "" : student.getName());
-                if ("ABSENT".equals(saved.get(en.getStudent_id()))) row.absent.setSelected(true);
+            for (Undergraduate student : undergraduateData.findByBatch(batches.get(batchIndex).getBatch_id())) {
+                StudentRow row = new StudentRow(studentRows.size() + 1,
+                        String.valueOf(student.getUser_id()), student.getName());
+                if ("ABSENT".equals(saved.get(student.getUser_id()))) row.absent.setSelected(true);
                 studentRows.add(row);
                 rowsPanel.add(row.panel);
             }
@@ -273,23 +447,44 @@ public class Attendance extends LecturerUI.Page {
     }
 
     private void submitAttendance() {
-        int sessionIndex = sessionBox.getSelectedIndex();
-        if (studentRows.isEmpty() || sessionIndex < 0) {
-            UI.Pages.Components.Ui.info(this, "No students to submit.");
+        int courseIndex = courseBox.getSelectedIndex();
+        if (studentRows.isEmpty()) {
+            UI.Pages.Components.Ui.info(this, "No students to submit. Please select a batch.");
+            return;
+        }
+        if (courseIndex < 0) {
+            UI.Pages.Components.Ui.info(this, "Please select a course first.");
             return;
         }
 
-        int sessionId = sessions.get(sessionIndex).getSessionId();
-        java.sql.Date today = new java.sql.Date(System.currentTimeMillis());
         try {
+            // the session (course + date + start/end time) holds the time; it is created if it does not exist yet
+            Session session = findSession();
+            if (session == null) session = createSession(offerings.get(courseIndex).getOffering_id());
+
             for (StudentRow r : studentRows) {
                 String status = r.isPresent() ? "PRESENT" : "ABSENT";
-                attendanceData.save(new model.Attendance(Integer.parseInt(r.regNo), sessionId, status, today));
+                attendanceData.save(new model.Attendance(Integer.parseInt(r.regNo),
+                        session.getSessionId(), status, session.getSessionDate()));
             }
-            UI.Pages.Components.Ui.info(this, "Attendance submitted successfully.");
+            UI.Pages.Components.Ui.info(this, "Attendance submitted for " + studentRows.size() + " students\n("
+                    + session.getSessionDate() + ", " + startBox.getSelectedItem() + " - " + endBox.getSelectedItem() + ").");
+            loadEligibility();   // the attendance % changed
         } catch (Exception ex) {
             UI.Pages.Components.Ui.info(this, "Could not save attendance: " + ex.getMessage());
         }
+    }
+
+    // Saves a new session with the selected date, start time and end time
+    private Session createSession(int offeringId) {
+        Session session = new Session();
+        session.setOfferingId(offeringId);
+        session.setSessionNumber(sessionData.findByOffering(offeringId).size() + 1);
+        session.setSessionType("LECTURE");
+        session.setSessionDate(selectedDate());
+        session.setStartTime(java.sql.Time.valueOf(LocalTime.parse((String) startBox.getSelectedItem())));
+        session.setEndTime(java.sql.Time.valueOf(LocalTime.parse((String) endBox.getSelectedItem())));
+        return sessionData.insert(session);
     }
 
     private void updateStats() {
