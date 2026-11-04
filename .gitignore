@@ -28,3 +28,7 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+/report
+/docs
+AFMS Dashboard.png
+/tools

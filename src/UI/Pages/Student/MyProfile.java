@@ -1,0 +1,238 @@
+package UI.Pages.Student;
+
+import UI.Pages.Components.Avatar;
+import UI.Pages.Components.Card;
+import UI.Pages.Components.Page;
+import UI.Pages.Components.RoundedButton;
+import data.UndergraduateData;
+import data.UserData;
+import model.Undergraduate;
+import model.User;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.sql.SQLException;
+
+import static UI.Kit.Palette.*;
+import static UI.Pages.Components.Ui.*;
+
+public class MyProfile extends Page {
+
+    private final UserData userData = new UserData();
+    private final UndergraduateData undergraduateData = new UndergraduateData();
+    private final User user;
+    private Undergraduate undergraduate;
+
+    // Fields
+    private final JTextField nameField = field(20);
+    private final JTextField usernameField = field(20);
+    private final JTextField roleField = field(20);
+    private final JTextField studentNumberField = field(20);
+    private final JTextField emailField = field(20);
+    private final JTextField phoneField = field(20);
+    private final JTextField dobField = field(20);
+    private final JTextField addressField = field(20);
+    private final JTextField genderField = field(20);
+
+    public MyProfile(User user) {
+        super("My profile", "Undergraduates may update email, phone, and address", null);
+        this.user = user;
+
+        Card card = new Card(false);
+        card.setLayout(new BorderLayout(30, 20));
+        card.setBorder(new EmptyBorder(24, 26, 24, 26));
+
+        // Photo section (Left)
+        card.add(createPhotoSection(), BorderLayout.WEST);
+
+        // Form section (Center)
+        card.add(createFormSection(), BorderLayout.CENTER);
+
+        // Footer section (Bottom)
+        card.add(createFooterSection(), BorderLayout.SOUTH);
+
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setOpaque(false);
+        wrap.add(card, BorderLayout.NORTH);
+        setScrollBody(wrap);
+
+        load();
+    }
+
+    private void load() {
+        if (user == null) return;
+        
+        // Load undergraduate data to get student_number
+        try {
+            undergraduate = undergraduateData.findById(user.getUser_id());
+        } catch (Exception e) {
+            info(this, "Could not load undergraduate details: " + e.getMessage());
+        }
+        
+        String shownName = (user.getName() != null) ? user.getName() : "";
+        String email = (user.getEmail() != null) ? user.getEmail() : "";
+        String phone = (user.getContact_number() != null) ? user.getContact_number() : "";
+        String studentNumber = (undergraduate != null && undergraduate.getStudent_number() != null) 
+                ? undergraduate.getStudent_number() : "";
+
+        nameField.setText(shownName);
+        usernameField.setText(""); // Placeholder - username not in User model
+        roleField.setText("Undergraduate");
+        studentNumberField.setText(studentNumber);
+
+        emailField.setText(email);
+        phoneField.setText(phone);
+        dobField.setText(user.getDOB() == null ? "" : user.getDOB().toString());
+        addressField.setText(user.getAddress() == null ? "" : user.getAddress());
+        genderField.setText(user.getGender() == null ? "" : user.getGender());
+    }
+
+    private JPanel createPhotoSection() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(0, 0, 0, 10));
+
+        String shownName = (user != null && user.getName() != null && !user.getName().isBlank())
+                ? user.getName() : "Silva";
+
+        Avatar avatar = new Avatar(shownName, user != null ? user.getPhoto() : null, 80);
+        avatar.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        RoundedButton changePhotoBtn = new RoundedButton("Change photo", false);
+        changePhotoBtn.setIcon(UIManager.getIcon("FileView.directoryIcon"));
+        changePhotoBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+
+        changePhotoBtn.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            int result = fileChooser.showOpenDialog(this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                java.io.File selectedFile = fileChooser.getSelectedFile();
+
+                info(this, "Selected photo: " + selectedFile.getName());
+            }
+        });
+
+        panel.add(avatar);
+        panel.add(Box.createVerticalStrut(15));
+        panel.add(changePhotoBtn);
+
+        return panel;
+    }
+
+    private JPanel createFormSection() {
+        JPanel grid = new JPanel(new GridLayout(5, 2, 25, 15));
+        grid.setOpaque(false);
+
+        // Row 1: Locked
+        grid.add(createFieldPanel("Full name", nameField, true));
+        grid.add(createFieldPanel("Username", usernameField, true));
+
+        // Row 2: Locked
+        grid.add(createFieldPanel("Role", roleField, true));
+        grid.add(createFieldPanel("Student number", studentNumberField, true));
+
+        // Row 3: Editable
+        grid.add(createFieldPanel("Email", emailField, false));
+        grid.add(createFieldPanel("Phone", phoneField, false));
+
+        // Row 4: Date of birth cannot be changed by undergraduate accounts.
+        grid.add(createFieldPanel("Date of birth (yyyy-mm-dd)", dobField, true));
+        grid.add(createFieldPanel("Address", addressField, false));
+
+        // Row 5: Gender is restricted for undergraduate accounts.
+        grid.add(createFieldPanel("Gender (MALE/FEMALE/OTHER)", genderField, true));
+        grid.add(new JPanel()); // Empty cell
+
+        return grid;
+    }
+
+    private JPanel createFieldPanel(String caption, JTextField f, boolean isLocked) {
+        JPanel p = new JPanel(new BorderLayout(0, 6));
+        p.setOpaque(false);
+
+        JPanel labelPanel = new JPanel(new BorderLayout());
+        labelPanel.setOpaque(false);
+        labelPanel.add(label(caption), BorderLayout.WEST);
+
+        if (isLocked) {
+            JLabel lockLbl = new JLabel(" locked");
+            lockLbl.setFont(font(Font.PLAIN, 11));
+            lockLbl.setForeground(Color.GRAY);
+            labelPanel.add(lockLbl, BorderLayout.EAST);
+
+            f.setEditable(false);
+            f.setFocusable(false);
+            f.setBackground(SURFACE_2);
+            f.setForeground(Color.DARK_GRAY);
+        }
+
+        p.add(labelPanel, BorderLayout.NORTH);
+        p.add(f, BorderLayout.CENTER);
+        return p;
+    }
+
+    private JPanel createFooterSection() {
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setOpaque(false);
+        footer.setBorder(new EmptyBorder(25, 0, 0, 0));
+
+        JLabel info = new JLabel("Email, phone, and address can be changed.");
+        info.setFont(font(Font.PLAIN, 12));
+        info.setForeground(Color.GRAY);
+
+        RoundedButton saveBtn = new RoundedButton("Save changes", true);
+        saveBtn.setBackground(BRAND);
+        saveBtn.addActionListener(e -> save());
+
+        footer.add(info, BorderLayout.WEST);
+        footer.add(saveBtn, BorderLayout.EAST);
+
+        return footer;
+    }
+
+    private void save() {
+        if (user == null) return;
+        if (emailField.getText().isBlank() || phoneField.getText().isBlank()) {
+            info(this, "Email and phone are required.");
+            return;
+        }
+
+        User updatedProfile = new User();
+        updatedProfile.setUser_id(user.getUser_id());
+        updatedProfile.setEmail(emailField.getText().trim());
+        updatedProfile.setContact_number(phoneField.getText().trim());
+        updatedProfile.setAddress(addressField.getText().trim());
+        try {
+            boolean ok = userData.updateStudentProfileDetails(updatedProfile);
+            if (ok) {
+                user.setEmail(updatedProfile.getEmail());
+                user.setContact_number(updatedProfile.getContact_number());
+                user.setAddress(updatedProfile.getAddress());
+            }
+            info(this, ok ? "Profile updated successfully." : "No profile details were saved — the record may not exist.");
+        } catch (Exception ex) {
+            SQLException sqlException = findSqlException(ex);
+            if (sqlException != null && sqlException.getErrorCode() == 1062) {
+                info(this, "That email address is already in use. Enter a different email address.");
+            } else if (sqlException != null
+                    && (sqlException.getErrorCode() == 1142 || sqlException.getErrorCode() == 1143)) {
+                info(this, "The student database account lacks permission to update profile details. "
+                        + "Run sql/7.student_profile_permissions.sql on afms-db-2.mysql.database.azure.com "
+                        + "as a database administrator.");
+            } else {
+                info(this, "Could not save profile: " + ex.getMessage()
+                        + (sqlException == null ? "" : " (database error " + sqlException.getErrorCode() + ")"));
+            }
+        }
+    }
+
+    private static SQLException findSqlException(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLException sqlException) return sqlException;
+        }
+        return null;
+    }
+}

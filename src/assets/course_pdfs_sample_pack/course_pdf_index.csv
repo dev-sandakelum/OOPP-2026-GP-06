@@ -1,0 +1,101 @@
+file_name,document_no,course_id,course_name,course_code,credit,dep_id,department,academic_year,semester
+course_001_ICT1113.pdf,CRS-0001,1,Introduction to Programming,ICT1113,3.00,1,Information and Communication Technology,2020/2021,1
+course_002_ICT1123.pdf,CRS-0002,2,Discrete Mathematics,ICT1123,3.00,1,Information and Communication Technology,2021/2022,2
+course_003_ICT1233.pdf,CRS-0003,3,Database Management Systems,ICT1233,3.00,1,Information and Communication Technology,2022/2023,1
+course_004_ICT1223.pdf,CRS-0004,4,Object Oriented Programming,ICT1223,3.00,1,Information and Communication Technology,2023/2024,2
+course_005_ET1113.pdf,CRS-0005,5,Engineering Mathematics,ET1113,3.00,2,Engineering Technology,2024/2025,1
+course_006_ICT2113.pdf,CRS-0006,6,Computer Networks,ICT2113,3.00,1,Information and Communication Technology,2020/2021,2
+course_007_ICT1213.pdf,CRS-0007,7,Web Technologies,ICT1213,2.00,1,Information and Communication Technology,2021/2022,1
+course_008_ICT2123.pdf,CRS-0008,8,Data Structures and Algorithms,ICT2123,3.00,1,Information and Communication Technology,2022/2023,2
+course_009_ICT2213.pdf,CRS-0009,9,Software Engineering,ICT2213,3.00,1,Information and Communication Technology,2023/2024,1
+course_010_ICT2223.pdf,CRS-0010,10,Operating Systems,ICT2223,3.00,1,Information and Communication Technology,2024/2025,2
+course_011_ET1123.pdf,CRS-0011,11,Engineering Mechanics,ET1123,2.00,2,Engineering Technology,2020/2021,1
+course_012_ET1213.pdf,CRS-0012,12,Electrical Circuits,ET1213,3.00,2,Engineering Technology,2021/2022,2
+course_013_BST1113.pdf,CRS-0013,13,Introduction to Plant Science,BST1113,3.00,3,Bio Systems Technology,2022/2023,1
+course_014_BST1123.pdf,CRS-0014,14,Biochemistry,BST1123,2.00,3,Bio Systems Technology,2023/2024,2
+course_015_BST1213.pdf,CRS-0015,15,Biostatistics,BST1213,3.00,3,Bio Systems Technology,2024/2025,1
+course_016_ICT3113.pdf,CRS-0016,16,Mobile Application Development,ICT3113,3.00,1,Information and Communication Technology,2020/2021,2
+course_017_ICT3123.pdf,CRS-0017,17,Information Security,ICT3123,2.00,1,Information and Communication Technology,2021/2022,1
+course_018_ET2113.pdf,CRS-0018,18,Thermodynamics,ET2113,3.00,2,Engineering Technology,2022/2023,2
+course_019_BST2113.pdf,CRS-0019,19,Soil Science,BST2113,3.00,3,Bio Systems Technology,2023/2024,1
+course_020_ICT1113.pdf,CRS-0020,1,Introduction to Programming,ICT1113,3.00,1,Information and Communication Technology,2024/2025,2
+course_021_ICT1123.pdf,CRS-0021,2,Discrete Mathematics,ICT1123,3.00,1,Information and Communication Technology,2020/2021,1
+course_022_ICT1233.pdf,CRS-0022,3,Database Management Systems,ICT1233,3.00,1,Information and Communication Technology,2021/2022,2
+course_023_ICT1223.pdf,CRS-0023,4,Object Oriented Programming,ICT1223,3.00,1,Information and Communication Technology,2022/2023,1
+course_024_ET1113.pdf,CRS-0024,5,Engineering Mathematics,ET1113,3.00,2,Engineering Technology,2023/2024,2
+course_025_ICT2113.pdf,CRS-0025,6,Computer Networks,ICT2113,3.00,1,Information and Communication Technology,2024/2025,1
+course_026_ICT1213.pdf,CRS-0026,7,Web Technologies,ICT1213,2.00,1,Information and Communication Technology,2020/2021,2
+course_027_ICT2123.pdf,CRS-0027,8,Data Structures and Algorithms,ICT2123,3.00,1,Information and Communication Technology,2021/2022,1
+course_028_ICT2213.pdf,CRS-0028,9,Software Engineering,ICT2213,3.00,1,Information and Communication Technology,2022/2023,2
+course_029_ICT2223.pdf,CRS-0029,10,Operating Systems,ICT2223,3.00,1,Information and Communication Technology,2023/2024,1
+course_030_ET1123.pdf,CRS-0030,11,Engineering Mechanics,ET1123,2.00,2,Engineering Technology,2024/2025,2
+course_031_ET1213.pdf,CRS-0031,12,Electrical Circuits,ET1213,3.00,2,Engineering Technology,2020/2021,1
+course_032_BST1113.pdf,CRS-0032,13,Introduction to Plant Science,BST1113,3.00,3,Bio Systems Technology,2021/2022,2
+course_033_BST1123.pdf,CRS-0033,14,Biochemistry,BST1123,2.00,3,Bio Systems Technology,2022/2023,1
+course_034_BST1213.pdf,CRS-0034,15,Biostatistics,BST1213,3.00,3,Bio Systems Technology,2023/2024,2
+course_035_ICT3113.pdf,CRS-0035,16,Mobile Application Development,ICT3113,3.00,1,Information and Communication Technology,2024/2025,1
+course_036_ICT3123.pdf,CRS-0036,17,Information Security,ICT3123,2.00,1,Information and Communication Technology,2020/2021,2
+course_037_ET2113.pdf,CRS-0037,18,Thermodynamics,ET2113,3.00,2,Engineering Technology,2021/2022,1
+course_038_BST2113.pdf,CRS-0038,19,Soil Science,BST2113,3.00,3,Bio Systems Technology,2022/2023,2
+course_039_ICT1113.pdf,CRS-0039,1,Introduction to Programming,ICT1113,3.00,1,Information and Communication Technology,2023/2024,1
+course_040_ICT1123.pdf,CRS-0040,2,Discrete Mathematics,ICT1123,3.00,1,Information and Communication Technology,2024/2025,2
+course_041_ICT1233.pdf,CRS-0041,3,Database Management Systems,ICT1233,3.00,1,Information and Communication Technology,2020/2021,1
+course_042_ICT1223.pdf,CRS-0042,4,Object Oriented Programming,ICT1223,3.00,1,Information and Communication Technology,2021/2022,2
+course_043_ET1113.pdf,CRS-0043,5,Engineering Mathematics,ET1113,3.00,2,Engineering Technology,2022/2023,1
+course_044_ICT2113.pdf,CRS-0044,6,Computer Networks,ICT2113,3.00,1,Information and Communication Technology,2023/2024,2
+course_045_ICT1213.pdf,CRS-0045,7,Web Technologies,ICT1213,2.00,1,Information and Communication Technology,2024/2025,1
+course_046_ICT2123.pdf,CRS-0046,8,Data Structures and Algorithms,ICT2123,3.00,1,Information and Communication Technology,2020/2021,2
+course_047_ICT2213.pdf,CRS-0047,9,Software Engineering,ICT2213,3.00,1,Information and Communication Technology,2021/2022,1
+course_048_ICT2223.pdf,CRS-0048,10,Operating Systems,ICT2223,3.00,1,Information and Communication Technology,2022/2023,2
+course_049_ET1123.pdf,CRS-0049,11,Engineering Mechanics,ET1123,2.00,2,Engineering Technology,2023/2024,1
+course_050_ET1213.pdf,CRS-0050,12,Electrical Circuits,ET1213,3.00,2,Engineering Technology,2024/2025,2
+course_051_BST1113.pdf,CRS-0051,13,Introduction to Plant Science,BST1113,3.00,3,Bio Systems Technology,2020/2021,1
+course_052_BST1123.pdf,CRS-0052,14,Biochemistry,BST1123,2.00,3,Bio Systems Technology,2021/2022,2
+course_053_BST1213.pdf,CRS-0053,15,Biostatistics,BST1213,3.00,3,Bio Systems Technology,2022/2023,1
+course_054_ICT3113.pdf,CRS-0054,16,Mobile Application Development,ICT3113,3.00,1,Information and Communication Technology,2023/2024,2
+course_055_ICT3123.pdf,CRS-0055,17,Information Security,ICT3123,2.00,1,Information and Communication Technology,2024/2025,1
+course_056_ET2113.pdf,CRS-0056,18,Thermodynamics,ET2113,3.00,2,Engineering Technology,2020/2021,2
+course_057_BST2113.pdf,CRS-0057,19,Soil Science,BST2113,3.00,3,Bio Systems Technology,2021/2022,1
+course_058_ICT1113.pdf,CRS-0058,1,Introduction to Programming,ICT1113,3.00,1,Information and Communication Technology,2022/2023,2
+course_059_ICT1123.pdf,CRS-0059,2,Discrete Mathematics,ICT1123,3.00,1,Information and Communication Technology,2023/2024,1
+course_060_ICT1233.pdf,CRS-0060,3,Database Management Systems,ICT1233,3.00,1,Information and Communication Technology,2024/2025,2
+course_061_ICT1223.pdf,CRS-0061,4,Object Oriented Programming,ICT1223,3.00,1,Information and Communication Technology,2020/2021,1
+course_062_ET1113.pdf,CRS-0062,5,Engineering Mathematics,ET1113,3.00,2,Engineering Technology,2021/2022,2
+course_063_ICT2113.pdf,CRS-0063,6,Computer Networks,ICT2113,3.00,1,Information and Communication Technology,2022/2023,1
+course_064_ICT1213.pdf,CRS-0064,7,Web Technologies,ICT1213,2.00,1,Information and Communication Technology,2023/2024,2
+course_065_ICT2123.pdf,CRS-0065,8,Data Structures and Algorithms,ICT2123,3.00,1,Information and Communication Technology,2024/2025,1
+course_066_ICT2213.pdf,CRS-0066,9,Software Engineering,ICT2213,3.00,1,Information and Communication Technology,2020/2021,2
+course_067_ICT2223.pdf,CRS-0067,10,Operating Systems,ICT2223,3.00,1,Information and Communication Technology,2021/2022,1
+course_068_ET1123.pdf,CRS-0068,11,Engineering Mechanics,ET1123,2.00,2,Engineering Technology,2022/2023,2
+course_069_ET1213.pdf,CRS-0069,12,Electrical Circuits,ET1213,3.00,2,Engineering Technology,2023/2024,1
+course_070_BST1113.pdf,CRS-0070,13,Introduction to Plant Science,BST1113,3.00,3,Bio Systems Technology,2024/2025,2
+course_071_BST1123.pdf,CRS-0071,14,Biochemistry,BST1123,2.00,3,Bio Systems Technology,2020/2021,1
+course_072_BST1213.pdf,CRS-0072,15,Biostatistics,BST1213,3.00,3,Bio Systems Technology,2021/2022,2
+course_073_ICT3113.pdf,CRS-0073,16,Mobile Application Development,ICT3113,3.00,1,Information and Communication Technology,2022/2023,1
+course_074_ICT3123.pdf,CRS-0074,17,Information Security,ICT3123,2.00,1,Information and Communication Technology,2023/2024,2
+course_075_ET2113.pdf,CRS-0075,18,Thermodynamics,ET2113,3.00,2,Engineering Technology,2024/2025,1
+course_076_BST2113.pdf,CRS-0076,19,Soil Science,BST2113,3.00,3,Bio Systems Technology,2020/2021,2
+course_077_ICT1113.pdf,CRS-0077,1,Introduction to Programming,ICT1113,3.00,1,Information and Communication Technology,2021/2022,1
+course_078_ICT1123.pdf,CRS-0078,2,Discrete Mathematics,ICT1123,3.00,1,Information and Communication Technology,2022/2023,2
+course_079_ICT1233.pdf,CRS-0079,3,Database Management Systems,ICT1233,3.00,1,Information and Communication Technology,2023/2024,1
+course_080_ICT1223.pdf,CRS-0080,4,Object Oriented Programming,ICT1223,3.00,1,Information and Communication Technology,2024/2025,2
+course_081_ET1113.pdf,CRS-0081,5,Engineering Mathematics,ET1113,3.00,2,Engineering Technology,2020/2021,1
+course_082_ICT2113.pdf,CRS-0082,6,Computer Networks,ICT2113,3.00,1,Information and Communication Technology,2021/2022,2
+course_083_ICT1213.pdf,CRS-0083,7,Web Technologies,ICT1213,2.00,1,Information and Communication Technology,2022/2023,1
+course_084_ICT2123.pdf,CRS-0084,8,Data Structures and Algorithms,ICT2123,3.00,1,Information and Communication Technology,2023/2024,2
+course_085_ICT2213.pdf,CRS-0085,9,Software Engineering,ICT2213,3.00,1,Information and Communication Technology,2024/2025,1
+course_086_ICT2223.pdf,CRS-0086,10,Operating Systems,ICT2223,3.00,1,Information and Communication Technology,2020/2021,2
+course_087_ET1123.pdf,CRS-0087,11,Engineering Mechanics,ET1123,2.00,2,Engineering Technology,2021/2022,1
+course_088_ET1213.pdf,CRS-0088,12,Electrical Circuits,ET1213,3.00,2,Engineering Technology,2022/2023,2
+course_089_BST1113.pdf,CRS-0089,13,Introduction to Plant Science,BST1113,3.00,3,Bio Systems Technology,2023/2024,1
+course_090_BST1123.pdf,CRS-0090,14,Biochemistry,BST1123,2.00,3,Bio Systems Technology,2024/2025,2
+course_091_BST1213.pdf,CRS-0091,15,Biostatistics,BST1213,3.00,3,Bio Systems Technology,2020/2021,1
+course_092_ICT3113.pdf,CRS-0092,16,Mobile Application Development,ICT3113,3.00,1,Information and Communication Technology,2021/2022,2
+course_093_ICT3123.pdf,CRS-0093,17,Information Security,ICT3123,2.00,1,Information and Communication Technology,2022/2023,1
+course_094_ET2113.pdf,CRS-0094,18,Thermodynamics,ET2113,3.00,2,Engineering Technology,2023/2024,2
+course_095_BST2113.pdf,CRS-0095,19,Soil Science,BST2113,3.00,3,Bio Systems Technology,2024/2025,1
+course_096_ICT1113.pdf,CRS-0096,1,Introduction to Programming,ICT1113,3.00,1,Information and Communication Technology,2020/2021,2
+course_097_ICT1123.pdf,CRS-0097,2,Discrete Mathematics,ICT1123,3.00,1,Information and Communication Technology,2021/2022,1
+course_098_ICT1233.pdf,CRS-0098,3,Database Management Systems,ICT1233,3.00,1,Information and Communication Technology,2022/2023,2
+course_099_ICT1223.pdf,CRS-0099,4,Object Oriented Programming,ICT1223,3.00,1,Information and Communication Technology,2023/2024,1
+course_100_ET1113.pdf,CRS-0100,5,Engineering Mathematics,ET1113,3.00,2,Engineering Technology,2024/2025,2
