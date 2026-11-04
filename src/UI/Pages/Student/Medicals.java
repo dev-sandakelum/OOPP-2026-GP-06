@@ -389,7 +389,7 @@ public class Medicals extends Page {
         Color statusColor = getStatusColor(status);
 
         titleRow.add(
-                new Chip("● " + status.toUpperCase(), statusColor)
+                new Chip(status.toUpperCase(), statusColor, true)
         );
 
         String reason = medical.getReason();

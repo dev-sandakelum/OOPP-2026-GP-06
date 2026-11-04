@@ -15,12 +15,21 @@ public class Chip extends JLabel {
     private final Color color;
 
     public Chip(String text, Color color) {
+        this(text, color, false);
+    }
+
+    /** withDot = show a small painted status dot before the text (e.g. "● Eligible"). */
+    public Chip(String text, Color color, boolean withDot) {
         super(text, SwingConstants.CENTER);
         this.color = color;
         setFont(font(Font.BOLD, 11));
         setForeground(color);
         setBorder(new EmptyBorder(3, 10, 3, 10));
         setOpaque(false);
+        if (withDot) {
+            setIcon(ShapeIcon.dot(color, 7));
+            setIconTextGap(6);
+        }
     }
 
     @Override

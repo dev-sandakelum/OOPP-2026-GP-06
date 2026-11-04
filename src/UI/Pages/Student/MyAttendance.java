@@ -4,6 +4,7 @@ package UI.Pages.Student;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.Chip;
 import UI.Pages.Components.Page;
+import UI.Pages.Components.ShapeIcon;
 
 import data.AttendanceData;
 import data.EnrollmentData;
@@ -651,9 +652,7 @@ public class MyAttendance extends Page {
         );
         panel.setOpaque(false);
 
-        JLabel dot = new JLabel("■");
-        dot.setForeground(color);
-        dot.setFont(font(Font.PLAIN, 10));
+        JLabel dot = new JLabel(ShapeIcon.square(color, 9));
 
         JLabel label = new JLabel(text);
         label.setFont(font(Font.PLAIN, 12));

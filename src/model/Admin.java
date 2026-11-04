@@ -15,6 +15,7 @@ public class Admin extends User {
         this.setAddress(user.getAddress());
         this.setGender(user.getGender());
         this.setUserType(user.getUserType());
+        this.setUsername(user.getUsername());
     }
 
     @Override
