@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AVL and Red-Black Trees – Exam Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+<style>
+@page { size: A4; margin: 13mm 14mm; }
+:root { --ink:#1f2933; --accent:#1d4e89; --soft:#eef3f9; --warn:#fff7e0; --line:#c9d3df; }
+* { box-sizing: border-box; }
+html { background:#d9dee5; }
+body { margin:0; font-family:"Source Sans 3","Segoe UI",Calibri,Arial,sans-serif; font-size:12pt; line-height:1.5; color:var(--ink); }
+.page { width:210mm; min-height:297mm; margin:10mm auto; padding:14mm 15mm; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.2); break-after:page; }
+.page:last-child { break-after:auto; }
+h1 { font-size:23pt; margin:0 0 3mm; color:var(--accent); border-bottom:2.5px solid var(--accent); padding-bottom:2mm; }
+h2 { font-size:15.5pt; margin:5mm 0 2mm; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:1px; break-after:avoid; }
+h2:first-of-type { margin-top:0; }
+h3 { font-size:12.8pt; margin:3mm 0 1mm; break-after:avoid; }
+p { margin:1.5mm 0; }
+ul, ol { margin:1mm 0 1mm 5mm; padding-left:4mm; }
+li { margin:.6mm 0; }
+code, pre { font-family:"Source Code Pro",Consolas,monospace; }
+code { background:var(--soft); padding:0 3px; border-radius:3px; font-size:11pt; }
+pre { background:var(--soft); border-left:3px solid var(--accent); padding:2mm 3mm; margin:2mm 0; font-size:10.2pt; line-height:1.4; white-space:pre; overflow:hidden; break-inside:avoid; }
+table { border-collapse:collapse; width:100%; margin:2mm 0; font-size:11.2pt; break-inside:avoid; }
+th, td { border:1px solid var(--line); padding:1.2mm 2mm; text-align:left; vertical-align:top; }
+th { background:var(--soft); }
+.note { background:var(--warn); border-left:3px solid #d9a400; padding:1.5mm 3mm; margin:2mm 0; break-inside:avoid; }
+.key { background:var(--soft); border-left:3px solid var(--accent); padding:1.5mm 3mm; margin:2mm 0; break-inside:avoid; }
+.cols { display:grid; grid-template-columns:1fr 1fr; gap:4mm; break-inside:avoid; }
+.cols > div { min-width:0; }
+@media print {
+  html { background:none; }
+  .page { margin:0; padding:0; width:auto; min-height:0; box-shadow:none; }
+  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
+@media (max-width:215mm) { .page { width:100%; min-height:0; } .cols { grid-template-columns:1fr; } pre { overflow-x:auto; } }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<section class="page">
+<h1>Balanced Search Trees: AVL Trees &amp; Red-Black Trees – Exam Notes</h1>
+
+<h2>1. Balanced search trees (overview)</h2>
+<p>Plain BSTs can degenerate into a linked list, so balanced variants keep the height near log n. The lecture lists: <b>AVL trees</b>, 2-3 trees, 2-3-4 trees, B-trees and <b>Red-Black trees</b>. This lecture covers AVL and Red-Black in detail.</p>
+
+<h2>2. AVL tree</h2>
+<ul>
+<li>An AVL tree is a <b>self-balancing binary search tree</b>: it is a BST that is also a balanced tree.</li>
+<li>The <b>balance factor of every node is no more than 1</b> (in absolute value).</li>
+<li>The balance factor is often stored in each node, but can also be computed from the heights of the subtrees.</li>
+<li>Each node keeps track of the <b>height of the subtree</b> rooted at it. The AVL property is maintained using <b>rotations</b>, which are applied when an insertion or deletion unbalances the tree.</li>
+</ul>
+<div class="key"><b>Balance factor = height of left subtree − height of right subtree</b><br>
+Valid values: <b>−1, 0, +1</b>. If any node has another value (e.g. 2 or −2) the tree is not balanced and is not an AVL tree.</div>
+<p>In other words: a tree is balanced if, for every node, the heights of its two children differ by at most one.</p>
+<div class="note"><b>Key fact:</b> Every AVL tree is a binary search tree, but not every BST is an AVL tree.</div>
+
+<h3>Balance factor calculation (slide example)</h3>
+<pre>                  25 (0)
+              /            \
+         20 (1)             36 (0)
+        /      \           /       \
+    10 (-1)   22 (0)   30 (1)     40 (0)
+       \                  /        /   \
+       12 (0)         28 (0)   38 (0)  48 (0)</pre>
+<p>Every node has a balance factor of −1, 0 or +1, so <b>this is an AVL tree</b>. Example check: node 20 has left height 2 (via 10 and 12) and right height 1 (22), so its factor is 2 − 1 = +1.</p>
+<p>Method: for each node write height(left) − height(right), with an empty subtree having height 0 (a leaf has height 1 and factor 0).</p>
+
+<h3>AVL vs not AVL (slide examples)</h3>
+<div class="cols">
+<div>
+<pre>  AVL
+      12
+     /  \
+    8    18
+   / \   /
+  5  11 17
+ /
+4</pre>
+<p>Each left subtree is 1 higher than the right subtree, yet every node stays within ±1. <b>This is an AVL tree.</b></p>
+</div>
+<div>
+<pre>  NOT AVL
+      12
+     /  \
+    8    18
+   / \   /
+  5  11 17
+ / \
+4   7
+/
+2</pre>
+<p>Subtree with root 8 has height 3, subtree with root 18 has height 1 (difference 2). <b>Not an AVL tree.</b></p>
+</div>
+</div>
+
+<h2>3. Maintaining balance</h2>
+<ul>
+<li>Inserting a node can increase the height of a tree by <b>at most 1</b>.</li>
+<li>Removing a node can decrease the height of a tree by <b>at most 1</b>.</li>
+<li><b>Example:</b> in the tree 36 → (12, 44), 12 → (7, 17), 7 → (3, 10), 17 → (·, 27), 44 → (38, 45), inserting <b>15</b> as the left child of 17 does not change the height of any subtree, so the tree stays balanced and no rotation is needed.</li>
+</ul>
+
+<h3>Practice: are these AVL trees? Insert 7</h3>
+<div class="cols">
+<div>
+<pre>Tree A: 6
+       /  \
+      4    9
+     / \
+    1   5</pre>
+<pre>After inserting 7 (left of 9):
+        6
+       / \
+      4   9
+     / \ /
+    1  5 7
+→ AVL (all factors in -1..1)</pre>
+</div>
+</div>
+</section>
+
+<!-- PAGE 2 -->
+<section class="page">
+<div class="cols">
+<div>
+<pre>Tree B: 6
+       /  \
+      4    9
+     / \   /
+    1   5 8</pre>
+<pre>After inserting 7 (left of 8):
+        6
+       / \
+      4   9
+     / \ /
+    1  5 8
+        /
+       7
+→ NOT AVL: node 9 has
+  subtree heights 2 and 0
+  (difference of 2)</pre>
+</div>
+</div>
+<p>On the slide the imbalanced node 9 is labelled "0 − 2 = −2" (it uses right-minus-left sign); with the lecture formula (left − right) the magnitude is still 2, so the tree is unbalanced either way.</p>
+
+<h2>4. Insertion and rotation in AVL trees</h2>
+<ul>
+<li>An insert can make a balance factor become <b>2 or −2</b> for some nodes.</li>
+<li>Only the nodes on the <b>path from the insertion point up to the root</b> can have changed height.</li>
+<li>So after the insertion, go back up node by node to the root, updating heights.</li>
+<li>If a new balance factor is 2 or −2, fix it by a <b>rotation</b> around that node.</li>
+<li>After every insertion or deletion, check the balance factor of the nodes. If all satisfy the condition the operation is finished, otherwise the tree must be rebalanced.</li>
+</ul>
+<div class="key"><b>Rotation</b> is the process of moving nodes to the left or right to make the tree balanced.</div>
+
+<h2>5. The four rotations</h2>
+<p>There are <b>four</b> rotations in <b>two</b> types: <b>single</b> rotations (Left = LL, Right = RR) and <b>double</b> rotations (Left-Right = LR, Right-Left = RL).</p>
+<div class="note"><b>Naming in this lecture:</b> “LL rotation” means a <i>single left rotation</i> (nodes move one position left) and “RR rotation” means a <i>single right rotation</i>. Many textbooks name rotations by the imbalance case instead, so use the lecture's names in the exam and state what the rotation does.</div>
+<table>
+<tr><th>Rotation</th><th>When (imbalanced shape)</th><th>What it does</th></tr>
+<tr><td><b>LL (single left)</b></td><td>Inserted a longer chain on the <b>right</b> (e.g. insert 1, 2, 3; node 1 has factor −2)</td><td>Every node moves one position to the left; the middle node becomes the root.</td></tr>
+<tr><td><b>RR (single right)</b></td><td>Chain on the <b>left</b> (e.g. insert 3, 2, 1; node 3 has factor +2)</td><td>Every node moves one position to the right.</td></tr>
+<tr><td><b>LR (double)</b></td><td>Left child has a right child (insert 3, 1, 2; node 3 has factor +2, zig-zag)</td><td>First a <b>left</b> rotation on the left child, then a <b>right</b> rotation on the unbalanced node.</td></tr>
+<tr><td><b>RL (double)</b></td><td>Right child has a left child (insert 1, 3, 2; node 1 has factor −2, zig-zag)</td><td>First a <b>right</b> rotation on the right child, then a <b>left</b> rotation on the unbalanced node.</td></tr>
+</table>
+
+<div class="cols">
+<div>
+<h3>LL rotation: insert 1, 2, 3</h3>
+<pre>1 (-2)             2 (0)
+ \                /   \
+  2 (-1)   →     1     3
+   \
+    3</pre>
+<h3>RR rotation: insert 3, 2, 1</h3>
+<pre>    3 (2)          2 (0)
+   /              /   \
+  2 (1)     →    1     3
+ /
+1</pre>
+</div>
+<div>
+<h3>LR rotation: insert 3, 1, 2</h3>
+<pre>  3 (2)       3          2 (0)
+ /           /          /   \
+1 (-1)  →   2     →    1     3
+ \         /
+  2       1
+ (left rot. at 1, then right rot. at 3)</pre>
+<h3>RL rotation: insert 1, 3, 2</h3>
+<pre>1 (-2)     1            2 (0)
+ \          \          /   \
+  3 (1) →    2    →   1     3
+ /            \
+2              3
+ (right rot. at 3, then left rot. at 1)</pre>
+</div>
+</div>
+</section>
+
+<!-- PAGE 3 -->
+< class="page">
+  <div class="key"><b>Shortcut:</b> straight line of three nodes → one single rotation. “Elbow/zig-zag” shape → double rotation (straighten it first, then rotate). In every case the middle value of the three nodes ends up as the subtree root.</div>
+
+<h2>6. Operations on an AVL tree</h2>
+<p>Three operations: <b>search</b>, <b>insertion</b>, <b>deletion</b>.</p>
+
+<h3>Search (same as BST search)</h3>
+<ol>
+<li>Read the search element.</li>
+<li>Compare it with the value of the root node.</li>
+<li>If they match, display “Given node found” and stop.</li>
+<li>If not, check whether the search element is smaller or larger than the node value.</li>
+<li>Smaller → continue in the <b>left</b> subtree. Larger → continue in the <b>right</b> subtree.</li>
+<li>Repeat until the exact element is found or a leaf is reached.</li>
+<li>If the node with the search value is reached → “Element is found”. If a leaf is reached and does not match → “Element not found”.</li>
+</ol>
+
+<h3>Insertion (time complexity O(log n))</h3>
+<p>A new node is <b>always inserted as a leaf</b>.</p>
+<ol>
+<li>Insert the new element using normal <b>BST insertion</b> logic.</li>
+<li>After insertion, check the balance factor of every node.</li>
+<li>If every balance factor is 0, 1 or −1, go to the next operation.</li>
+<li>If any balance factor is not 0, 1 or −1, the tree is imbalanced: perform the suitable <b>rotation</b> to rebalance, then go to the next operation.</li>
+</ol>
+
+<h3>Deletion</h3>
+<ul>
+<li>Deletion is similar to <b>BST deletion</b> (no child, one child, two children with in-order predecessor/successor).</li>
+<li>After <b>every</b> deletion, check the balance factor condition.</li>
+<li>If balanced, go to the next operation; otherwise perform the suitable rotation.</li>
+</ul>
+<h2>7. Worked example: build an AVL tree by inserting 1 to 8</h2>
+<table>
+<tr><th>Insert</th><th>Result / action</th></tr>
+<tr><td>1</td><td>Root 1, balanced.</td></tr>
+<tr><td>2</td><td>2 is right child of 1 (factor of 1 = −1), balanced.</td></tr>
+<tr><td>3</td><td>Node 1 becomes −2 (right-right chain) → <b>LL rotation</b> → 2 with children 1 and 3.</td></tr>
+<tr><td>4</td><td>4 right of 3; balanced (factors −1 at 2 and 3).</td></tr>
+<tr><td>5</td><td>Node 3 becomes −2 → <b>LL rotation at 3</b> → 4 with children 3 and 5; tree: 2 → (1, 4 → (3, 5)).</td></tr>
+<tr><td>6</td><td>Node 2 becomes −2 → <b>LL rotation at 2</b> → 4 becomes root; 3 becomes the <b>right child of 2</b>. Tree: 4 → (2 → (1, 3), 5 → (·, 6)).</td></tr>
+<tr><td>7</td><td>Node 5 becomes −2 → <b>LL rotation at 5</b> → 6 with children 5 and 7. Tree: 4 → (2 → (1, 3), 6 → (5, 7)).</td></tr>
+<tr><td>8</td><td>8 right of 7; balanced (4 has factor −1, 6 has −1, 7 has −1).</td></tr>
+</table>
+<pre>Final tree:        4 (-1)
+                 /        \
+              2 (0)       6 (-1)
+              /  \        /    \
+             1    3      5     7 (-1)
+                                 \
+                                  8</pre>
+<div class="note">Inserting sorted data 1…n into a plain BST would give a chain; the AVL rotations keep it balanced.</div>
+
+<h2>8. Worked example: insert 135</h2>
+<div class="cols">
+<div>
+<pre>Before (insert 135):
+        60
+       /  \
+     40    80
+    /     /  \
+  20    70   100
+             /  \
+           90   130</pre>
+</div>
+<div>
+<pre>After insert (unbalanced):
+        60
+       /  \
+     40    80  ← factor -2
+    /     /  \
+  20    70   100
+             /  \
+           90   130
+                  \
+                  135</pre>
+</div>
+</div>
+<p>Node 80 has left height 1 and right height 3 (difference −2) and its right child 100 is right-heavy → a single <b>LL (left) rotation at 80</b>. 100 moves up, 80 becomes its left child and 90 becomes the right child of 80.</p>
+<pre>Resultant balanced tree:
+        60
+       /  \
+     40    100
+    /     /    \
+  20    80      130
+       /  \       \
+     70    90      135</pre>
+</section>
+
+<!-- PAGE 4 -->
+<section class="page">
+<h2>9. Practice: insert 14, 17, 11, 7, 53, 4, 13, 12, 8, 60, 19, 16, 20</h2>
+<p>The lecture leaves this as an exercise. Working it through step by step (balance factor = left − right):</p>
+<table>
+<tr><th>Insert</th><th>Action</th></tr>
+<tr><td>14, 17, 11, 7, 53</td><td>No imbalance. Tree: 14 → (11 → (7), 17 → (·, 53)).</td></tr>
+<tr><td>4</td><td>Node 11 has factor +2 with a left-left chain 11→7→4 → <b>single right rotation at 11</b> → 7 with children 4 and 11.</td></tr>
+<tr><td>13</td><td>13 goes right of 11; balanced.</td></tr>
+<tr><td>12</td><td>Node 11 has factor −2 and its right child 13 is left-heavy (zig-zag) → <b>double rotation (RL) at 11</b> → 12 with children 11 and 13.</td></tr>
+<tr><td>8</td><td>8 goes left of 11. Node 7 now has factor −2 and its right child 12 is left-heavy (zig-zag) → <b>RL rotation at 7</b> → 11 becomes the subtree root with children 7 (4, 8) and 12 (·, 13).</td></tr>
+<tr><td>60</td><td>Node 17 becomes −2 (chain 17→53→60) → <b>single left rotation at 17</b> → 53 with children 17 and 60.</td></tr>
+<tr><td>19</td><td>19 goes right of 17 (under 53); balanced.</td></tr>
+<tr><td>16</td><td>16 goes left of 17; balanced.</td></tr>
+<tr><td>20</td><td>20 goes right of 19. Node 53 has factor +2 and its left child 17 is right-heavy (zig-zag 53→17→19) → <b>LR rotation at 53</b> → 19 becomes the subtree root with children 17 and 53; 20 ends up as the left child of 53.</td></tr>
+</table>
+<pre>Final AVL tree (all balance factors in -1..1):
+
+                  14
+             /          \
+          11              19
+         /  \            /   \
+        7    12        17     53
+       / \     \       /     /  \
+      4   8     13    16    20   60</pre>
+<p><b>Preorder of the result:</b> 14 11 7 4 8 12 13 19 17 16 53 20 60.</p>
+<div class="note">Because the final tree depends on exact rotations, always re-check every node on the path to the root after each insertion. If you get a different shape, verify that your tree is still a BST and every factor is −1, 0 or 1.</div>
+
+<h2>10. AVL exam checklist</h2>
+<ol>
+<li>Insert the key as in a BST (as a leaf).</li>
+<li>Walk back up to the root, updating heights and balance factors.</li>
+<li>At the first node with factor ±2, identify the shape: straight line (single rotation) or zig-zag (double rotation).</li>
+<li>Rotate, then re-check all nodes. Draw the tree after each rotation.</li>
+</ol>
+</section>
+
+<!-- PAGE 5 -->
+<section class="page">
+<h2>11. Red-Black tree</h2>
+<ul>
+<li>A Red-Black tree is another variant of the <b>binary search tree</b> in which every node is coloured either <b>RED</b> or <b>BLACK</b>.</li>
+<li>In AVL trees, balancing restricts the <b>difference in heights</b> to at most one. In Red-Black trees a different set of rules about the <b>colours</b> of the nodes keeps the tree balanced.</li>
+</ul>
+
+<h3>The six properties</h3>
+<table>
+<tr><th>#</th><th>Property</th></tr>
+<tr><td>1</td><td>A Red-Black tree must be a <b>Binary Search Tree</b>.</td></tr>
+<tr><td>2</td><td>The <b>root</b> node must be coloured <b>BLACK</b>.</td></tr>
+<tr><td>3</td><td>The children of a <b>red</b> node must be <b>black</b> (no two consecutive red nodes).</td></tr>
+<tr><td>4</td><td>On <b>all paths</b> of the tree there must be the <b>same number of black nodes</b>.</td></tr>
+<tr><td>5</td><td>Every <b>new node</b> must be inserted with <b>RED</b> colour.</td></tr>
+<tr><td>6</td><td>Every <b>leaf</b> (i.e. NULL node) must be coloured <b>BLACK</b>.</td></tr>
+</table>
+<div class="key"><b>Memory aid:</b> Root black · no red-red parent/child · equal black count on every path · new nodes red · NULL leaves black.</div>
+
+<h3>“Is this a Red-Black tree?” (slide exercise)</h3>
+<p>The slide shows a tree rooted at 19 with red nodes 12, −5, −6, 50, 135 and 80. To decide, check the properties:</p>
+<ul>
+<li>No red node has a red child, so property 3 holds.</li>
+<li>Count black nodes along different paths: the path 19 → 35 → NULL has far fewer black nodes than the path through 12, 0, −10, … so <b>property 4 fails</b> and the tree is <b>not</b> a valid Red-Black tree.</li>
+</ul>
+<p>Also note the two example Red-Black trees on the slide: every node satisfies all properties, with black root and equal black counts down every path.</p>
+
+<h2>12. Insertion into a Red-Black tree</h2>
+<ul>
+<li>Insert like a BST, but give the new node the colour <b>RED</b>.</li>
+<li>After every insertion check all the properties. If all hold, move on to the next operation; otherwise fix the tree using one of:
+<b>Recolour</b>, or <b>Rotation followed by recolour</b>.</li>
+</ul>
+<ol>
+<li>Check whether the tree is empty.</li>
+<li>If empty, insert the new node as the <b>root with colour BLACK</b> and exit.</li>
+<li>If not empty, insert the new node as a <b>leaf with colour RED</b>.</li>
+<li>If the <b>parent</b> of the new node is <b>black</b>, exit.</li>
+<li>If the parent is <b>red</b>, check the colour of the parent's <b>sibling</b> (the “uncle” of the new node).</li>
+<li>If the uncle is <b>black or NULL</b> → make a suitable <b>rotation and recolour</b>.</li>
+<li>If the uncle is <b>red</b> → <b>recolour</b> and re-check (repeat upward) until the tree is a Red-Black tree.</li>
+</ol>
+<div class="note">The reason it works: a new red node can only break property 3 (red parent). A red uncle can be fixed by recolouring and moving the problem upward; a black or NULL uncle needs a rotation, which ends the problem.</div>
+
+<h2>13. AVL vs Red-Black (quick comparison)</h2>
+<table>
+<tr><th></th><th>AVL tree</th><th>Red-Black tree</th></tr>
+<tr><td>Type</td><td>Self-balancing BST</td><td>Self-balancing BST</td></tr>
+<tr><td>Balance rule</td><td>Balance factor of every node is −1, 0 or +1 (height difference ≤ 1)</td><td>Colour properties (black root, no red-red, equal black count, red new nodes, black NULL leaves)</td></tr>
+<tr><td>Extra data per node</td><td>Height / balance factor</td><td>Colour (red/black)</td></tr>
+<tr><td>Fixing after insert</td><td>Rotations (LL, RR, LR, RL)</td><td>Recolour, or rotation followed by recolour</td></tr>
+<tr><td>Search / insert</td><td colspan="2">Both aim for O(log n) because the height is kept logarithmic.</td></tr>
+</table>
+</section>
+
+</body>
+</html>

@@ -143,6 +143,8 @@ CREATE TABLE course_material (
                                  file_size     BIGINT,
                                  external_link VARCHAR(500),
                                  upload_date   DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                 available_from  DATE NULL,
+                                 available_until DATE NULL,
                                  CONSTRAINT fk_material_offering FOREIGN KEY (offering_id)
                                      REFERENCES course_offering(offering_id) ON UPDATE CASCADE ON DELETE CASCADE,
                                  CONSTRAINT fk_material_lecturer FOREIGN KEY (lecturer_id)

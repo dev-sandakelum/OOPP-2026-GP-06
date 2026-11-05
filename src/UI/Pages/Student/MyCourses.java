@@ -325,7 +325,7 @@ public class MyCourses extends Page {
         try {
 
             List<CourseMaterial> materials =
-                    materialData.findByOffering(offeringId);
+                    materialData.findAvailableByOffering(offeringId);
 
             if (materials == null || materials.isEmpty()) {
                 Ui.info(this, "No learning materials available for this course.");

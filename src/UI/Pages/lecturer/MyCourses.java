@@ -77,8 +77,10 @@ public class MyCourses extends LecturerUI.Page {
 
     // ---------- Tab 1: Materials ----------
     JTextField matTitleField = field(15);
+    JTextField matFromField = field(10);    // optional, yyyy-MM-dd (empty = visible right away)
+    JTextField matUntilField = field(10);   // optional, yyyy-MM-dd (empty = visible any time)
     DefaultTableModel matModel =
-            new ReadOnlyTableModel(new String[]{"Title", "File Name", "Uploaded On"});
+            new ReadOnlyTableModel(new String[]{"Title", "File Name", "Uploaded On", "Available From", "Available Until"});
     JTable matTable;
     private List<CourseMaterial> shownMaterials = new ArrayList<>();   // same order as matModel rows
 
@@ -185,16 +187,20 @@ public class MyCourses extends LecturerUI.Page {
         uploadBtn.addActionListener(e -> uploadMaterial());
 
         // form: labels on the first row, inputs on the second row
-        JPanel form = new JPanel(new GridLayout(2, 2, 12, 6));
+        JPanel form = new JPanel(new GridLayout(2, 4, 12, 6));
         form.setOpaque(false);
         form.add(label("TITLE"));
+        form.add(label("AVAILABLE FROM (YYYY-MM-DD, optional)"));
+        form.add(label("AVAILABLE UNTIL (YYYY-MM-DD, optional)"));
         form.add(new JLabel());
         form.add(matTitleField);
+        form.add(matFromField);
+        form.add(matUntilField);
         form.add(uploadBtn);
 
         // actions for the selected row
         RoundedButton openBtn = new RoundedButton("Open", false);
-        RoundedButton editBtn = new RoundedButton("Edit Title", false);
+        RoundedButton editBtn = new RoundedButton("Edit Details", false);
         RoundedButton replaceBtn = new RoundedButton("Replace File", false);
         RoundedButton deleteBtn = new RoundedButton("Delete", false);
         openBtn.addActionListener(e -> openMaterial());
@@ -255,12 +261,35 @@ public class MyCourses extends LecturerUI.Page {
         return shownMaterials.get(matTable.convertRowIndexToModel(row));
     }
 
+    // Turns "2026-11-05" into a date; empty text means "no date" (null)
+    private java.sql.Date parseDate(String text) {
+        return text.isEmpty() ? null : java.sql.Date.valueOf(text);
+    }
+
+    // True when the end date is before the start date
+    private boolean endBeforeStart(java.sql.Date from, java.sql.Date until) {
+        return from != null && until != null && until.before(from);
+    }
+
     private void uploadMaterial() {
         int index = courseBox.getSelectedIndex();
         String title = matTitleField.getText().trim();
 
         if (index < 0 || title.isEmpty()) {
             UI.Pages.Components.Ui.info(this, "Please select a course and enter a title.");
+            return;
+        }
+
+        java.sql.Date from, until;
+        try {
+            from = parseDate(matFromField.getText().trim());
+            until = parseDate(matUntilField.getText().trim());
+        } catch (IllegalArgumentException ex) {
+            UI.Pages.Components.Ui.info(this, "Dates must look like 2026-11-05.");
+            return;
+        }
+        if (endBeforeStart(from, until)) {
+            UI.Pages.Components.Ui.info(this, "The end date cannot be before the start date.");
             return;
         }
 
@@ -280,9 +309,13 @@ public class MyCourses extends LecturerUI.Page {
             m.setMaterial_type("LECTURE_NOTES");
             m.setFile_path(saved.toString().replace('\\', '/'));
             m.setFile_size(chosen.length());
+            m.setAvailable_from(from);
+            m.setAvailable_until(until);
             materialData.insert(m);
 
             matTitleField.setText("");
+            matFromField.setText("");
+            matUntilField.setText("");
             loadMaterials();
             UI.Pages.Components.Ui.info(this, "Material uploaded.");
 
@@ -311,23 +344,34 @@ public class MyCourses extends LecturerUI.Page {
         }
     }
 
-    // Update: rename the selected material
+    // Update: change the title and the available period of the selected material
     private void renameMaterial() {
         CourseMaterial m = selectedMaterial();
         if (m == null) return;
         String[] v = UI.Pages.Components.Ui.form(this, "Edit material",
-                new String[]{"TITLE"}, new String[]{m.getTitle()});
+                new String[]{"TITLE", "AVAILABLE FROM (YYYY-MM-DD, optional)", "AVAILABLE UNTIL (YYYY-MM-DD, optional)"},
+                new String[]{m.getTitle(),
+                        m.getAvailable_from() == null ? "" : m.getAvailable_from().toString(),
+                        m.getAvailable_until() == null ? "" : m.getAvailable_until().toString()});
         if (v == null) return;
         if (v[0].isEmpty()) {
             UI.Pages.Components.Ui.info(this, "The title cannot be empty.");
             return;
         }
         try {
+            java.sql.Date from = parseDate(v[1]);
+            java.sql.Date until = parseDate(v[2]);
+            if (endBeforeStart(from, until)) {
+                UI.Pages.Components.Ui.info(this, "The end date cannot be before the start date.");
+                return;
+            }
             m.setTitle(v[0]);
+            m.setAvailable_from(from);
+            m.setAvailable_until(until);
             materialData.update(m);
             loadMaterials();
         } catch (Exception ex) {
-            UI.Pages.Components.Ui.info(this, "Could not update: " + ex.getMessage());
+            UI.Pages.Components.Ui.info(this, "Could not update (dates must look like 2026-11-05): " + ex.getMessage());
         }
     }
 
@@ -708,7 +752,9 @@ public class MyCourses extends LecturerUI.Page {
         for (CourseMaterial m : shownMaterials) {
             String fileName = m.getFile_path() == null ? "" : Paths.get(m.getFile_path()).getFileName().toString();
             String date = m.getUpload_date() == null ? "" : m.getUpload_date().toString().substring(0, 10);
-            matModel.addRow(new Object[]{m.getTitle(), fileName, date});
+            String from = m.getAvailable_from() == null ? "Now" : m.getAvailable_from().toString();
+            String until = m.getAvailable_until() == null ? "Always" : m.getAvailable_until().toString();
+            matModel.addRow(new Object[]{m.getTitle(), fileName, date, from, until});
         }
     }
 

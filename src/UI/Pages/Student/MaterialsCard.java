@@ -116,7 +116,7 @@ public class MaterialsCard extends Card {
         int i = courseBox.getSelectedIndex();
         if (i < 0 || i >= offerings.size()) return;
         try {
-            shown = materialData.findByOffering(offerings.get(i).getOffering_id());
+            shown = materialData.findAvailableByOffering(offerings.get(i).getOffering_id());
         } catch (Exception ex) {
             Ui.info(this, "Could not load materials: " + ex.getMessage());
             return;

@@ -16,15 +16,16 @@ public class CourseMaterialData {
 
     private static final String TABLE = "course_material";
     private static final String COLUMNS =
-            "material_id, offering_id, lecturer_id, title, material_type, file_path, file_size, external_link, upload_date";
+            "material_id, offering_id, lecturer_id, title, material_type, file_path, file_size, external_link, upload_date, available_from, available_until";
 
     // ---------- CREATE ----------
 
     /** Inserts the material. upload_date is filled by the database. */
     public CourseMaterial insert(CourseMaterial m) {
         String sql = "INSERT INTO " + TABLE
-                + " (offering_id, lecturer_id, title, material_type, file_path, file_size, external_link)"
-                + " VALUES (?, ?, ?, ?, ?, ?, ?)";
+                + " (offering_id, lecturer_id, title, material_type, file_path, file_size, external_link,"
+                + " available_from, available_until)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setValues(ps, m);
@@ -89,6 +90,28 @@ public class CourseMaterialData {
         }
     }
 
+    /** Only the materials students can see today: started (or no start date) and not ended (or no end date). */
+    public List<CourseMaterial> findAvailableByOffering(int offeringId) {
+        String sql = "SELECT " + COLUMNS + " FROM " + TABLE
+                + " WHERE offering_id = ?"
+                + " AND (available_from IS NULL OR available_from <= CURDATE())"
+                + " AND (available_until IS NULL OR available_until >= CURDATE())"
+                + " ORDER BY upload_date DESC";
+        List<CourseMaterial> list = new ArrayList<>();
+        try (Connection con = Database.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, offeringId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(map(rs));
+                }
+            }
+            return list;
+        } catch (Exception e) {
+            throw new DataAccessException("Could not load available materials for offering " + offeringId, e);
+        }
+    }
+
     public int count() {
         String sql = "SELECT COUNT(*) FROM " + TABLE;
         try (Connection con = Database.getConnection();
@@ -105,11 +128,12 @@ public class CourseMaterialData {
     public boolean update(CourseMaterial m) {
         String sql = "UPDATE " + TABLE
                 + " SET offering_id = ?, lecturer_id = ?, title = ?, material_type = ?,"
-                + " file_path = ?, file_size = ?, external_link = ? WHERE material_id = ?";
+                + " file_path = ?, file_size = ?, external_link = ?,"
+                + " available_from = ?, available_until = ? WHERE material_id = ?";
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             setValues(ps, m);
-            ps.setInt(8, m.getMaterial_id());
+            ps.setInt(10, m.getMaterial_id());
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
             throw new DataAccessException("Could not update material " + m.getMaterial_id(), e);
@@ -129,7 +153,7 @@ public class CourseMaterialData {
         }
     }
 
-    /** Sets parameters 1-7 (shared by insert and update). */
+    /** Sets parameters 1-9 (shared by insert and update). */
     private void setValues(PreparedStatement ps, CourseMaterial m) throws SQLException {
         if (m.getOffering_id() != null) ps.setInt(1, m.getOffering_id());
         else ps.setNull(1, Types.INTEGER);
@@ -141,6 +165,8 @@ public class CourseMaterialData {
         if (m.getFile_size() != null) ps.setLong(6, m.getFile_size());
         else ps.setNull(6, Types.BIGINT);
         ps.setString(7, m.getExternal_link());
+        ps.setDate(8, m.getAvailable_from());     // null is stored as NULL
+        ps.setDate(9, m.getAvailable_until());
     }
 
     private CourseMaterial map(ResultSet rs) throws SQLException {
@@ -157,6 +183,8 @@ public class CourseMaterialData {
         m.setFile_size(rs.wasNull() ? null : size);
         m.setExternal_link(rs.getString("external_link"));
         m.setUpload_date(rs.getTimestamp("upload_date"));
+        m.setAvailable_from(rs.getDate("available_from"));
+        m.setAvailable_until(rs.getDate("available_until"));
         return m;
     }
 }

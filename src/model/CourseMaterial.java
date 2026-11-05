@@ -1,5 +1,6 @@
 package model;
 
+import java.sql.Date;
 import java.sql.Timestamp;
 
 public class CourseMaterial {
@@ -13,6 +14,8 @@ public class CourseMaterial {
     private Long file_size;
     private String external_link;
     private Timestamp upload_date;
+    private Date available_from;    // nullable – null means visible right away
+    private Date available_until;   // nullable – null means visible any time
 
     public CourseMaterial() {
     }
@@ -87,6 +90,22 @@ public class CourseMaterial {
 
     public void setUpload_date(Timestamp upload_date) {
         this.upload_date = upload_date;
+    }
+
+    public Date getAvailable_from() {
+        return available_from;
+    }
+
+    public void setAvailable_from(Date available_from) {
+        this.available_from = available_from;
+    }
+
+    public Date getAvailable_until() {
+        return available_until;
+    }
+
+    public void setAvailable_until(Date available_until) {
+        this.available_until = available_until;
     }
 
     @Override

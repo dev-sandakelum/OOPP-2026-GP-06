@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Study Guide — Circular Linked Lists, Stack & Queue Implementation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+  :root{
+    --ink:#1b2433;
+    --ink-soft:#4c5768;
+    --ink-faint:#8592a3;
+    --accent:#2c6e8e;
+    --accent-dark:#1f5064;
+    --accent-soft:#eaf2f5;
+    --gold:#a6791f;
+    --gold-soft:#faf3e2;
+    --line:#dbe1e7;
+    --line-soft:#eceff2;
+    --code-bg:#f3f5f7;
+    --code-border:#d6dce2;
+    --paper:#ffffff;
+    --canvas:#e5e9ed;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+
+  body{
+    font-family:'Source Serif 4', Georgia, 'Times New Roman', serif;
+    font-size:13pt;
+    line-height:1.62;
+    color:var(--ink);
+    background:var(--canvas);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  h1,h2,h3,h4{
+    font-family:'Manrope', 'Segoe UI', Arial, sans-serif;
+    color:var(--ink);
+    line-height:1.25;
+    font-weight:700;
+  }
+
+  p{margin:0 0 0.7em 0;}
+  ul,ol{margin:0.2em 0 0.9em 0; padding-left:1.35em;}
+  li{margin-bottom:0.32em;}
+  strong{color:var(--ink); font-weight:600;}
+  em{color:var(--ink-soft);}
+
+  /* ===== Page scaffold ===== */
+  @page{
+    size:A4;
+    margin:0;
+  }
+
+  .page{
+    width:210mm;
+    min-height:297mm;
+    margin:9mm auto;
+    padding:16mm 17mm 15mm 17mm;
+    background:var(--paper);
+    box-shadow:0 1px 3px rgba(20,30,45,.14), 0 10px 28px rgba(20,30,45,.12);
+    position:relative;
+  }
+  .page + .page{ margin-top:0; }
+
+  /* ===== Header (first page only) ===== */
+  .doc-header{
+    padding-bottom:9mm;
+    margin-bottom:8mm;
+    border-bottom:3px solid var(--ink);
+  }
+  .doc-header .eyebrow-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-family:'Manrope',sans-serif;
+    font-size:9pt;
+    color:var(--accent-dark);
+    font-weight:600;
+    margin-bottom:6mm;
+  }
+  .doc-header h1{
+    font-size:25pt;
+    margin:0 0 3mm 0;
+    letter-spacing:-0.01em;
+  }
+  .doc-header .subtitle{
+    font-family:'Source Serif 4', serif;
+    font-size:12.5pt;
+    color:var(--ink-soft);
+    font-style:italic;
+    margin:0;
+  }
+
+  /* ===== Section headings ===== */
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    gap:9px;
+    margin:9mm 0 4mm 0;
+  }
+  .section-head:first-of-type{ margin-top:0; }
+  .section-num{
+    font-family:'Manrope',sans-serif;
+    font-size:12pt;
+    font-weight:800;
+    color:var(--accent);
+    min-width:1.6em;
+  }
+  h2.section-title{
+    font-size:15.5pt;
+    margin:0;
+    padding-bottom:2.5mm;
+    border-bottom:1.4px solid var(--line);
+    flex:1;
+  }
+  h3{
+    font-size:12.3pt;
+    margin:5mm 0 2mm 0;
+    color:var(--accent-dark);
+  }
+  h4{
+    font-size:11pt;
+    margin:3.5mm 0 1.5mm 0;
+    color:var(--ink);
+    font-weight:700;
+  }
+
+  .lead{
+    font-size:13.4pt;
+    color:var(--ink-soft);
+    margin-bottom:4mm;
+  }
+
+  /* ===== Callout boxes ===== */
+  .box{
+    border:1px solid var(--line);
+    border-left:4px solid var(--accent);
+    background:var(--accent-soft);
+    border-radius:3px;
+    padding:3.5mm 5mm;
+    margin:3.5mm 0;
+    page-break-inside:avoid;
+  }
+  .box .box-label{
+    font-family:'Manrope',sans-serif;
+    font-size:8.7pt;
+    font-weight:700;
+    color:var(--accent-dark);
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    margin-bottom:1.4mm;
+    display:block;
+  }
+  .box p:last-child{margin-bottom:0;}
+  .box.gold{
+    border-left-color:var(--gold);
+    background:var(--gold-soft);
+  }
+  .box.gold .box-label{color:var(--gold);}
+
+  /* ===== Tables ===== */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:3mm 0 4mm 0;
+    font-size:12pt;
+    page-break-inside:avoid;
+  }
+  caption{
+    text-align:left;
+    font-family:'Manrope',sans-serif;
+    font-size:8.8pt;
+    color:var(--ink-faint);
+    font-style:normal;
+    margin-bottom:1.5mm;
+    caption-side:top;
+  }
+  th{
+    font-family:'Manrope',sans-serif;
+    font-size:10.6pt;
+    font-weight:700;
+    text-align:left;
+    background:var(--ink);
+    color:#fff;
+    padding:2.2mm 3mm;
+  }
+  td{
+    padding:2.1mm 3mm;
+    border-bottom:1px solid var(--line-soft);
+    vertical-align:top;
+  }
+  tr:nth-child(even) td{ background:#f7f9fa; }
+  td:first-child, th:first-child{ font-weight:600; white-space:nowrap; }
+
+  /* ===== Code blocks ===== */
+  pre{
+    background:var(--code-bg);
+    border:1px solid var(--code-border);
+    border-left:3px solid var(--accent-dark);
+    border-radius:3px;
+    padding:3mm 4mm;
+    margin:2.5mm 0 4mm 0;
+    overflow-x:auto;
+    page-break-inside:avoid;
+  }
+  code, pre{
+    font-family:'JetBrains Mono', 'Consolas', monospace;
+    font-size:10.8pt;
+    line-height:1.55;
+    color:#1c2733;
+  }
+  p code, li code{
+    background:var(--code-bg);
+    border:1px solid var(--code-border);
+    padding:0.05em 0.32em;
+    border-radius:2px;
+    font-size:10.8pt;
+  }
+  .code-caption{
+    font-family:'Manrope',sans-serif;
+    font-size:8.6pt;
+    color:var(--ink-faint);
+    margin:-2mm 0 3mm 0;
+  }
+
+  /* ===== Steps list ===== */
+  .steps{ counter-reset:step; list-style:none; padding-left:0; margin:2.5mm 0 4mm 0;}
+  .steps li{
+    counter-increment:step;
+    position:relative;
+    padding-left:2.1em;
+    margin-bottom:1.6mm;
+  }
+  .steps li::before{
+    content:counter(step);
+    position:absolute;
+    left:0; top:0.05em;
+    width:1.5em; height:1.5em;
+    background:var(--accent);
+    color:#fff;
+    border-radius:50%;
+    font-family:'Manrope',sans-serif;
+    font-size:8.3pt;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+  }
+
+  /* ===== Diagrams ===== */
+  .figure{
+    margin:3mm 0 5mm 0;
+    padding:4mm 3mm 2mm 3mm;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:#fbfcfd;
+    text-align:center;
+    page-break-inside:avoid;
+  }
+  .figure svg{ max-width:100%; height:auto; }
+  .figure-caption{
+    font-family:'Manrope',sans-serif;
+    font-size:8.6pt;
+    color:var(--ink-faint);
+    margin-top:1.5mm;
+    text-align:center;
+  }
+  .diagram text{
+    font-family:'JetBrains Mono','Consolas',monospace;
+    fill:var(--ink);
+  }
+  .diagram .lbl{
+    font-family:'Manrope',sans-serif;
+    fill:var(--accent-dark);
+    font-weight:700;
+  }
+  .node-box{ fill:#ffffff; stroke:var(--ink); stroke-width:1.6; }
+  .node-div{ stroke:var(--ink); stroke-width:1.3; }
+  .flow-line{ stroke:var(--accent); stroke-width:1.8; fill:none; }
+  .wrap-line{ stroke:var(--gold); stroke-width:1.8; fill:none; }
+  .dash-box{ fill:#fdf6e3; stroke:var(--gold); stroke-width:1.6; stroke-dasharray:4,3; }
+  .ptr-box{ fill:var(--ink); }
+  .ptr-text{ fill:#fff; font-family:'Manrope',sans-serif; font-weight:700; font-size:9px; }
+
+  /* ===== Two-column grid ===== */
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:4mm; margin:2.5mm 0 4mm 0; }
+  .grid-2 .box{ margin:0; }
+
+  /* ===== Quiz ===== */
+  .qa{ margin-bottom:4.5mm; page-break-inside:avoid; }
+  .qa .q{ font-weight:600; margin-bottom:1mm; }
+  .qa .q .qnum{ color:var(--accent); font-family:'Manrope',sans-serif; font-weight:800; margin-right:0.35em; }
+  .qa .opts{ margin:1mm 0 1.5mm 0; padding-left:1.3em; color:var(--ink-soft); font-size:12.3pt; }
+  .qa .opts li{ margin-bottom:0.6mm; }
+  .qa .ans{
+    background:var(--accent-soft);
+    border-left:3px solid var(--accent);
+    padding:2mm 3.5mm;
+    border-radius:2px;
+    font-size:12.2pt;
+  }
+  .qa .ans .tag{
+    font-family:'Manrope',sans-serif;
+    font-weight:700;
+    font-size:8.6pt;
+    color:var(--accent-dark);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    display:block;
+    margin-bottom:0.8mm;
+  }
+
+  /* ===== Checklist ===== */
+  .checklist{ list-style:none; padding-left:0; margin:2mm 0; column-count:1; }
+  .checklist li{
+    position:relative;
+    padding-left:1.9em;
+    margin-bottom:2.4mm;
+    font-size:12.4pt;
+  }
+  .checklist li::before{
+    content:"";
+    position:absolute;
+    left:0; top:0.15em;
+    width:0.95em; height:0.95em;
+    border:1.6px solid var(--ink-soft);
+    border-radius:2px;
+  }
+
+  .takeaway-grid{ display:grid; grid-template-columns:1fr 1fr; gap:2.5mm 6mm; margin:2.5mm 0 4mm 0;}
+  .takeaway-grid li{ margin-bottom:1.8mm; font-size:12.3pt;}
+
+  .kicker-badge{
+    display:inline-block;
+    font-family:'Manrope',sans-serif;
+    font-size:8pt;
+    font-weight:700;
+    color:#fff;
+    background:var(--accent);
+    padding:0.5mm 2mm;
+    border-radius:10px;
+    margin-right:1.5mm;
+  }
+
+  .compare-word{ font-weight:700; color:var(--accent-dark); }
+
+  /* ===== Print button ===== */
+  .print-btn{
+    position:fixed;
+    top:16px; right:16px;
+    z-index:50;
+    font-family:'Manrope',sans-serif;
+    font-size:9.5pt;
+    font-weight:700;
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    padding:9px 16px;
+    border-radius:22px;
+    cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
+    letter-spacing:.01em;
+  }
+  .print-btn:hover{ background:var(--accent-dark); }
+
+  @media print{
+    body{ background:#fff; }
+    .print-btn{ display:none; }
+    .page{
+      margin:0;
+      box-shadow:none;
+      width:auto;
+      min-height:297mm;
+      page-break-after:always;
+    }
+    .page:last-child{ page-break-after:auto; }
+    .box, table, pre, .figure, .qa{ page-break-inside:avoid; }
+  }
+
+  @media screen and (max-width:900px){
+    .page{ width:100%; padding:8mm; }
+    .grid-2, .takeaway-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+
+<!-- ============================================================ -->
+<!-- PAGE 1 -->
+<!-- ============================================================ -->
+<section class="page">
+
+  <div class="doc-header">
+    <h1>Circular Linked Lists, and Stack &amp; Queue Implementation Using Linked Lists</h1>
+    <p class="subtitle">A complete, exam-focused review of circular linked list structures and how linked lists power dynamic stacks and queues.</p>
+  </div>
+
+ <div class="section-head">
+    <span class="section-num">1</span>
+    <h2 class="section-title">Key Concepts &amp; Definitions</h2>
+  </div>
+  <table>
+    <tr><th style="width:30%">Term</th><th>Definition</th></tr>
+    <tr><td>Circular linked list</td><td>A linked list in which the <strong>last node's pointer holds the address of the first node</strong> instead of <code>NULL</code>. As a result, the list has no fixed beginning or end.</td></tr>
+    <tr><td>Circular doubly linked list</td><td>A circular list where every node stores <strong>two</strong> pointers — <code>next</code> (successor) and <code>prev</code> (predecessor) — and <strong>both</strong> pointers wrap around circularly.</td></tr>
+    <tr><td>START (or HEAD)</td><td>An external pointer variable that marks the entry point into the list. It is <strong>not a node</strong> itself — it simply stores the address of whichever node the list currently starts traversal from.</td></tr>
+    <tr><td>Node</td><td>The basic building block: <code>struct node { int info; struct node *next; };</code> — identical in a linear or circular list.</td></tr>
+    <tr><td>Stack (LIFO)</td><td>A structure where the <strong>last</strong> element inserted is the <strong>first</strong> one removed. Implemented here with a single <code>top</code> pointer.</td></tr>
+    <tr><td>Queue (FIFO)</td><td>A structure where the <strong>first</strong> element inserted is the <strong>first</strong> one removed. Implemented here with a <code>front</code> and a <code>rear</code> pointer.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 2 -->
+<!-- ============================================================ -->
+<section class="page">
+<div class="section-head">
+    <span class="section-num">2</span>
+    <h2 class="section-title">The Circular Linked List</h2>
+  </div>
+  <p>A circular linked list is one which has <strong>no beginning and no end</strong>. A singly linked list is converted into a circular one simply by storing the address of the very first node inside the <code>next</code> field of the last node, rather than leaving it as <code>NULL</code>.</p>
+
+  <div class="figure">
+    <svg class="diagram" viewBox="0 0 680 190" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#2c6e8e"></path>
+        </marker>
+        <marker id="arrGold" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#a6791f"></path>
+        </marker>
+      </defs>
+
+      <!-- START box -->
+      <rect x="8" y="8" width="66" height="24" rx="3" class="node-box" stroke="#1b2433"></rect>
+      <text x="41" y="24" text-anchor="middle" class="lbl" font-size="10">START</text>
+      <path d="M45,32 C45,52 78,50 100,70" class="flow-line" marker-end="url(#arrA)"></path>
+
+      <!-- Nodes -->
+      <g>
+        <!-- node 1 -->
+        <rect x="60" y="70" width="88" height="42" class="node-box"></rect>
+        <line x1="112" y1="70" x2="112" y2="112" class="node-div"></line>
+        <text x="86" y="96" text-anchor="middle" font-size="12">10</text>
+        <!-- node 2 -->
+        <rect x="172" y="70" width="88" height="42" class="node-box"></rect>
+        <line x1="224" y1="70" x2="224" y2="112" class="node-div"></line>
+        <text x="198" y="96" text-anchor="middle" font-size="12">20</text>
+        <!-- node 3 -->
+        <rect x="284" y="70" width="88" height="42" class="node-box"></rect>
+        <line x1="336" y1="70" x2="336" y2="112" class="node-div"></line>
+        <text x="310" y="96" text-anchor="middle" font-size="12">30</text>
+        <!-- node 4 -->
+        <rect x="396" y="70" width="88" height="42" class="node-box"></rect>
+        <line x1="448" y1="70" x2="448" y2="112" class="node-div"></line>
+        <text x="422" y="96" text-anchor="middle" font-size="12">40</text>
+        <!-- node 5 -->
+        <rect x="508" y="70" width="88" height="42" class="node-box"></rect>
+        <line x1="560" y1="70" x2="560" y2="112" class="node-div"></line>
+        <text x="534" y="96" text-anchor="middle" font-size="12">50</text>
+      </g>
+
+      <!-- forward arrows -->
+      <path d="M112,91 L170,91" class="flow-line" marker-end="url(#arrA)"></path>
+      <path d="M224,91 L282,91" class="flow-line" marker-end="url(#arrA)"></path>
+      <path d="M336,91 L394,91" class="flow-line" marker-end="url(#arrA)"></path>
+      <path d="M448,91 L506,91" class="flow-line" marker-end="url(#arrA)"></path>
+
+      <!-- wrap-around arrow (last -> first) -->
+      <path d="M562,112 L562,158 L86,158 L86,114" class="wrap-line" marker-end="url(#arrGold)"></path>
+      <text x="320" y="174" text-anchor="middle" font-size="9.5" fill="#a6791f" font-family="Manrope, sans-serif" font-weight="700">last node's next → address of first node (not NULL)</text>
+    </svg>
+    <div class="figure-caption">Figure 1 — Singly circular linked list. START points to node 10; node 50's next field wraps back to node 10.</div>
+  </div>
+
+  <div class="box gold">
+    <span class="box-label">Common exam trap</span>
+    <p>Do not confuse the <em>struct definition</em> with the <em>wiring</em>. The node structure for a circular list is written exactly the same way as for a linear list — <code>struct node { int info; struct node *next; };</code>. What makes it "circular" is only what address gets stored in the last node's <code>next</code> field at run time.</p>
+  </div>
+  <div class="section-head">
+    <span class="section-num">3</span>
+    <h2 class="section-title">Circular Doubly Linked List</h2>
+  </div>
+  <p>A circular doubly linked list has <strong>both</strong> a successor pointer (<code>next</code>) and a predecessor pointer (<code>prev</code>), and <strong>both</strong> are arranged circularly. This means you can traverse the list in either direction, and from any node you can reach any other node.</p>
+
+  <div class="figure">
+    <svg class="diagram" viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrA2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#2c6e8e"></path>
+        </marker>
+        <marker id="arrA2s" markerWidth="8" markerHeight="8" refX="1" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M7,0 L0,3 L7,6 Z" fill="#2c6e8e"></path>
+        </marker>
+        <marker id="arrG2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#a6791f"></path>
+        </marker>
+        <marker id="arrG2s" markerWidth="8" markerHeight="8" refX="1" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M7,0 L0,3 L7,6 Z" fill="#a6791f"></path>
+        </marker>
+      </defs>
+
+      <rect x="8" y="80" width="64" height="24" rx="3" class="node-box"></rect>
+      <text x="40" y="96" text-anchor="middle" class="lbl" font-size="10">START</text>
+      <path d="M56,80 C70,55 120,55 150,75" class="flow-line" marker-end="url(#arrA2)"></path>
+
+      <rect x="120" y="80" width="120" height="44" class="node-box"></rect>
+      <line x1="158" y1="80" x2="158" y2="124" class="node-div"></line>
+      <line x1="202" y1="80" x2="202" y2="124" class="node-div"></line>
+      <text x="180" y="107" text-anchor="middle" font-size="12">10</text>
+
+      <rect x="280" y="80" width="120" height="44" class="node-box"></rect>
+      <line x1="318" y1="80" x2="318" y2="124" class="node-div"></line>
+      <line x1="362" y1="80" x2="362" y2="124" class="node-div"></line>
+      <text x="340" y="107" text-anchor="middle" font-size="12">20</text>
+
+      <rect x="440" y="80" width="120" height="44" class="node-box"></rect>
+      <line x1="478" y1="80" x2="478" y2="124" class="node-div"></line>
+      <line x1="522" y1="80" x2="522" y2="124" class="node-div"></line>
+      <text x="500" y="107" text-anchor="middle" font-size="12">30</text>
+
+      <!-- next: node1 -> node2 -->
+      <path d="M240,95 L278,95" class="flow-line" marker-end="url(#arrA2)"></path>
+      <!-- prev: node2 -> node1 -->
+      <path d="M278,112 L240,112" class="flow-line" marker-end="url(#arrA2)"></path>
+      <!-- next: node2 -> node3 -->
+      <path d="M400,95 L438,95" class="flow-line" marker-end="url(#arrA2)"></path>
+      <!-- prev: node3 -> node2 -->
+      <path d="M438,112 L400,112" class="flow-line" marker-end="url(#arrA2)"></path>
+
+      <!-- wrap: node3.next -> node1 (top curve) -->
+      <path d="M540,80 C580,30 140,30 160,78" class="wrap-line" marker-end="url(#arrG2)"></path>
+      <!-- wrap: node1.prev -> node3 (bottom curve) -->
+      <path d="M180,124 C160,175 560,175 542,126" class="wrap-line" marker-end="url(#arrG2)"></path>
+
+      <text x="320" y="20" text-anchor="middle" font-size="9.5" fill="#a6791f" font-family="Manrope, sans-serif" font-weight="700">node 30.next wraps to node 10 (circular "next")</text>
+      <text x="320" y="200" text-anchor="middle" font-size="9.5" fill="#a6791f" font-family="Manrope, sans-serif" font-weight="700">node 10.prev wraps to node 30 (circular "prev")</text>
+    </svg>
+    <div class="figure-caption">Figure 2 — Circular doubly linked list. Each node holds prev | data | next; both ends wrap around.</div>
+  </div>
+
+  <h3>Singly Linear vs. Singly Circular vs. Doubly Circular</h3>
+  <table>
+    <tr><th>Property</th><th>Linear singly list</th><th>Circular singly list</th><th>Circular doubly list</th></tr>
+    <tr><td>Last node's next</td><td><code>NULL</code></td><td>Address of first node</td><td>Address of first node</td></tr>
+    <tr><td>Traversal direction</td><td>Forward only</td><td>Forward only</td><td>Forward and backward</td></tr>
+    <tr><td>End-of-list test</td><td><code>ptr == NULL</code></td><td><code>ptr == START</code></td><td><code>ptr == START</code></td></tr>
+    <tr><td>Pointer fields per node</td><td>1 (<code>next</code>)</td><td>1 (<code>next</code>)</td><td>2 (<code>next</code>, <code>prev</code>)</td></tr>
+    <tr><td>Memory per node</td><td>Lowest</td><td>Lowest</td><td>Higher (extra pointer)</td></tr>
+  </table>
+
+  <div class="section-head">
+    <span class="section-num">4</span>
+    <h2 class="section-title">Advantages of Circular Linked Lists</h2>
+  </div>
+  <ol>
+    <li><strong>Any node can be a starting point.</strong> You can traverse the whole list starting from any node — you simply stop once the first node you visited is reached again. There is no dependency on always starting at a fixed "head."</li>
+    <li><strong>Efficient queue implementation.</strong> Unlike an array-based or linear-list-based queue, a circular linked list only needs <em>one</em> pointer (to the last inserted node); the front of the queue is always obtainable as <code>next</code> of that last node, instead of maintaining two separate front/rear pointers.</li>
+    <li><strong>Ideal for repeatedly cycling through a list.</strong> Useful whenever a program needs to go around a set of items again and again — for example, an operating system giving each running application a time slice, in turn, forever.</li>
+  </ol>
+
+  <div class="box">
+    <span class="box-label">Connecting the dots</span>
+    <p>Advantage 2 is a preview of Sections 6–7: the <em>array-based</em> queue idea of tracking <code>front</code> and <code>rear</code> reappears later when we build a queue from a <strong>linear</strong> linked list — except there we do keep both pointers, because a linear list's last node has no way to point back to the front. A circular list removes that need.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 3 -->
+<!-- ============================================================ -->
+<section class="page">
+
+  <div class="section-head">
+    <span class="section-num">5</span>
+    <h2 class="section-title">Applications of Circular Linked Lists</h2>
+  </div>
+  <table>
+    <tr><th style="width:28%">Application</th><th>How the circular structure is used</th></tr>
+    <tr><td>Operating systems (round-robin scheduling)</td><td>Multiple running applications are kept in a circular list. The OS gives each one a fixed time slice and cycles through them; when it reaches the end of the list it automatically loops back to the front — no special-case code needed.</td></tr>
+    <tr><td>Multiplayer games</td><td>Players are stored in a circular linked list; a pointer moves forward to the next player as each player's turn ends, wrapping back to the first player after the last.</td></tr>
+    <tr><td>Circular queues</td><td>A circular linked list can implement a queue while needing only <strong>one</strong> pointer in memory (to the rear), instead of the two (<code>FRONT</code> and <code>REAR</code>) a plain queue needs.</td></tr>
+  </table>
+
+  <h3>Implementing a Circular Linked List</h3>
+  <p>Implementation is almost identical to a linear linked list. The <strong>only</strong> difference: the last node's <code>next</code> is made to point to the head of the list, instead of holding <code>NULL</code>.</p>
+  <div class="code-caption">Node structure — identical for linear and circular lists</div>
+  <pre><code>struct node{
+    int info;
+    struct node *next;
+};
+typedef struct node *NODEptr;</code></pre>
+
+  <div class="section-head">
+    <span class="section-num">6</span>
+    <h2 class="section-title">Why Use a Linked List for a Stack / Queue?</h2>
+  </div>
+  <p>Before building stacks and queues out of linked lists, it's worth understanding the motivation: arrays have a hard limitation that linked lists solve.</p>
+  <table>
+    <tr><th style="width:26%"></th><th>Array-based stack/queue</th><th>Linked-list-based stack/queue</th></tr>
+    <tr><td>Capacity</td><td>Fixed — must be declared in advance</td><td>Unlimited — grows and shrinks as needed</td></tr>
+    <tr><td>Size planning</td><td>You must know (or guess) the maximum size beforehand</td><td>No need to fix a size at the start</td></tr>
+    <tr><td>Wasted memory</td><td>Possible, if the array is over-sized "just in case"</td><td>None — a node is allocated only when a value is added</td></tr>
+    <tr><td>Failure mode</td><td>"Stack/queue overflow" if capacity is exceeded</td><td>Limited only by available system memory</td></tr>
+  </table>
+  <div class="box">
+    <span class="box-label">Key idea</span>
+    <p>A linked-list-based stack or queue can <strong>organize as many data values as needed</strong>, because each new element is a freshly allocated node linked in with a pointer, rather than a slot in a pre-sized block of memory.</p>
+  </div>
+
+  <h3>Shared building block</h3>
+  <p>Both the stack and the queue in the next two sections reuse the same basic node:</p>
+  <pre><code>struct node
+{
+    int data;
+    struct node *next;
+};
+typedef struct node node;</code></pre>
+  <p>What differs between them is only how many <em>external</em> pointers are used to manage the list, and at which end insertion/removal happens:</p>
+  <table>
+    <tr><th></th><th>Stack</th><th>Queue</th></tr>
+    <tr><td>Discipline</td><td><span class="compare-word">LIFO</span> — Last In, First Out</td><td><span class="compare-word">FIFO</span> — First In, First Out</td></tr>
+    <tr><td>External pointer(s)</td><td>One: <code>top</code></td><td>Two (+count): <code>front</code>, <code>rear</code></td></tr>
+    <tr><td>Insert (add) at</td><td>Head of list (becomes new top)</td><td>Rear (tail) of list</td></tr>
+    <tr><td>Remove at</td><td>Head of list (current top)</td><td>Front (head) of list</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 4 -->
+<!-- ============================================================ -->
+<section class="page">
+
+  <div class="section-head">
+    <span class="section-num">7</span>
+    <h2 class="section-title">Stack Implementation Using a Linked List</h2>
+  </div>
+  <p>In a linked-list stack, every new element is inserted as the <strong>top</strong> element, and the <code>top</code> pointer always points to the most recently inserted node.</p>
+
+  <div class="figure">
+    <svg class="diagram" viewBox="0 0 420 190" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrA3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#2c6e8e"></path>
+        </marker>
+      </defs>
+      <rect x="10" y="18" width="46" height="20" class="ptr-box" rx="3"></rect>
+      <text x="33" y="32" text-anchor="middle" class="ptr-text">top</text>
+      <path d="M56,28 L96,28" class="flow-line" marker-end="url(#arrA3)"></path>
+
+      <rect x="100" y="14" width="90" height="30" class="node-box"></rect>
+      <text x="145" y="34" text-anchor="middle" font-size="12">99</text>
+      <path d="M145,44 L145,64" class="flow-line" marker-end="url(#arrA3)"></path>
+
+      <rect x="100" y="68" width="90" height="30" class="node-box"></rect>
+      <text x="145" y="88" text-anchor="middle" font-size="12">50</text>
+      <path d="M145,98 L145,118" class="flow-line" marker-end="url(#arrA3)"></path>
+
+      <rect x="100" y="122" width="90" height="30" class="node-box"></rect>
+      <text x="145" y="142" text-anchor="middle" font-size="12">32</text>
+      <path d="M145,152 L145,172" class="flow-line" marker-end="url(#arrA3)"></path>
+
+      <rect x="100" y="176" width="90" height="0"></rect>
+      <text x="200" y="185" font-size="10" fill="#8592a3" font-family="Manrope, sans-serif">25 → NULL (bottom of stack)</text>
+
+      <rect x="230" y="122" width="90" height="30" class="dash-box"></rect>
+      <text x="275" y="142" text-anchor="middle" font-size="12">10</text>
+      <text x="230" y="112" font-size="9.5" fill="#a6791f" font-family="Manrope, sans-serif" font-weight="700">push(10)</text>
+      <path d="M190,30 C215,30 220,80 232,128" class="wrap-line" stroke-dasharray="3,3"></path>
+    </svg>
+    <div class="figure-caption">Figure 3 — Stack as a linked list. Insertion order was 25, 32, 50, 99; <code>top</code> points to 99 before <code>push(10)</code> is called.</div>
+  </div>
+
+  <h4>Setup</h4>
+  <pre><code>struct node
+{
+    int data;
+    struct node *next;
+};
+typedef struct node node;
+node *top;
+
+void initialize()
+{
+    top = NULL;
+}</code></pre>
+
+  <h4>push(value) — insert at the top</h4>
+  <ol class="steps">
+    <li>Create a new node.</li>
+    <li>Set the new node's <code>data</code> to the given value.</li>
+    <li>Point the new node's <code>next</code> to the current <code>top</code>.</li>
+    <li>Move <code>top</code> to point to this new node.</li>
+  </ol>
+  <pre><code>void push(int value)
+{
+    node *tmp;
+    tmp = malloc(sizeof(node));
+    tmp -&gt; data = value;
+    tmp -&gt; next = top;
+    top = tmp;
+}</code></pre>
+
+  <h4>pop() — remove and return the top element</h4>
+  <ol class="steps">
+    <li>Make a temporary node pointer.</li>
+    <li>Point it to the current <code>top</code>.</li>
+    <li>Store the temporary node's <code>data</code> in a variable.</li>
+    <li>Move <code>top</code> to the next node in the list.</li>
+    <li>Free the temporary node's memory.</li>
+    <li>Return the stored value.</li>
+  </ol>
+  <pre><code>int pop()
+{
+    node *tmp;
+    int n;
+    tmp = top;
+    n = tmp-&gt;data;
+    top = top-&gt;next;
+    free(tmp);
+    return n;
+}</code></pre>
+
+  <div class="grid-2">
+    <div class="box">
+      <span class="box-label">Top()</span>
+      <pre style="margin:0"><code>int Top()
+{
+    return top-&gt;data;
+}</code></pre>
+    </div>
+    <div class="box">
+      <span class="box-label">isempty()</span>
+      <pre style="margin:0"><code>int isempty()
+{
+    return top==NULL;
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 5 -->
+<!-- ============================================================ -->
+<section class="page">
+<div class="box gold">
+    <span class="box-label">Watch out</span>
+    <p>The <code>pop()</code> code above does not check <code>isempty()</code> first. If <code>pop()</code> is called while <code>top == NULL</code>, the line <code>n = tmp-&gt;data;</code> dereferences a null pointer. In practice (and often in exam "spot the bug" questions), you should call <code>isempty()</code> before popping.</p>
+  </div>
+  <div class="section-head">
+    <span class="section-num">8</span>
+    <h2 class="section-title">Queue Implementation Using a Linked List</h2>
+  </div>
+  <p>A queue needs to track <strong>both</strong> ends of the list, because new items are added at the rear while items are removed from the front. The queue is wrapped in its own structure holding a node count plus <code>front</code> and <code>rear</code> pointers.</p>
+
+  <div class="figure">
+    <svg class="diagram" viewBox="0 0 560 170" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrA4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#2c6e8e"></path>
+        </marker>
+      </defs>
+      <rect x="10" y="52" width="90" height="66" rx="3" class="node-box" fill="#f7f9fa"></rect>
+      <text x="55" y="70" text-anchor="middle" class="lbl" font-size="9.5">queue</text>
+      <text x="55" y="86" text-anchor="middle" font-size="9" font-family="Manrope,sans-serif">count = 3</text>
+      <text x="55" y="99" text-anchor="middle" font-size="9" font-family="Manrope,sans-serif">front</text>
+      <text x="55" y="112" text-anchor="middle" font-size="9" font-family="Manrope,sans-serif">rear</text>
+
+      <path d="M100,98 L150,80" class="flow-line" marker-end="url(#arrA4)"></path>
+      <path d="M100,110 L340,80" class="flow-line" marker-end="url(#arrA4)"></path>
+
+      <rect x="150" y="55" width="70" height="34" class="node-box"></rect>
+      <line x1="196" y1="55" x2="196" y2="89" class="node-div"></line>
+      <text x="173" y="76" text-anchor="middle" font-size="11">A</text>
+      <path d="M196,72 L258,72" class="flow-line" marker-end="url(#arrA4)"></path>
+
+      <rect x="260" y="55" width="70" height="34" class="node-box"></rect>
+      <line x1="306" y1="55" x2="306" y2="89" class="node-div"></line>
+      <text x="283" y="76" text-anchor="middle" font-size="11">B</text>
+      <path d="M306,72 L368,72" class="flow-line" marker-end="url(#arrA4)"></path>
+
+      <rect x="370" y="55" width="70" height="34" class="node-box"></rect>
+      <line x1="416" y1="55" x2="416" y2="89" class="node-div"></line>
+      <text x="393" y="76" text-anchor="middle" font-size="11">C</text>
+      <text x="470" y="76" text-anchor="middle" font-size="10" fill="#8592a3" font-family="Manrope,sans-serif">NULL</text>
+      <path d="M416,72 L450,72" stroke="#8592a3" stroke-width="1.6" fill="none" marker-end="url(#arrA4)"></path>
+
+      <text x="280" y="145" text-anchor="middle" font-size="9.5" fill="#4c5768" font-family="Manrope, sans-serif">front → A (next to leave) &#160;&#160;&#160;&#160; rear → C (last inserted)</text>
+    </svg>
+    <div class="figure-caption">Figure 4 — Queue structure: <code>front</code> points to the head (A), <code>rear</code> points to the tail (C).</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 6 -->
+<!-- ============================================================ -->
+<section class="page">
+<h4>Setup</h4>
+  <pre><code>struct node
+{   int data;
+    struct node *next;
+};
+typedef struct node node;
+
+struct queue
+{   int count;
+    node *front;
+    node *rear;
+};
+typedef struct queue queue;
+
+void initialize(queue *q)
+{
+    q-&gt;count = 0;
+    q-&gt;front = NULL;
+    q-&gt;rear  = NULL;
+}</code></pre>
+
+  <h4>isempty() — check based on rear</h4>
+  <p>The queue is empty exactly when <code>rear</code> (equivalently <code>front</code>) is <code>NULL</code>:</p>
+  <pre><code>int isempty(queue *q)
+{
+    return (q-&gt;rear == NULL);
+}</code></pre>
+
+  <h4>enqueue(value) — insert at the rear</h4>
+  <ol class="steps">
+    <li>Create a new node and set its <code>data</code>.</li>
+    <li>If the queue is empty, point <strong>both</strong> <code>front</code> and <code>rear</code> to this new node.</li>
+    <li>Otherwise, link the current <code>rear</code>'s <code>next</code> to the new node, then move <code>rear</code> to it.</li>
+    <li>Increment <code>count</code>.</li>
+  </ol>
+  <pre><code>void enqueue(queue *q, int value)
+{
+    node *tmp;
+    tmp = malloc(sizeof(node));
+    tmp-&gt;data = value;
+    tmp-&gt;next = NULL;
+    if(!isempty(q))
+    {
+        q-&gt;rear-&gt;next = tmp;
+        q-&gt;rear = tmp;
+    }
+    else
+    {
+        q-&gt;front = q-&gt;rear = tmp;
+    }
+    q-&gt;count++;
+}</code></pre>
+
+  <h4>dequeue() — remove and return the front element</h4>
+  <ol class="steps">
+    <li>Make a temporary node pointer.</li>
+    <li>Point it to the current <code>front</code>.</li>
+    <li>Store <code>front-&gt;data</code> in a variable.</li>
+    <li>Move <code>front</code> to the next node.</li>
+    <li>Decrement <code>count</code> and free the temporary node.</li>
+    <li>Return the stored value.</li>
+  </ol>
+  <pre><code>int dequeue(queue *q)
+{
+    node *tmp;
+    int n = q-&gt;front-&gt;data;
+    tmp = q-&gt;front;
+    q-&gt;front = q-&gt;front-&gt;next;
+    q-&gt;count--;
+    free(tmp);
+    return(n);
+}</code></pre>
+
+  <div class="section-head">
+    <span class="section-num">9</span>
+    <h2 class="section-title">Connections Between the Ideas</h2>
+  </div>
+  <ul>
+    <li><strong>One node struct, three behaviours.</strong> The circular list, the linked stack, and the linked queue all use the same minimal <code>struct node { data; next; }</code>. The "personality" of each structure comes entirely from how external pointers (<code>START</code>, <code>top</code>, or <code>front</code>/<code>rear</code>) are managed, not from a different node design.</li>
+    <li><strong>Circularity as an efficiency trick for queues.</strong> A linear-list queue needs two external pointers (<code>front</code> and <code>rear</code>) because, once you reach the last node, there is no way back to the first. A <em>circular</em> list sidesteps this: the last node already points to the first, so only one external pointer (to the last-inserted node) is required — the "front" is just <code>next</code> of that node.</li>
+    <li><strong>Insertion/removal end defines the discipline.</strong> Stack = insert and remove at the <em>same</em> end (the head) → LIFO. Queue = insert at one end (rear), remove at the other (front) → FIFO.</li>
+    <li><strong>All core operations are O(1).</strong> Because every operation (<code>push</code>, <code>pop</code>, <code>enqueue</code>, <code>dequeue</code>) only touches a fixed number of pointers near the head/tail — never a search through the whole list — each runs in constant time, regardless of how many elements are stored.</li>
+    <li><strong>Both solve the same underlying problem as circular lists:</strong> avoiding a fixed, pre-declared capacity. Arrays force a size decision upfront; every structure in this lecture (circular list, linked stack, linked queue) instead grows one node at a time via <code>malloc</code>.</li>
+  </ul>
+
+  <table>
+    <tr><th></th><th>Stack (linked list)</th><th>Queue (linked list)</th></tr>
+    <tr><td>Order</td><td>LIFO</td><td>FIFO</td></tr>
+    <tr><td>Insert operation</td><td><code>push()</code> → head</td><td><code>enqueue()</code> → rear</td></tr>
+    <tr><td>Remove operation</td><td><code>pop()</code> → head</td><td><code>dequeue()</code> → front</td></tr>
+    <tr><td>Pointers needed</td><td>1 (<code>top</code>)</td><td>2 (<code>front</code>, <code>rear</code>) + count</td></tr>
+    <tr><td>Time complexity (insert/remove)</td><td>O(1)</td><td>O(1)</td></tr>
+    <tr><td>Typical real-world analogy</td><td>Stack of plates; browser "back" history</td><td>Line at a counter; print queue</td></tr>
+  </table>
+
+  <div class="section-head">
+    <span class="section-num">10</span>
+    <h2 class="section-title">Practice Questions</h2>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q1.</span>In a circular linked list, what does the <code>next</code> pointer of the last node contain?</div>
+    <ul class="opts"><li>(a) NULL</li><li>(b) The address of the first node</li><li>(c) The address of the previous node</li><li>(d) A garbage value</li></ul>
+    <div class="ans"><span class="tag">Answer</span>(b) — that single change (replacing <code>NULL</code> with the first node's address) is what defines a circular list.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q2.</span>True or False: A circular linked list must always be traversed starting from one fixed, unchangeable node.</div>
+    <div class="ans"><span class="tag">Answer</span><strong>False.</strong> Any node can serve as a starting point — you traverse forward and simply stop when you revisit the node you started from.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q3.</span>Give two advantages of a circular linked list over a linear linked list, each with a real-world example.</div>
+    <div class="ans"><span class="tag">Answer</span>(1) Any node can be a start point — useful for iterating repeatedly, e.g. cycling through running applications on an OS. (2) A queue built on a circular list needs only one external pointer (to the last node), since "front" is simply that node's <code>next</code> — more memory-efficient than tracking separate front/rear pointers.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q4.</span>In the linked-list <code>enqueue()</code> function, what happens to <code>q-&gt;front</code> when the queue was empty before the call?</div>
+    <div class="ans"><span class="tag">Answer</span>Both <code>q-&gt;front</code> and <code>q-&gt;rear</code> are set to the newly created node: <code>q-&gt;front = q-&gt;rear = tmp;</code></div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q5.</span>Why does <code>isempty(queue *q)</code> check <code>q-&gt;rear == NULL</code> rather than <code>q-&gt;front == NULL</code>?</div>
+    <div class="ans"><span class="tag">Answer</span>Either check works — <code>front</code> and <code>rear</code> become <code>NULL</code> together (on <code>initialize()</code>) and become non-<code>NULL</code> together (on the first <code>enqueue()</code>). The slide simply adopts <code>rear</code> as its convention.</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PAGE 7 -->
+<!-- ============================================================ -->
+<section class="page">
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q6.</span>What is the time complexity of <code>push()</code> and <code>pop()</code> in a linked-list stack?</div>
+    <ul class="opts"><li>(a) O(n)</li><li>(b) O(log n)</li><li>(c) O(1)</li><li>(d) O(n²)</li></ul>
+    <div class="ans"><span class="tag">Answer</span>(c) O(1) — both only rewire a fixed number of pointers at the <code>top</code>; no traversal of the list is needed.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q7.</span>Fill in the blank: in <code>push()</code>, the line ______ makes the new node point to the current top, before <code>top</code> itself is updated.</div>
+    <div class="ans"><span class="tag">Answer</span><code>tmp -&gt; next = top;</code></div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q8.</span>Explain, step by step, what <code>pop()</code> does and why <code>free(tmp)</code> is necessary.</div>
+    <div class="ans"><span class="tag">Answer</span>It saves the current <code>top</code> in a temporary pointer, reads its <code>data</code>, advances <code>top</code> to <code>top-&gt;next</code>, then deletes the old top node with <code>free(tmp)</code> — releasing its memory back to the system so it isn't leaked — and finally returns the saved value.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q9.</span>Why is a linked list generally preferred over an array for a stack/queue when the number of elements is not known in advance?</div>
+    <div class="ans"><span class="tag">Answer</span>An array needs a fixed capacity declared upfront — too small risks overflow, too large wastes memory. A linked list allocates one node per element on demand, so it can grow (or shrink) to exactly the size needed, limited only by available memory.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q10.</span>In <code>enqueue()</code>, which two lines link a new node <code>C</code> into a non-empty queue and update <code>rear</code>?</div>
+    <div class="ans"><span class="tag">Answer</span><code>q-&gt;rear-&gt;next = tmp;</code> followed by <code>q-&gt;rear = tmp;</code></div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q11.</span>How does a circular doubly linked list differ structurally from a singly circular linked list holding the same nodes?</div>
+    <div class="ans"><span class="tag">Answer</span>Each node additionally stores a <code>prev</code> pointer, and the <code>prev</code> chain also wraps circularly (the first node's <code>prev</code> points to the last node). This allows traversal in both directions, at the cost of one extra pointer per node.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="qnum">Q12.</span>Give one additional real-life example each for: (a) a circular linked list, (b) a stack, (c) a queue.</div>
+    <div class="ans"><span class="tag">Answer</span>(a) Round-robin CPU/process scheduling or a multiplayer game's turn order. (b) An editor's "undo" history, or a program's function call stack. (c) A printer's print job queue, or a call-centre's hold line.</div>
+  </div>
+
+  <div class="section-head">
+    <span class="section-num">11</span>
+    <h2 class="section-title">Key Takeaways &amp; Exam-Style Points</h2>
+  </div>
+  <ul class="takeaway-grid">
+    <li><span class="kicker-badge">01</span>Circular list: last node's <code>next</code> = first node's address, not <code>NULL</code>.</li>
+    <li><span class="kicker-badge">02</span>No fixed start/end → traversal can begin anywhere; stop on revisiting the start.</li>
+    <li><span class="kicker-badge">03</span>Circular doubly linked list wraps <em>both</em> <code>next</code> and <code>prev</code>.</li>
+    <li><span class="kicker-badge">04</span>The <code>struct node</code> definition is identical for linear and circular lists.</li>
+    <li><span class="kicker-badge">05</span>3 advantages: any-node start, single-pointer queues, repeated cycling (OS/games).</li>
+    <li><span class="kicker-badge">06</span>Applications: OS scheduling, multiplayer turn order, circular queues.</li>
+    <li><span class="kicker-badge">07</span>Linked stack = LIFO, one <code>top</code> pointer, O(1) push/pop, no traversal.</li>
+    <li><span class="kicker-badge">08</span><code>push</code>: malloc → set data → <code>tmp-&gt;next=top</code> → <code>top=tmp</code>.</li>
+    <li><span class="kicker-badge">09</span><code>pop</code>: save top → advance top → free old node → return saved value.</li>
+    <li><span class="kicker-badge">10</span>Linked queue = FIFO, needs <code>front</code>, <code>rear</code>, and a <code>count</code>.</li>
+    <li><span class="kicker-badge">11</span><code>enqueue</code> has two cases: empty (set front=rear) vs. non-empty (link rear, move rear).</li>
+    <li><span class="kicker-badge">12</span><code>dequeue</code> always removes from <code>front</code> and frees the old front node.</li>
+  </ul>
+
+  <div class="box gold">
+    <span class="box-label">Gaps in the source material — good to know before the exam</span>
+    <ul style="margin-bottom:0">
+      <li>The slides do not state formal time/space complexity — this guide adds it (all core operations are O(1)).</li>
+      <li>Neither <code>pop()</code> nor <code>dequeue()</code> in the slides checks <code>isempty()</code> first; calling them on an empty structure would dereference a <code>NULL</code> pointer.</li>
+      <li>A circular queue is mentioned as an application but its actual code is not shown in the slides.</li>
+      <li>No worked numeric trace of a full <code>enqueue</code>/<code>dequeue</code> sequence is given — practice tracing Q4/Q10 by hand with your own values.</li>
+    </ul>
+  </div>
+
+  <div class="section-head">
+    <span class="section-num">—</span>
+    <h2 class="section-title">Quick Revision Checklist</h2>
+  </div>
+  <ul class="checklist">
+    <li>I can define a circular linked list and explain how it differs from a linear list.</li>
+    <li>I can explain the difference between a circular singly and circular doubly linked list.</li>
+    <li>I can list all 3 advantages of circular linked lists with an example each.</li>
+    <li>I can name at least 2 real-world applications of circular linked lists.</li>
+    <li>I can write the <code>struct node</code> used across all three structures from memory.</li>
+    <li>I can write <code>push()</code> and <code>pop()</code> for a linked-list stack and explain each line.</li>
+    <li>I can write <code>enqueue()</code> and <code>dequeue()</code> for a linked-list queue and explain each line.</li>
+    <li>I can trace, on paper, the pointer changes for a sequence of pushes/pops.</li>
+    <li>I can trace, on paper, the pointer changes for a sequence of enqueues/dequeues.</li>
+    <li>I can explain why linked-list implementations avoid the fixed-capacity problem of arrays.</li>
+    <li>I can state the time complexity of all four operations (push, pop, enqueue, dequeue).</li>
+    <li>I understand why a queue needs two pointers but a stack needs only one.</li>
+  </ul>
+</section>
+
+</body>
+</html>
