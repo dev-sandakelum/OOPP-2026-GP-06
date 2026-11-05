@@ -30,6 +30,7 @@ import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -671,12 +672,22 @@ public class MyCourses extends LecturerUI.Page {
     // LOADING DATA
     // =====================================================================
     private void loadCourses() {
-        offerings = offeringData.findByLecturer(lecturerId);
+        java.util.Set<Integer> seenCourses = new LinkedHashSet<>();
+        List<CourseOffering> allOfferings = offeringData.findByLecturer(lecturerId);
+        offerings = new ArrayList<>();
         courseBox.removeAllItems();
-        for (CourseOffering o : offerings) {
+        
+        for (CourseOffering o : allOfferings) {
             Course c = courseData.findById(o.getCourse_id());
-            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
-                    : c.getCourse_code() + " - " + c.getCourse_name());
+            if (c != null && !seenCourses.contains(c.getCourse_id())) {
+                offerings.add(o);
+                seenCourses.add(c.getCourse_id());
+                courseBox.addItem(c.getCourse_code() + " - " + c.getCourse_name());
+            } else if (c == null && !seenCourses.contains(o.getCourse_id())) {
+                offerings.add(o);
+                seenCourses.add(o.getCourse_id());
+                courseBox.addItem("Offering " + o.getOffering_id());
+            }
         }
     }
 

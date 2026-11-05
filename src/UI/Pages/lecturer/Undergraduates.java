@@ -122,11 +122,21 @@ public class Undergraduates extends LecturerUI.Page {
         courseBox.removeAllItems();
         courseBox.addItem(ALL_COURSES);
 
-        offerings = offeringData.findByLecturer(lecturerId);
-        for (CourseOffering o : offerings) {
+        java.util.Set<Integer> seenCourses = new LinkedHashSet<>();
+        List<CourseOffering> allOfferings = offeringData.findByLecturer(lecturerId);
+        offerings = new ArrayList<>();
+        
+        for (CourseOffering o : allOfferings) {
             Course c = courseData.findById(o.getCourse_id());
-            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
-                    : c.getCourse_code() + " - " + c.getCourse_name());
+            if (c != null && !seenCourses.contains(c.getCourse_id())) {
+                offerings.add(o);
+                seenCourses.add(c.getCourse_id());
+                courseBox.addItem(c.getCourse_code() + " - " + c.getCourse_name());
+            } else if (c == null && !seenCourses.contains(o.getCourse_id())) {
+                offerings.add(o);
+                seenCourses.add(o.getCourse_id());
+                courseBox.addItem("Offering " + o.getOffering_id());
+            }
         }
     }
 

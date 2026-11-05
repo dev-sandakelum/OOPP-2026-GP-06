@@ -171,11 +171,23 @@ public class LoginPage extends JFrame implements FrameData {
      * Building the (not yet visible) frame off the event thread keeps the spinner turning;
      * it is only made visible back on the event thread.
      */
+    /** First name for the welcome message, keeping a leading title with it ("Dr. Nimal"). */
+    private static String greetingName(String fullName) {
+        if (fullName == null || fullName.isBlank()) return "";
+        String[] parts = fullName.trim().split("\\s+");
+        String head = parts[0].replace(".", "").toLowerCase();
+        boolean isTitle = switch (head) {
+            case "dr", "prof", "mr", "mrs", "ms", "miss", "rev", "eng" -> true;
+            default -> false;
+        };
+        return (isTitle && parts.length > 1) ? parts[0] + " " + parts[1] : parts[0];
+    }
+
     private void loginSucceeded(User user) {
         // From here on, DB access uses the account for this user's role
         Database.useRoleFor(user.getUserType());
 
-        String first = user.getName() == null ? "" : user.getName().trim().split("\\s+")[0];
+        String first = greetingName(user.getName());
         overlay.finish(first.isEmpty() ? "Welcome" : "Welcome, " + first, "Opening your dashboard");
 
         final long welcomeShownAt = System.currentTimeMillis();
