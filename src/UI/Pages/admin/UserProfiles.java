@@ -140,6 +140,8 @@ public class UserProfiles extends Page {
         edit.addActionListener(e -> editUser());
         RoundedButton del  = new RoundedButton("Delete", false);
         del.addActionListener(e -> deleteUser());
+        RoundedButton reset = new RoundedButton("Reset password", false);
+        reset.addActionListener(e -> resetPassword());
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         left.setOpaque(false);
@@ -149,6 +151,7 @@ public class UserProfiles extends Page {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         right.setOpaque(false);
         right.add(edit);
+        right.add(reset);
         right.add(del);
         right.add(add);
 
@@ -261,6 +264,70 @@ public class UserProfiles extends Page {
         } catch (Exception ex) {
             info(this, "Could not update user: " + ex.getMessage());
         }
+    }
+
+    /**
+     * Sets a new password for the selected user. The current password is never shown;
+     * the admin only types a new one (twice, masked).
+     */
+    private void resetPassword() {
+        int row = table.getSelectedRow();
+        if (row < 0) { info(this, "Select a user first."); return; }
+        int m = table.convertRowIndexToModel(row);
+        String name = (String) model.getValueAt(m, 0);
+
+        JPasswordField pw1 = passwordField();
+        JPasswordField pw2 = passwordField();
+        JLabel who = new JLabel("Set a new password for " + name);
+        who.setFont(font(Font.PLAIN, 13));
+        who.setForeground(INK_2);
+
+        JPanel p = new JPanel(new GridLayout(5, 1, 0, 4));
+        p.setOpaque(false);
+        p.add(who);
+        p.add(label("New password"));
+        p.add(pw1);
+        p.add(label("Confirm new password"));
+        p.add(pw2);
+
+        while (true) {
+            if (!Ui.ask(this, "Reset password", p)) return;
+            char[] a = pw1.getPassword();
+            char[] b = pw2.getPassword();
+            String error = null;
+            if (a.length < 6)                      error = "Password must be at least 6 characters.";
+            else if (!java.util.Arrays.equals(a, b)) error = "The two passwords do not match.";
+            java.util.Arrays.fill(b, '\0');
+
+            if (error != null) {
+                java.util.Arrays.fill(a, '\0');
+                info(this, error);
+                pw1.setText("");
+                pw2.setText("");
+                continue;                          // show the dialog again
+            }
+
+            try {
+                userData.updatePassword(ids.get(m), new String(a));   // store hash in production
+                info(this, "Password for " + name + " has been reset.");
+            } catch (Exception ex) {
+                info(this, "Could not reset password: " + ex.getMessage());
+            } finally {
+                java.util.Arrays.fill(a, '\0');
+            }
+            return;
+        }
+    }
+
+    private static JPasswordField passwordField() {
+        JPasswordField f = new JPasswordField(22);
+        f.setFont(font(Font.PLAIN, 14));
+        f.setForeground(INK);
+        f.setBackground(SURFACE);
+        f.setCaretColor(BRAND);
+        f.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(LINE_2, 1, true), new javax.swing.border.EmptyBorder(8, 12, 8, 12)));
+        return f;
     }
 
     private void deleteUser() {
