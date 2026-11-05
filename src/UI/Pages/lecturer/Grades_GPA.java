@@ -28,6 +28,7 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -196,11 +197,23 @@ public class Grades_GPA extends LecturerUI.Page {
     // LOAD COURSES
     // =====================================================================
     private void loadCourses() {
-        offerings = offeringData.findByLecturer(lecturerId);
-        for (CourseOffering o : offerings) {
+        offerings = new ArrayList<>();
+        courseBox.removeAllItems();
+        
+        java.util.Set<Integer> seenCourses = new LinkedHashSet<>();
+        List<CourseOffering> allOfferings = offeringData.findByLecturer(lecturerId);
+        
+        for (CourseOffering o : allOfferings) {
             Course c = courseData.findById(o.getCourse_id());
-            courseBox.addItem(c == null ? "Offering " + o.getOffering_id()
-                    : c.getCourse_code() + " - " + c.getCourse_name());
+            if (c != null && !seenCourses.contains(c.getCourse_id())) {
+                offerings.add(o);
+                seenCourses.add(c.getCourse_id());
+                courseBox.addItem(c.getCourse_code() + " - " + c.getCourse_name());
+            } else if (c == null && !seenCourses.contains(o.getCourse_id())) {
+                offerings.add(o);
+                seenCourses.add(o.getCourse_id());
+                courseBox.addItem("Offering " + o.getOffering_id());
+            }
         }
     }
 
