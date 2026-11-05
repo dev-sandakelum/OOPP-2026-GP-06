@@ -311,11 +311,14 @@ public class Attendance extends LecturerUI.Page {
             return;
         }
         String intakeYear = String.valueOf(batches.get(batchIndex).getIntake_year());
+        java.util.Set<Integer> seenCourses = new java.util.LinkedHashSet<>();
 
         for (CourseOffering o : offeringData.findByLecturer(lecturerId)) {
             Course c = courseData.findById(o.getCourse_id());
             if (c == null || c.getBatch() == null || !c.getBatch().startsWith(intakeYear)) continue;
+            if (seenCourses.contains(c.getCourse_id())) continue;   // skip duplicate courses
             offerings.add(o);
+            seenCourses.add(c.getCourse_id());
             courseBox.addItem(c.getCourse_code() + " - " + c.getCourse_name());
         }
         updating = false;
