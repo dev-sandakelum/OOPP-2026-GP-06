@@ -1,5 +1,6 @@
 package UI.Pages.Officer;
 
+import UI.Kit.Glass;
 import UI.Pages.Components.Card;
 import UI.Pages.Components.SectionCard;
 import UI.Pages.Components.SimpleDocListener;
@@ -10,7 +11,11 @@ import model.Lecturer;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static UI.Kit.Palette.*;
 import static UI.Pages.Components.Ui.*;
@@ -18,21 +23,44 @@ import static UI.Pages.Components.Ui.*;
 // The "Schedule a Course" + "Evaluation Criteria" form, shown in the Add and Edit windows
 // opened from the Courses tab. Validates live: the owner is told through onChange whenever
 // something changes, and isComplete() says whether it can be saved.
+//
+// Course code = department prefix + year + semester + course no. + credits, e.g. ICT1132:
+//   ICT -> Information and Communication Technology, 1 -> first year, 1 -> first semester,
+//   3 -> third course of that semester, 2 -> two credits.
+// The "Course Code Breakdown" strip shows those parts as drop-downs. Picking a part rewrites
+// the code; typing a code re-selects the parts. The course no. is only edited through the code.
 public class CourseForm extends JPanel {
 
     public static final String[] CA_NAMES = {"Quizzes", "Assignments", "Project", "Mid"};
     private static final String NONE = "-- Select --";
-    private static final String[] CREDIT_OPTIONS = {NONE, "0", "1", "2", "3", "4"};
+    private static final String[] YEARS = {"First Year", "Second Year", "Third Year", "Fourth Year"};
+    private static final String[] SEMESTERS = {"First Semester", "Second Semester"};
+    private static final String[] CREDITS = {"0 Credits", "1 Credit", "2 Credits", "3 Credits", "4 Credits"};
+    private static final String DEFAULT_NO = "1";          // course no. used when the code has none yet
+
+    private static final int YEAR = 0, SEM = 1, NO = 2, CREDIT = 3;   // digit positions in the code
+    private static final Pattern CODE = Pattern.compile("^([A-Za-z]*)(\\d*)(.*)$");
+    private static final Pattern FULL_CODE = Pattern.compile("^[A-Z]{2,6}\\d{4}$");
 
     private final List<Lecturer> lecturers;
     private final List<Department> departments;
+    private final List<String> deptCodes = new ArrayList<>();   // "ICT", "ET", ... parallel to departments
 
     private final JTextField codeF = field(20), nameF = field(20), batchF = field(20);
     private final JRadioButton theory = radio("Theory", true), practical = radio("Practical", false);
     private final JRadioButton gpa = radio("GPA", true), ngpa = radio("NGPA", false);
     private final JComboBox<String> lecturerCb = new JComboBox<>();
+
+    // the four code indicators
     private final JComboBox<String> deptCb = new JComboBox<>();
-    private final JComboBox<String> creditsCb = new JComboBox<>(CREDIT_OPTIONS);
+    private final JComboBox<String> yearCb = combo(YEARS);
+    private final JComboBox<String> semCb = combo(SEMESTERS);
+    private final JComboBox<String> creditsCb = combo(CREDITS);
+    private final JLabel deptCap = caption(), yearCap = caption(), semCap = caption(), creditsCap = caption();
+    private final Segment[] segments = {
+            new Segment("Dept", BRAND), new Segment("Year", OK), new Segment("Sem", WARN),
+            new Segment("No.", INK_2), new Segment("Credits", BRAND_LT)};
+    private boolean syncing;   // true while code <-> indicators are being copied, to stop echo
 
     private final JTextField endF = percent(), caF = percent();
     private final JCheckBox[] caBox = new JCheckBox[CA_NAMES.length];
@@ -50,9 +78,12 @@ public class CourseForm extends JPanel {
 
         lecturerCb.addItem(NONE);
         for (Lecturer l : lecturers) lecturerCb.addItem(lecturerText(l));
+        lecturerCb.setFont(font(Font.PLAIN, 14));
         deptCb.addItem(NONE);
-        for (Department d : departments) deptCb.addItem(d.getDep_name());
-        for (JComboBox<String> cb : List.of(lecturerCb, deptCb, creditsCb)) cb.setFont(font(Font.PLAIN, 14));
+        for (Department d : departments) {
+            deptCodes.add(deptCode(d));
+            deptCb.addItem(deptCode(d));
+        }
 
         for (int i = 0; i < CA_NAMES.length; i++) {
             caBox[i] = check(CA_NAMES[i]);
@@ -84,16 +115,67 @@ public class CourseForm extends JPanel {
         g.add(gpa);
         g.add(ngpa);
 
-        JPanel p = new JPanel(new GridLayout(0, 2, 20, 10));
-        p.setOpaque(false);
-        p.add(labelled("Course ID", hint(codeF, "e.g. ICT2152")));
-        p.add(labelled("Course Name", hint(nameF, "e.g. Object Oriented Programming")));
-        p.add(labelled("Course Type", radios(theory, practical)));
-        p.add(labelled("Lecturer", lecturerCb));
-        p.add(labelled("Department", deptCb));
-        p.add(labelled("Batch", hint(batchF, "e.g. 2023/2024")));
-        p.add(labelled("GPA / NGPA", radios(gpa, ngpa)));
-        p.add(labelled("Credits (0 – 4)", creditsCb));
+        JPanel grid = new JPanel(new GridLayout(0, 2, 20, 10));
+        grid.setOpaque(false);
+        grid.add(labelled("Course Code", hint(codeF, "e.g. ICT1132 = ICT · 1st year · 1st semester · course 3 · 2 credits")));
+        grid.add(labelled("Course Name", hint(nameF, "e.g. Object Oriented Programming")));
+        grid.add(labelled("Course Type", radios(theory, practical)));
+        grid.add(labelled("Lecturer", lecturerCb));
+        grid.add(labelled("Batch", hint(batchF, "e.g. 2023/2024")));
+        grid.add(labelled("GPA / NGPA", radios(gpa, ngpa)));
+
+        JPanel p = column();
+        p.add(left(grid));
+        p.add(Box.createVerticalStrut(16));
+        p.add(left(inner(breakdown())));
+        return p;
+    }
+
+    // "Course Code Breakdown": title + live segmented preview on top, the four drop-downs below
+    private JComponent breakdown() {
+        JLabel title = boldLabel("Course Code Breakdown");
+        title.setFont(font(Font.BOLD, 15));
+        JLabel sub = new JLabel("Pick parts to build the code, or type it.");
+        sub.setFont(font(Font.PLAIN, 12));
+        sub.setForeground(INK_2);
+
+        JPanel text = column();
+        text.add(left(title));
+        text.add(Box.createVerticalStrut(3));
+        text.add(left(sub));
+
+        JPanel preview = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        preview.setOpaque(false);
+        for (Segment s : segments) preview.add(s);
+
+        JPanel head = new JPanel(new BorderLayout(16, 0));
+        head.setOpaque(false);
+        head.add(text, BorderLayout.CENTER);
+        head.add(preview, BorderLayout.EAST);
+
+        JPanel strip = new JPanel(new GridLayout(1, 4, 14, 0));
+        strip.setOpaque(false);
+        strip.add(indicator("Department", deptCb, deptCap));
+        strip.add(indicator("Academic Year", yearCb, yearCap));
+        strip.add(indicator("Semester", semCb, semCap));
+        strip.add(indicator("Credits", creditsCb, creditsCap));
+
+        JPanel p = column();
+        p.add(left(head));
+        p.add(Box.createVerticalStrut(16));
+        p.add(left(strip));
+        return p;
+    }
+
+    // one indicator: small caps label, drop-down, caption with the meaning
+    private static JComponent indicator(String name, JComboBox<String> cb, JLabel cap) {
+        cb.setMaximumSize(new Dimension(Integer.MAX_VALUE, cb.getPreferredSize().height));
+        JPanel p = column();
+        p.add(left(label(name.toUpperCase())));
+        p.add(Box.createVerticalStrut(6));
+        p.add(left(cb));
+        p.add(Box.createVerticalStrut(6));
+        p.add(left(cap));
         return p;
     }
 
@@ -121,9 +203,7 @@ public class CourseForm extends JPanel {
         totals.add(totalLbl);
         totals.add(caLbl);
 
-        JPanel p = new JPanel();
-        p.setOpaque(false);
-        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        JPanel p = column();
         p.add(left(hint));
         p.add(Box.createVerticalStrut(12));
         p.add(left(inner(end)));
@@ -220,6 +300,23 @@ public class CourseForm extends JPanel {
         return l;
     }
 
+    private static JLabel caption() {
+        JLabel l = new JLabel("Not set");
+        l.setFont(font(Font.PLAIN, 11));
+        l.setForeground(INK_2);
+        // fixed height, any width: long department names are cut with "..." (full name in the tooltip)
+        l.setPreferredSize(new Dimension(10, 16));
+        l.setMaximumSize(new Dimension(Integer.MAX_VALUE, 16));
+        return l;
+    }
+
+    private static JComboBox<String> combo(String[] items) {
+        JComboBox<String> cb = new JComboBox<>();
+        cb.addItem(NONE);
+        for (String s : items) cb.addItem(s);
+        return cb;
+    }
+
     private static JRadioButton radio(String s, boolean sel) {
         JRadioButton r = new JRadioButton(s, sel);
         r.setOpaque(false);
@@ -246,13 +343,48 @@ public class CourseForm extends JPanel {
         return f;
     }
 
+    // One piece of the code preview: tinted rounded value with a tiny name under it ("?" when missing)
+    private static final class Segment extends JPanel {
+        private final JLabel value = new JLabel("?", SwingConstants.CENTER);
+        private final Color color;
+
+        Segment(String name, Color color) {
+            this.color = color;
+            setOpaque(false);
+            setLayout(new BorderLayout(0, 3));
+            value.setFont(font(Font.BOLD, 15));
+            value.setForeground(INK_2);
+            value.setBorder(new EmptyBorder(4, 12, 4, 12));
+            JLabel cap = new JLabel(name, SwingConstants.CENTER);
+            cap.setFont(font(Font.PLAIN, 10));
+            cap.setForeground(INK_2);
+            add(value, BorderLayout.CENTER);
+            add(cap, BorderLayout.SOUTH);
+        }
+
+        void set(String s) {
+            boolean empty = s == null || s.isEmpty();
+            value.setText(empty ? "?" : s);
+            value.setForeground(empty ? INK_2 : color);
+        }
+
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = Glass.aa(g);
+            Rectangle r = value.getBounds();
+            g2.setColor(Glass.alpha(value.getForeground(), 34));
+            g2.fill(new RoundRectangle2D.Float(r.x, r.y, r.width, r.height, 12, 12));
+            g2.dispose();
+        }
+    }
+
     // -----------------------------------------------------------------
-    //  Live validation
+    //  Code <-> indicators
     // -----------------------------------------------------------------
 
     private void wire() {
         SimpleDocListener doc = new SimpleDocListener(this::recalc);
-        for (JTextField f : new JTextField[]{codeF, nameF, batchF, endF, caF}) f.getDocument().addDocumentListener(doc);
+        for (JTextField f : new JTextField[]{nameF, batchF, endF, caF}) f.getDocument().addDocumentListener(doc);
+        codeF.getDocument().addDocumentListener(new SimpleDocListener(this::codeTyped));
         for (int i = 0; i < CA_NAMES.length; i++) {
             final int k = i;
             caParts[i].getDocument().addDocumentListener(doc);
@@ -261,8 +393,102 @@ public class CourseForm extends JPanel {
                 recalc();
             });
         }
-        for (JComboBox<String> cb : List.of(lecturerCb, deptCb, creditsCb)) cb.addActionListener(e -> recalc());
+        lecturerCb.addActionListener(e -> recalc());
+        for (JComboBox<String> cb : List.of(deptCb, yearCb, semCb, creditsCb))
+            cb.addActionListener(e -> indicatorPicked(cb));
     }
+
+    private String[] parts() {   // [prefix, digits] of what is typed
+        Matcher m = CODE.matcher(codeF.getText().trim());
+        return m.matches() ? new String[]{m.group(1).toUpperCase(), m.group(2)} : new String[]{"", ""};
+    }
+
+    private static int digit(String digits, int pos) {
+        return digits.length() > pos ? digits.charAt(pos) - '0' : -1;
+    }
+
+    // typed code -> re-select the four indicators
+    private void codeTyped() {
+        if (syncing) return;
+        syncing = true;
+        try {
+            selectFromCode();
+        } finally {
+            syncing = false;
+        }
+        recalc();
+    }
+
+    private void selectFromCode() {
+        String[] p = parts();
+        deptCb.setSelectedIndex(deptCodes.indexOf(p[0]) + 1);
+        int y = digit(p[1], YEAR), s = digit(p[1], SEM), c = digit(p[1], CREDIT);
+        yearCb.setSelectedIndex(y >= 1 && y <= YEARS.length ? y : 0);
+        semCb.setSelectedIndex(s >= 1 && s <= SEMESTERS.length ? s : 0);
+        creditsCb.setSelectedIndex(c >= 0 && c < CREDITS.length ? c + 1 : 0);
+    }
+
+    // indicator picked -> rewrite the code, then re-read it so every indicator agrees with it
+    private void indicatorPicked(JComboBox<String> source) {
+        if (syncing) return;
+        syncing = true;
+        try {
+            codeF.setText(buildCode(source.getSelectedIndex() > 0));
+            selectFromCode();
+        } finally {
+            syncing = false;
+        }
+        recalc();
+    }
+
+    // The digits read left to right, so a later part needs the earlier ones. When a part is picked
+    // (fill = true) any missing earlier part defaults to 1; when one is cleared the parts after it go.
+    private String buildCode(boolean fill) {
+        String digits = parts()[1];
+        String no = digits.length() > NO ? digits.substring(NO, NO + 1) : "";
+        int year = yearCb.getSelectedIndex(), sem = semCb.getSelectedIndex(), credits = creditsCb.getSelectedIndex() - 1;
+        if (fill) {
+            if (credits >= 0 && no.isEmpty()) no = DEFAULT_NO;
+            if (!no.isEmpty() && sem == 0) sem = 1;
+            if (sem > 0 && year == 0) year = 1;
+        }
+
+        StringBuilder sb = new StringBuilder(deptCb.getSelectedIndex() > 0 ? deptCodes.get(deptCb.getSelectedIndex() - 1) : "");
+        if (year == 0) return sb.toString();
+        sb.append(year);
+        if (sem == 0) return sb.toString();
+        sb.append(sem).append(no);
+        if (credits >= 0) sb.append(credits);
+        return sb.toString();
+    }
+
+    // preview chips + captions under the drop-downs
+    private void refreshIndicators() {
+        String[] p = parts();
+        segments[0].set(p[0]);
+        for (int i = 0; i < 4; i++) segments[i + 1].set(digit(p[1], i) < 0 ? "" : p[1].substring(i, i + 1));
+
+        int d = deptCb.getSelectedIndex();
+        String deptName = d > 0 ? departments.get(d - 1).getDep_name() : null;
+        boolean deptMismatch = d > 0 && !p[0].isEmpty() && !p[0].equals(deptCodes.get(d - 1));
+        caption(deptCap, deptMismatch ? "Code prefix " + p[0] + " is not a department" : deptName, deptMismatch);
+        caption(yearCap, yearCb.getSelectedIndex() > 0 ? "1st digit = " + yearCb.getSelectedIndex() : null, false);
+        caption(semCap, semCb.getSelectedIndex() > 0 ? "2nd digit = " + semCb.getSelectedIndex() : null, false);
+        int credits = creditsCb.getSelectedIndex() - 1, codeCredits = digit(p[1], CREDIT);
+        boolean creditMismatch = credits >= 0 && codeCredits >= 0 && credits != codeCredits;
+        caption(creditsCap, creditMismatch ? "Code says " + codeCredits + ", stored " + credits
+                : credits >= 0 ? "Last digit = " + credits : null, creditMismatch);
+    }
+
+    private static void caption(JLabel l, String text, boolean warn) {
+        l.setText(text == null ? "Not set" : text);
+        l.setToolTipText(text);
+        l.setForeground(warn ? WARN : INK_2);
+    }
+
+    // -----------------------------------------------------------------
+    //  Live validation
+    // -----------------------------------------------------------------
 
     private static int num(JTextField f) {
         try {
@@ -274,6 +500,7 @@ public class CourseForm extends JPanel {
     }
 
     private void recalc() {
+        refreshIndicators();
         for (int i = 0; i < CA_NAMES.length; i++) caParts[i].setEnabled(caBox[i].isSelected());
 
         int end = num(endF), ca = num(caF);
@@ -292,8 +519,10 @@ public class CourseForm extends JPanel {
         caLbl.setText("<html>CA components: <b>" + sum + " / " + Math.max(ca, 0) + "</b></html>");
         caLbl.setForeground(caOk ? OK : BAD);
 
-        boolean filled = !codeF.getText().isBlank() && !nameF.getText().isBlank() && !batchF.getText().isBlank()
-                && deptCb.getSelectedIndex() > 0 && creditsCb.getSelectedIndex() > 0;
+        boolean codeOk = FULL_CODE.matcher(codeF.getText().trim().toUpperCase()).matches()
+                && deptCb.getSelectedIndex() > 0 && yearCb.getSelectedIndex() > 0
+                && semCb.getSelectedIndex() > 0 && creditsCb.getSelectedIndex() > 0;
+        boolean filled = codeOk && !nameF.getText().isBlank() && !batchF.getText().isBlank();
         complete = totalOk && caOk && filled;
         onChange.run();
     }
@@ -310,11 +539,19 @@ public class CourseForm extends JPanel {
         return id == null ? "-" : String.format("LEC%03d", id);
     }
 
+    /** "Information and Communication Technology" -> ICT, "Bio-system Technology" -> BST. */
+    public static String deptCode(Department d) {
+        StringBuilder sb = new StringBuilder();
+        for (String w : d.getDep_name().split("[\\s-]+"))
+            if (!w.isEmpty() && !w.equalsIgnoreCase("and")) sb.append(Character.toUpperCase(w.charAt(0)));
+        return sb.toString();
+    }
+
     /** Copies the form into the given course (a fresh one when editing a new course). */
     public Course fill(Course c) {
         c.setCourse_code(codeF.getText().trim().toUpperCase());
         c.setCourse_name(nameF.getText().trim());
-        c.setCredit(Double.parseDouble((String) creditsCb.getSelectedItem()));
+        c.setCredit(creditsCb.getSelectedIndex() - 1);
         c.setDep_id(departments.get(deptCb.getSelectedIndex() - 1).getDep_id());
         int lec = lecturerCb.getSelectedIndex();
         c.setLecturer_id(lec > 0 ? lecturers.get(lec - 1).getUser_id() : null);
@@ -333,21 +570,28 @@ public class CourseForm extends JPanel {
     private int part(int i) { return caBox[i].isSelected() ? num(caParts[i]) : 0; }
 
     public void load(Course c) {
-        codeF.setText(c.getCourse_code());
+        syncing = true;
+        try {
+            codeF.setText(c.getCourse_code() == null ? "" : c.getCourse_code());
+            selectFromCode();
+            // the stored department and credits win over what the code says (older rows may differ);
+            // the caption flags the difference and the code is rewritten once a part is picked
+            for (int i = 0; i < departments.size(); i++)
+                if (c.getDep_id() != null && departments.get(i).getDep_id() == c.getDep_id())
+                    deptCb.setSelectedIndex(i + 1);
+            int credits = (int) Math.round(c.getCredit());
+            if (credits >= 0 && credits < CREDITS.length) creditsCb.setSelectedIndex(credits + 1);
+        } finally {
+            syncing = false;
+        }
         nameF.setText(c.getCourse_name());
         ("Practical".equals(c.getCourse_type()) ? practical : theory).setSelected(true);
         lecturerCb.setSelectedIndex(0);
         for (int i = 0; i < lecturers.size(); i++)
             if (c.getLecturer_id() != null && lecturers.get(i).getUser_id() == c.getLecturer_id())
                 lecturerCb.setSelectedIndex(i + 1);
-        deptCb.setSelectedIndex(0);
-        for (int i = 0; i < departments.size(); i++)
-            if (c.getDep_id() != null && departments.get(i).getDep_id() == c.getDep_id())
-                deptCb.setSelectedIndex(i + 1);
         batchF.setText(c.getBatch() == null ? "" : c.getBatch());
         ("NGPA".equals(c.getGpa_type()) ? ngpa : gpa).setSelected(true);
-        int credits = (int) Math.round(c.getCredit());
-        creditsCb.setSelectedItem(credits >= 0 && credits <= 4 ? String.valueOf(credits) : NONE);
         endF.setText(String.valueOf(c.getEnd_weight()));
         caF.setText(String.valueOf(c.getCa_weight()));
         int[] w = {c.getQuiz_weight(), c.getAssignment_weight(), c.getProject_weight(), c.getMid_weight()};
@@ -359,12 +603,17 @@ public class CourseForm extends JPanel {
     }
 
     public void reset() {
-        for (JTextField f : new JTextField[]{codeF, nameF, batchF}) f.setText("");
+        syncing = true;
+        try {
+            codeF.setText("");
+            selectFromCode();
+        } finally {
+            syncing = false;
+        }
+        for (JTextField f : new JTextField[]{nameF, batchF}) f.setText("");
         theory.setSelected(true);
         gpa.setSelected(true);
         lecturerCb.setSelectedIndex(0);
-        deptCb.setSelectedIndex(0);
-        creditsCb.setSelectedIndex(0);
         endF.setText("0");
         caF.setText("0");
         for (int i = 0; i < CA_NAMES.length; i++) {

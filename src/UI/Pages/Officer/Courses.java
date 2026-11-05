@@ -135,12 +135,9 @@ public class Courses extends Page {
 
     // "Information and Communication Technology" -> ICT, "Bio-system Technology" -> BST
     private String deptShort(Integer depId) {
-        String name = deptName(depId);
-        if (name.equals("-")) return name;
-        StringBuilder sb = new StringBuilder();
-        for (String w : name.split("[\\s-]+"))
-            if (!w.isEmpty() && !w.equalsIgnoreCase("and")) sb.append(Character.toUpperCase(w.charAt(0)));
-        return sb.toString();
+        if (depId == null) return "-";
+        for (Department d : departments) if (d.getDep_id() == depId) return CourseForm.deptCode(d);
+        return "-";
     }
 
     // -----------------------------------------------------------------
@@ -182,7 +179,7 @@ public class Courses extends Page {
         CourseForm f = new CourseForm(lecturers, departments);
         if (!adding) f.load(c);
 
-        JFrame win = window(adding ? "Add Course" : "Edit Course · " + c.getCourse_code(), 760, 860);
+        JFrame win = window(adding ? "Add Course" : "Edit Course · " + c.getCourse_code(), 840, 920);
 
         RoundedButton save = new RoundedButton(adding ? "Schedule Course" : "Update Course", true);
         RoundedButton cancel = new RoundedButton("Cancel", false);
