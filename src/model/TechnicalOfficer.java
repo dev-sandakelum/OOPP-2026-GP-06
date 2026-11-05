@@ -3,6 +3,7 @@ package model;
 public class TechnicalOfficer extends User {
 
     private int dep_id;
+    private String nic;
 
     public TechnicalOfficer() {
     }
@@ -27,12 +28,21 @@ public class TechnicalOfficer extends User {
         this.dep_id = dep_id;
     }
 
+    public String getNic() {
+        return nic;
+    }
+
+    public void setNic(String nic) {
+        this.nic = nic;
+    }
+
     @Override
     public String toString() {
         return "TechnicalOfficer{" +
                 "user_id=" + getUser_id() +
                 ", name='" + getName() + '\'' +
                 ", dep_id=" + dep_id +
+                ", nic='" + nic + '\'' +
                 '}';
     }
 }

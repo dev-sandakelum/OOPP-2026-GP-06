@@ -10,6 +10,7 @@ import data.TechnicalOfficerData;
 import model.Department;
 import model.TechnicalOfficer;
 import model.User;
+import util.NICValidator;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -30,6 +31,7 @@ public class MyProfile extends Page {
     private final JTextField contact = field(20);
     private final JTextField dob = field(20);
     private final JTextField address = field(20);
+    private final JTextField nic = field(20);
     private final JLabel gender = new JLabel();
     private final JLabel department = new JLabel();
 
@@ -69,6 +71,7 @@ public class MyProfile extends Page {
             user.setAddress(fromDb.getAddress());
             user.setGender(fromDb.getGender());
             user.setDep_id(fromDb.getDep_id());
+            user.setNic(fromDb.getNic());
         } catch (DataAccessException ex) {
             info(this, "Failed to load your profile: " + ex.getMessage());
         }
@@ -93,6 +96,7 @@ public class MyProfile extends Page {
         contact.setText(nz(user.getContact_number()));
         dob.setText(user.getDOB() == null ? "" : user.getDOB().toString());
         address.setText(nz(user.getAddress()));
+        nic.setText(nz(user.getNic()));
         gender.setText(nz(user.getGender()).isEmpty() ? "—" : user.getGender());
     }
 
@@ -133,6 +137,7 @@ public class MyProfile extends Page {
         addField(grid, "Email", email);
         addField(grid, "Contact number", contact);
         addField(grid, "Date of birth (yyyy-mm-dd)", dob);
+        addField(grid, "NIC (9 digits + V or 12 digits)", nic);
         addField(grid, "Address", address);
         addField(grid, "Gender (read-only)", gender);
         addField(grid, "Department", department);   // read-only label
@@ -175,11 +180,31 @@ public class MyProfile extends Page {
                 return;
             }
         }
+        
+        // Validate NIC if provided
+        String nicValue = nic.getText().trim();
+        if (!nicValue.isEmpty()) {
+            if (!NICValidator.isValidNIC(nicValue)) {
+                info(this, "Invalid NIC format. Use old format (9 digits + V) or new format (12 digits).");
+                return;
+            }
+            
+            // Validate NIC against DOB if both are provided
+            if (d != null) {
+                String validationMessage = NICValidator.getValidationMessage(nicValue, d);
+                if (validationMessage != null) {
+                    info(this, validationMessage);
+                    return;
+                }
+            }
+        }
+        
         user.setName(name.getText().trim());
         user.setEmail(email.getText().trim());
         user.setContact_number(contact.getText().trim());
         user.setDOB(d);
         user.setAddress(address.getText().trim());
+        user.setNic(nicValue.isEmpty() ? null : nicValue.toUpperCase());
 
         try {
             if (officerData.updateProfile(user)) {

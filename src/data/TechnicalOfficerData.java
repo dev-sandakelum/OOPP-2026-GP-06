@@ -29,7 +29,7 @@ public class TechnicalOfficerData {
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
                 "users.dob, users.gender, users.user_type, " +
-                "technical_officer.dep_id " +
+                "technical_officer.dep_id, technical_officer.nic " +
                 "FROM technical_officer JOIN users USING(user_id) " +
                 "WHERE technical_officer.user_id = ?";
 
@@ -56,7 +56,7 @@ public class TechnicalOfficerData {
         String sql = "SELECT users.user_id, users.name, users.email, " +
                 "users.password, users.phone, users.address, " +
                 "users.dob, users.gender, users.user_type, " +
-                "technical_officer.dep_id " +
+                "technical_officer.dep_id, technical_officer.nic " +
                 "FROM technical_officer JOIN users USING(user_id) " +
                 "ORDER BY users.user_id";
 
@@ -111,20 +111,35 @@ public class TechnicalOfficerData {
     // 4. Update technical officer's own profile.
     public boolean update(TechnicalOfficer t) {
 
-        String sql = "UPDATE users SET name = ?, email = ?, phone = ?, address = ?, dob = ? " +
+        String userSql = "UPDATE users SET name = ?, email = ?, phone = ?, address = ?, dob = ? " +
                 "WHERE user_id = ?";
+        
+        String nicSql = "UPDATE technical_officer SET nic = ? WHERE user_id = ?";
 
         try (Connection c = conn();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps1 = c.prepareStatement(userSql);
+             PreparedStatement ps2 = c.prepareStatement(nicSql)) {
 
-            ps.setString(1, t.getName());
-            ps.setString(2, t.getEmail());
-            ps.setString(3, t.getContact_number());
-            ps.setString(4, t.getAddress());
-            if (t.getDOB() != null) ps.setDate(5, t.getDOB());
-            else ps.setNull(5, java.sql.Types.DATE);
-            ps.setInt(6, t.getUser_id());
-            return ps.executeUpdate() > 0;
+            // Update users table
+            ps1.setString(1, t.getName());
+            ps1.setString(2, t.getEmail());
+            ps1.setString(3, t.getContact_number());
+            ps1.setString(4, t.getAddress());
+            if (t.getDOB() != null) ps1.setDate(5, t.getDOB());
+            else ps1.setNull(5, java.sql.Types.DATE);
+            ps1.setInt(6, t.getUser_id());
+            boolean userUpdated = ps1.executeUpdate() > 0;
+            
+            // Update technical_officer table (NIC)
+            if (t.getNic() != null && !t.getNic().trim().isEmpty()) {
+                ps2.setString(1, t.getNic().trim().toUpperCase());
+            } else {
+                ps2.setNull(1, java.sql.Types.VARCHAR);
+            }
+            ps2.setInt(2, t.getUser_id());
+            ps2.executeUpdate();
+            
+            return userUpdated;
 
         } catch (SQLException e) {
             throw new DataAccessException(
@@ -655,6 +670,7 @@ public class TechnicalOfficerData {
 
         // Technical officer details
         t.setDep_id(rs.getInt("dep_id"));
+        t.setNic(rs.getString("nic"));
 
         return t;
     }
